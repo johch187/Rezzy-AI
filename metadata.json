@@ -1,0 +1,5 @@
+{
+  "name": "AI Resume & Cover Letter Builder",
+  "description": "An intelligent application that helps users craft personalized resumes and cover letters tailored to specific job descriptions using the power of Gemini.",
+  "requestFramePermissions": []
+}
