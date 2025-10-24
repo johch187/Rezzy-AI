@@ -90,6 +90,22 @@ export interface ProfileData {
   vibe: string;
   selectedResumeTemplate: string;
   selectedCoverLetterTemplate: string;
+  sectionOrder?: string[];
+}
+
+export interface ParsedCoverLetter {
+  senderName: string;
+  senderAddress: string;
+  senderContact: string;
+  date: string;
+  recipientName: string;
+  recipientTitle: string;
+  companyName: string;
+  companyAddress: string;
+  salutation: string;
+  body: string;
+  closing: string;
+  signature: string;
 }
 
 export interface IncludedProfileSelections {

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { ProfileData, GenerationOptions, GeneratedContent, IncludedProfileSelections } from '../types';
+import type { ProfileData, GenerationOptions, GeneratedContent, IncludedProfileSelections, Experience, Education, Project, ParsedCoverLetter } from '../types';
 import { readFileContent } from '../utils';
 
 if (!process.env.API_KEY) {
@@ -7,6 +7,40 @@ if (!process.env.API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+/**
+ * Parses a caught error object from an API call and returns a user-friendly message
+ * and a flag indicating if the operation is retryable.
+ * @param error The catught error object.
+ * @returns An object with a user-friendly `message` and a boolean `isRetryable`.
+ */
+const parseError = (error: any): { message: string, isRetryable: boolean } => {
+    const errorMessage = String(error?.message || error).toLowerCase();
+
+    if (error instanceof SyntaxError) {
+        return { message: "The AI returned a response in an unexpected format which couldn't be processed. This is often a temporary issue. Please try again.", isRetryable: true };
+    }
+    if (errorMessage.includes('api key not valid')) {
+        return { message: "API Key Error: The configured API key is invalid or has expired.", isRetryable: false };
+    }
+    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
+        return { message: "The service is currently experiencing high traffic (Rate Limit Exceeded). Please wait a moment before trying again.", isRetryable: true };
+    }
+    if (errorMessage.includes('content has been blocked') || errorMessage.includes('safety policy')) {
+        return { message: "Content Blocked: The request was blocked due to safety policies. Please revise your input to remove any potentially sensitive content and try again.", isRetryable: false };
+    }
+    if (errorMessage.includes('503') || errorMessage.includes('unavailable') || errorMessage.includes('overloaded')) {
+        return { message: "Service Unavailable: The AI service is temporarily unavailable or overloaded. This is usually temporary, so please try again in a few moments.", isRetryable: true };
+    }
+    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch')) {
+         return { message: "Network Error: Could not connect to the AI service. Please check your internet connection.", isRetryable: true };
+    }
+
+    // Default fallback
+    const displayMessage = error.message ? `An unexpected error occurred: ${error.message}` : "An unknown error occurred. Please check the console for more details.";
+    return { message: displayMessage, isRetryable: false };
+};
+
 
 const MOCK_RESPONSE: GeneratedContent = {
   resume: `# Alex Doe
@@ -136,8 +170,9 @@ export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> =
                     return resolve(extractedText);
                 }
             } catch (error) {
-                // Catches errors from the ai.models.generateContent call itself
-                return reject(error);
+                // Catches errors from the ai.models.generateContent call itself and re-throws a user-friendly version.
+                const { message } = parseError(error);
+                return reject(new Error(message));
             }
         });
         
@@ -305,29 +340,22 @@ export const generateTailoredDocuments = async (
   
     } catch (error: any) {
       lastError = error;
-      const errorMessage = String(error).toLowerCase();
-      
-      const retryableErrorSubstrings = ['503', 'overloaded', 'unavailable'];
-      const isRetryable = retryableErrorSubstrings.some(sub => errorMessage.includes(sub));
+      const { message, isRetryable } = parseError(error);
 
-      // Check for retryable error conditions
-      if (isRetryable) {
-        if (i < MAX_RETRIES - 1) { // Don't wait after the last attempt
+      if (isRetryable && i < MAX_RETRIES - 1) {
           const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
           console.warn(`API call failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
-        }
       } else {
-        // Not a retryable error, so break the loop and rethrow.
-        console.error("Non-retryable error calling Gemini API:", error);
-        throw new Error("Failed to generate documents. An unrecoverable error occurred.");
+          console.error("Non-retryable or final error calling Gemini API:", error);
+          throw new Error(message);
       }
     }
   }
 
   // If the loop finished without returning, it means all retries failed.
-  console.error("Error calling Gemini API after all retries:", lastError);
-  throw new Error("The model is currently busy. We tried several times without success. Please try again in a few moments.");
+  const finalError = parseError(lastError).message || "The model is currently busy. We tried several times without success. Please try again in a few moments.";
+  throw new Error(finalError);
 };
 
 
@@ -520,17 +548,132 @@ export const importAndParseResume = async (file: File): Promise<Partial<ProfileD
       ${PARSING_PROMPT_DETAILS}
     `;
 
-  const response = await ai.models.generateContent({
-      model: 'gemini-2.5-pro',
-      contents: prompt,
-      config: {
-          responseMimeType: "application/json",
-          responseSchema: PARSING_SCHEMA,
-      }
-  });
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: PARSING_SCHEMA,
+        }
+    });
 
-  return transformApiResponseToProfile(JSON.parse(response.text.trim()));
+    return transformApiResponseToProfile(JSON.parse(response.text.trim()));
+  } catch (error: any) {
+    console.error("Error during resume parsing:", error);
+    const { message } = parseError(error);
+    throw new Error(message);
+  }
 };
+
+export const parseGeneratedResume = async (resumeMarkdown: string): Promise<Partial<ProfileData>> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY is not configured. Cannot parse resume.");
+  }
+
+  if (!resumeMarkdown || resumeMarkdown.trim().length < 20) {
+      throw new Error("The generated resume content is too short to parse.");
+  }
+
+  const prompt = `
+      You are an expert data extraction system. Your task is to meticulously analyze the provided resume, which is in MARKDOWN format, and extract as much information as possible into a structured JSON object, following the schema and instructions provided.
+      **Resume Markdown to Parse:**
+      ---
+      ${resumeMarkdown}
+      ---
+      ${PARSING_PROMPT_DETAILS}
+    `;
+
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro', // Use Pro for higher accuracy on this complex task
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: PARSING_SCHEMA,
+        }
+    });
+    return transformApiResponseToProfile(JSON.parse(response.text.trim()));
+  } catch (error: any) {
+    console.error("Error parsing generated resume:", error);
+    const { message } = parseError(error);
+    throw new Error(message);
+  }
+};
+
+export const parseGeneratedCoverLetter = async (coverLetterMarkdown: string): Promise<ParsedCoverLetter> => {
+    if (!process.env.API_KEY) {
+        throw new Error("API_KEY is not configured. Cannot parse cover letter.");
+    }
+
+    if (!coverLetterMarkdown || coverLetterMarkdown.trim().length < 20) {
+        throw new Error("The generated cover letter content is too short to parse.");
+    }
+    
+    const prompt = `
+        You are an expert data extraction system. Your task is to meticulously analyze the provided cover letter, which is in MARKDOWN format, and extract its components into a structured JSON object.
+
+        **Cover Letter Markdown to Parse:**
+        ---
+        ${coverLetterMarkdown}
+        ---
+        
+        **Detailed Parsing Instructions:**
+
+        1.  **Sender Information**:
+            - \`senderName\`: The full name of the person sending the letter.
+            - \`senderAddress\`: The full street address, city, state, and zip code of the sender. Consolidate into a single string. If parts are on multiple lines, join them.
+            - \`senderContact\`: The sender's email and/or phone number. Consolidate into a single string.
+
+        2.  **Date**: Extract the date the letter was written.
+
+        3.  **Recipient Information**:
+            - \`recipientName\`: The full name of the hiring manager or recipient. If not specified, use "Hiring Manager".
+            - \`recipientTitle\`: The job title of the recipient.
+            - \`companyName\`: The name of the company.
+            - \`companyAddress\`: The full address of the company. Consolidate into a single string.
+
+        4.  **Letter Content**:
+            - \`salutation\`: The opening greeting (e.g., "Dear Ms. Jones,").
+            - \`body\`: The entire main content of the letter, from the first paragraph after the salutation to the last paragraph before the closing. Preserve paragraph breaks by using "\\n\\n".
+            - \`closing\`: The closing phrase (e.g., "Sincerely," or "Best regards,").
+            - \`signature\`: The sender's name as it appears at the very end.
+    `;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        senderName: { type: Type.STRING },
+                        senderAddress: { type: Type.STRING },
+                        senderContact: { type: Type.STRING },
+                        date: { type: Type.STRING },
+                        recipientName: { type: Type.STRING },
+                        recipientTitle: { type: Type.STRING },
+                        companyName: { type: Type.STRING },
+                        companyAddress: { type: Type.STRING },
+                        salutation: { type: Type.STRING },
+                        body: { type: Type.STRING },
+                        closing: { type: Type.STRING },
+                        signature: { type: Type.STRING },
+                    },
+                },
+            }
+        });
+
+        return JSON.parse(response.text.trim());
+    } catch (error: any) {
+        console.error("Error parsing generated cover letter:", error);
+        const { message } = parseError(error);
+        throw new Error(message);
+    }
+};
+
 
 export const convertToLatex = async (markdownContent: string): Promise<string> => {
     if (!process.env.API_KEY) {
@@ -538,10 +681,10 @@ export const convertToLatex = async (markdownContent: string): Promise<string> =
     }
 
     const prompt = `
-        You are an expert LaTeX document creator specializing in professional resumes.
-        Your task is to convert the following resume, provided in Markdown format, into a complete, clean, and compilable LaTeX document.
+        You are an expert LaTeX document creator specializing in professional resumes and cover letters.
+        Your task is to convert the following document, provided in Markdown format, into a complete, clean, and compilable LaTeX document.
 
-        **Input Resume (Markdown):**
+        **Input Document (Markdown):**
         ---
         ${markdownContent}
         ---
@@ -552,18 +695,20 @@ export const convertToLatex = async (markdownContent: string): Promise<string> =
         2.  **No Explanations:** Do NOT include any explanations, comments, or markdown formatting (like \`\`\`latex\`) in your response. The output must be ONLY the raw LaTeX code.
         3.  **Professional Layout:**
             *   Use the \`article\` document class.
-            *   Set margins appropriately for a resume using the \`geometry\` package (e.g., \`\\usepackage[left=0.75in, right=0.75in, top=0.5in, bottom=0.5in]{geometry}\`).
+            *   Set margins appropriately for a professional document using the \`geometry\` package (e.g., \`\\usepackage[left=0.75in, right=0.75in, top=0.5in, bottom=0.5in]{geometry}\`).
             *   Remove page numbering (\`\\pagestyle{empty}\`).
             *   Use a clean, modern font if possible (e.g., \`\\usepackage{helvet}\`, \`\\renewcommand{\\familydefault}{\\sfdefault}\`).
-            *   The candidate's name should be large and centered. Contact information should be presented neatly below the name.
+            *   For **resumes**, the candidate's name (if present, usually the first H1) should be large and centered. Contact information should be presented neatly below the name.
+            *   For **cover letters**, use standard business letter formatting (sender address, date, recipient address, salutation, body, closing).
         4.  **Structure Mapping:**
             *   Map Markdown headings (\`#\`, \`##\`) to LaTeX sections (e.g., \`\\section*{...}\`). Use the starred version to avoid section numbering.
             *   Map Markdown bullet points (\`-\` or \`*\`) to a LaTeX \`itemize\` environment, with each point being an \`\\item\`.
             *   Map Markdown bold (\`**text**\`) to LaTeX bold (\`\\textbf{text}\`).
         5.  **Packages:** Include necessary packages like \`geometry\`, \`hyperref\` (for clickable links), \`needspace\`.
         6.  **Hyperlinks:** Ensure any web links in the contact information are clickable using \`hyperref\`.
+        7.  **Handle Special Characters**: Escape LaTeX special characters (e.g., #, $, %, &, _, {, }) appropriately. For example, an email like "a&b@test.com" should be "a\\&b@test.com".
 
-        **Example Structure Snippet:**
+        **Example Resume Structure Snippet:**
         \`\`\`latex
         \\documentclass{article}
         \\usepackage[utf8]{inputenc}
@@ -591,15 +736,21 @@ export const convertToLatex = async (markdownContent: string): Promise<string> =
 
         \\end{document}
         \`\`\`
-        Now, based on these instructions, convert the provided Markdown resume.
+        Now, based on these instructions, convert the provided Markdown document, correctly identifying if it is a resume or a cover letter and applying the appropriate formatting.
     `;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
-
-    return response.text.trim();
+        return response.text.trim();
+    } catch(error: any) {
+        console.error("Error converting to LaTeX:", error);
+        const { message } = parseError(error);
+        throw new Error(message);
+    }
 };
 
 /**
@@ -608,27 +759,54 @@ export const convertToLatex = async (markdownContent: string): Promise<string> =
  * @returns A promise that resolves to a Blob containing the PDF data.
  */
 export const compileLatexToPdf = async (latexCode: string): Promise<Blob> => {
-    // This uses a public, free-to-use LaTeX compilation service.
-    // For production applications, a more robust, private, or paid service is recommended.
+    // This uses a public, free-to-use LaTeX compilation service that appears more robust.
+    // For production applications, a more reliable, private, or paid service is recommended.
+    const TEX2DOC_API_URL = 'https://cloud.tex2doc.com/api/v1/pdf';
+
     try {
-        const response = await fetch('https://latexonline.cc/compile', {
+        const response = await fetch(TEX2DOC_API_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
             },
-            body: new URLSearchParams({ text: latexCode }),
+            body: JSON.stringify({
+                latex_body: latexCode,
+                output_format: 'pdf',
+            }),
         });
 
         if (!response.ok) {
-            // The service returns the error log as plain text on failure.
-            const errorLog = await response.text();
-            console.error("LaTeX Compilation Failed:", errorLog);
-            throw new Error(`LaTeX compilation failed. The compiler returned the following log: \n\n${errorLog}`);
+            // This API returns a JSON error object on failure.
+            try {
+                const errorResult = await response.json();
+                const errorMessage = errorResult.message || `The PDF compilation service returned an error: ${response.status} ${response.statusText}`;
+                console.error("LaTeX Compilation Failed:", errorResult);
+                throw new Error(errorMessage);
+            } catch (jsonError) {
+                // If the error response isn't JSON, fall back to the status text.
+                throw new Error(`The PDF compilation service returned an error: ${response.status} ${response.statusText}`);
+            }
+        }
+        
+        // The API should return the PDF blob directly on success.
+        const pdfBlob = await response.blob();
+        
+        if (pdfBlob.type !== 'application/pdf') {
+             // Sometimes services return an error (e.g., HTML or text) with a 200 OK status.
+             // We can try to read it as text to find an error message.
+             const errorText = await pdfBlob.text();
+             console.error("LaTeX Compilation returned non-PDF content:", errorText);
+             throw new Error(`LaTeX compilation failed. The service returned an unexpected content type. Log: ${errorText.substring(0, 500)}`);
         }
 
-        return response.blob();
+        return pdfBlob;
+
     } catch (error) {
         console.error("Network or compilation service error:", error);
-        throw new Error("Could not connect to the LaTeX compilation service. Please check your internet connection and try again.");
+        if (error instanceof Error) {
+             // The most common client-side error is "Failed to fetch", which indicates a network or CORS issue.
+             throw new Error(`Could not connect to the PDF compilation service. Please check your internet connection or try again later. (Details: ${error.message})`);
+        }
+        throw new Error("An unknown error occurred while connecting to the PDF compilation service.");
     }
 };

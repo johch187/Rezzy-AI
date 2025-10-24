@@ -1,226 +1,640 @@
-import React, { useState, useEffect } from 'react';
-import { convertToLatex, compileLatexToPdf } from '../services/geminiService';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
+import type { ProfileData, Experience, Education, Project, ParsedCoverLetter, Skill } from '../types';
 
-// A more robust markdown to HTML converter that supports tables and code blocks.
-const formatContent = (text: string) => {
-  const blocks = text.split('\n\n');
+// --- UTILITY & HELPER COMPONENTS ---
 
-  const htmlBlocks = blocks.map(block => {
-    const trimmedBlock = block.trim();
-    if (!trimmedBlock) return '';
+const Spinner: React.FC<{ size?: string, color?: string }> = ({ size = 'h-5 w-5', color = 'text-primary' }) => (
+    <svg className={`animate-spin ${size} ${color}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
 
-    // Code blocks ```...```
-    if (trimmedBlock.startsWith('```') && trimmedBlock.endsWith('```')) {
-      const lines = trimmedBlock.split('\n');
-      const lang = lines[0].substring(3).trim();
-      const code = lines.slice(1, -1).join('\n');
-      // Basic escaping for HTML
-      const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `<pre class="bg-gray-900 text-white p-4 my-4 rounded-md overflow-x-auto text-sm font-mono"><code class="language-${lang}">${escapedCode}</code></pre>`;
-    }
+const TrashIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
 
-    // Tables
-    const lines = trimmedBlock.split('\n');
-    if (lines.length > 1 && lines[0].includes('|') && lines[1].match(/^[| :\-~]+$/)) {
-      let tableHtml = '<table class="w-full my-4 border-collapse border border-gray-300">';
+const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+    </svg>
+);
 
-      // Header
-      const headerCells = lines[0].split('|').map(s => s.trim()).filter(Boolean);
-      tableHtml += '<thead><tr class="bg-gray-100">';
-      headerCells.forEach(cell => {
-        tableHtml += `<th class="border border-gray-300 p-2 text-left font-semibold text-gray-700">${cell.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</th>`;
-      });
-      tableHtml += '</tr></thead>';
-
-      // Body
-      tableHtml += '<tbody>';
-      const bodyRows = lines.slice(2);
-      bodyRows.forEach(rowLine => {
-        if (!rowLine.includes('|')) return;
-        const rowCells = rowLine.split('|').map(s => s.trim()).filter(Boolean);
-        tableHtml += '<tr class="even:bg-gray-50">';
-        rowCells.forEach(cell => {
-          const cellContent = cell.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-          tableHtml += `<td class="border border-gray-300 p-2">${cellContent}</td>`;
-        });
-        tableHtml += '</tr>';
-      });
-      tableHtml += '</tbody></table>';
-      return tableHtml;
-    }
-
-    // Headings
-    if (trimmedBlock.startsWith('# ')) return `<h1 class="text-3xl font-bold mb-4">${trimmedBlock.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</h1>`;
-    if (trimmedBlock.startsWith('## ')) return `<h2 class="text-2xl font-semibold mt-6 mb-2">${trimmedBlock.substring(3).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</h2>`;
-    if (trimmedBlock.startsWith('### ')) return `<h3 class="text-xl font-semibold mt-4 mb-2">${trimmedBlock.substring(4).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</h3>`;
-
-    // Unordered lists
-    const isList = lines.every(line => line.trim() === '' || line.trim().startsWith('* '));
-    if (isList && trimmedBlock.includes('* ')) {
-        let listHtml = '<ul class="list-disc pl-6 my-4">';
-        lines.forEach(line => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('* ')) {
-                listHtml += `<li class="mb-1">${trimmedLine.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`;
-            }
-        });
-        listHtml += '</ul>';
-        return listHtml;
-    }
-
-    // Paragraphs
-    return `<p class="mb-4">${trimmedBlock.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}</p>`;
-  });
-
-  return htmlBlocks.join('');
-};
-
-interface EditableDocumentProps {
-  title: string;
-  initialContent: string;
-  onSave: (newContent: string) => void;
+// --- Type Guards ---
+function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
+  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
 }
 
-const EditableDocument: React.FC<EditableDocumentProps> = ({ title, initialContent, onSave }) => {
+function isParsedResume(content: any): content is Partial<ProfileData> {
+  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
+}
+
+// --- Markdown Converters ---
+const coverLetterToMarkdown = (data: ParsedCoverLetter): string => {
+    if (!data) return '';
+    let md = '';
+    if (data.senderName) md += `${data.senderName}\n`;
+    if (data.senderAddress) md += `${data.senderAddress}\n`;
+    if (data.senderContact) md += `${data.senderContact}\n\n`;
+    if (data.date) md += `${data.date}\n\n`;
+    if (data.recipientName) md += `${data.recipientName}\n`;
+    if (data.recipientTitle) md += `${data.recipientTitle}\n`;
+    if (data.companyName) md += `${data.companyName}\n`;
+    if (data.companyAddress) md += `${data.companyAddress}\n\n`;
+    if (data.salutation) md += `${data.salutation}\n\n`;
+    if (data.body) md += `${data.body}\n\n`;
+    if (data.closing) md += `${data.closing}\n`;
+    if (data.signature) md += `${data.signature}\n`;
+    return md.trim();
+};
+
+const profileToMarkdown = (data: Partial<ProfileData>, order: string[]): string => {
+    if (!data) return '';
+    let md = '';
+
+    // Header is always first and not part of the reorderable sections
+    if (data.fullName) md += `# ${data.fullName}\n`;
+    const contactInfo = [data.phone, data.email, data.website, data.location].filter(Boolean);
+    if (contactInfo.length > 0) md += `${contactInfo.join(' | ')}\n\n`;
+
+    const renderSection = (key: string): string => {
+        let sectionMd = '';
+        switch (key) {
+            case 'summary':
+                if (data.summary) sectionMd += `## Summary\n${data.summary}\n\n`;
+                break;
+            case 'experience':
+                if (data.experience && data.experience.length > 0) {
+                    sectionMd += '## Experience\n';
+                    data.experience.forEach(exp => {
+                        sectionMd += `**${exp.title}** | ${exp.company} | ${exp.location || ''}\n`;
+                        if (exp.startDate || exp.endDate) sectionMd += `*${exp.startDate} - ${exp.endDate}*\n\n`;
+                        (exp.achievements || []).forEach(ach => {
+                            sectionMd += `- ${ach.text}\n`;
+                        });
+                        sectionMd += '\n';
+                    });
+                }
+                break;
+            case 'education':
+                if (data.education && data.education.length > 0) {
+                    sectionMd += '## Education\n';
+                    data.education.forEach(edu => {
+                        sectionMd += `**${edu.degree || ''}, ${edu.fieldOfStudy || ''}** | ${edu.institution || ''}\n`;
+                        if (edu.startDate || edu.endDate) sectionMd += `*${edu.startDate} - ${edu.endDate}*\n\n`;
+                    });
+                }
+                break;
+            case 'skills':
+                const allSkills = [
+                    ...(data.technicalSkills || []),
+                    ...(data.softSkills || []),
+                    ...(data.tools || [])
+                ];
+                if (allSkills.length > 0) {
+                    sectionMd += '## Skills\n';
+                    sectionMd += allSkills.map(s => s.name).join(', ') + '\n\n';
+                }
+                break;
+            case 'projects':
+                if (data.projects && data.projects.length > 0) {
+                    sectionMd += '## Projects\n';
+                    data.projects.forEach(proj => {
+                        sectionMd += `**${proj.name}**\n`;
+                        if (proj.description) sectionMd += `${proj.description}\n`;
+                        if (proj.technologiesUsed) sectionMd += `*Technologies: ${proj.technologiesUsed}*\n`;
+                        sectionMd += '\n';
+                    });
+                }
+                break;
+        }
+        return sectionMd;
+    };
+
+    order.forEach(key => {
+        md += renderSection(key);
+    });
+
+    return md.trim();
+};
+
+const formatContentForDisplay = (text: string) => {
+    return text.split('\n\n').map(paragraph => 
+        `<p class="mb-4">${paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}</p>`
+    ).join('');
+};
+
+// --- RESUME FORM & DISPLAY SUB-COMPONENTS ---
+
+const FormInput: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string }> = 
+({ value = '', onChange, isEditing, className = '', placeholder = '' }) => (
+    isEditing ? 
+    <input value={value} onChange={e => onChange(e.target.value)} className={`w-full p-1 border rounded bg-blue-50/50 border-blue-200 focus:ring-1 focus:ring-primary ${className}`} placeholder={placeholder} /> :
+    <span className={className}>{value}</span>
+);
+
+const FormTextarea: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string, rows?: number }> = 
+({ value = '', onChange, isEditing, className = '', placeholder = '', rows = 4 }) => (
+    isEditing ? 
+    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={`w-full p-2 border rounded bg-blue-50/50 border-blue-200 focus:ring-1 focus:ring-primary ${className}`} placeholder={placeholder} /> :
+    <p className={`whitespace-pre-wrap ${className}`}>{value}</p>
+);
+
+const ResumeSection: React.FC<{title: string, isEditing: boolean, onRemove: () => void, children: React.ReactNode}> = ({title, isEditing, onRemove, children}) => (
+    <div className="mt-6">
+        <div className="flex items-center justify-between border-b-2 border-gray-200 pb-1 mb-3">
+            <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+            {isEditing && (
+                 <button onClick={onRemove} className="text-gray-400 hover:text-red-500 transition-opacity p-1" aria-label={`Remove ${title} section`}>
+                    <TrashIcon />
+                </button>
+            )}
+        </div>
+        <div className="space-y-4">
+            {children}
+        </div>
+    </div>
+);
+
+const ResumeSummaryDisplay = memo<{
+    summary?: string;
+    isEditing: boolean;
+    onSummaryChange: (value: string) => void;
+    onRemove: () => void;
+}>(({ summary, isEditing, onSummaryChange, onRemove }) => {
+    if (!summary) return null;
+    return (
+        <ResumeSection title="Summary" isEditing={isEditing} onRemove={onRemove}>
+            <FormTextarea value={summary} onChange={onSummaryChange} isEditing={isEditing}/>
+        </ResumeSection>
+    );
+});
+
+const ResumeExperienceDisplay = memo<{
+    experience: Experience[];
+    isEditing: boolean;
+    onFieldChange: (index: number, field: keyof Experience, value: any) => void;
+    onAchievementChange: (expIndex: number, achIndex: number, value: string) => void;
+    onRemoveSection: () => void;
+    onRemoveExperience: (id: string) => void;
+    onRemoveAchievement: (expId: string, achId: string) => void;
+}>(({ experience, isEditing, onFieldChange, onAchievementChange, onRemoveSection, onRemoveExperience, onRemoveAchievement }) => {
+    if (!experience || experience.length === 0) return null;
+    return (
+        <ResumeSection title="Experience" isEditing={isEditing} onRemove={onRemoveSection}>
+            {experience.map((exp, i) => (
+                <div key={exp.id} className="relative group">
+                    {isEditing && (
+                        <button onClick={() => onRemoveExperience(exp.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
+                            <TrashIcon />
+                        </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-x-4">
+                        <FormInput value={exp.title} onChange={v => onFieldChange(i, 'title', v)} isEditing={isEditing} className="font-bold text-gray-900" />
+                        <FormInput value={`${exp.startDate} - ${exp.endDate}`} onChange={v => {
+                            const [start, end] = v.split(' - ');
+                            onFieldChange(i, 'startDate', start?.trim() || '');
+                            onFieldChange(i, 'endDate', end?.trim() || '');
+                        }} isEditing={isEditing} className="text-right text-sm text-gray-600 italic" />
+                        <FormInput value={exp.company} onChange={v => onFieldChange(i, 'company', v)} isEditing={isEditing} />
+                        <FormInput value={exp.location} onChange={v => onFieldChange(i, 'location', v)} isEditing={isEditing} className="text-right text-sm text-gray-500" />
+                    </div>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                        {exp.achievements?.map((ach, j) => (
+                          <li key={ach.id}>
+                            <div className="flex items-center space-x-2">
+                                <FormTextarea value={ach.text} onChange={v => onAchievementChange(i, j, v)} isEditing={isEditing} rows={2}/>
+                                {isEditing && (
+                                    <button onClick={() => onRemoveAchievement(exp.id, ach.id)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0" aria-label="Remove achievement">
+                                        <XCircleIcon />
+                                    </button>
+                                )}
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                </div>
+            ))}
+        </ResumeSection>
+    );
+});
+
+const ResumeEducationDisplay = memo<{
+    education: Education[];
+    isEditing: boolean;
+    onFieldChange: (index: number, field: keyof Education, value: any) => void;
+    onRemoveSection: () => void;
+    onRemoveItem: (id: string) => void;
+}>(({ education, isEditing, onFieldChange, onRemoveSection, onRemoveItem }) => {
+    if (!education || education.length === 0) return null;
+    return (
+        <ResumeSection title="Education" isEditing={isEditing} onRemove={onRemoveSection}>
+             {education.map((edu, i) => (
+                <div key={edu.id} className="relative group">
+                    {isEditing && (
+                        <button onClick={() => onRemoveItem(edu.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
+                            <TrashIcon />
+                        </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-x-4">
+                        <FormInput value={`${edu.degree}, ${edu.fieldOfStudy}`} onChange={v => {
+                            const [degree, field] = v.split(', ');
+                            onFieldChange(i, 'degree', degree?.trim() || '');
+                            onFieldChange(i, 'fieldOfStudy', field?.trim() || '');
+                        }} isEditing={isEditing} className="font-bold" />
+                        <FormInput value={`${edu.startDate} - ${edu.endDate}`} onChange={v => {
+                            const [start, end] = v.split(' - ');
+                            onFieldChange(i, 'startDate', start?.trim() || '');
+                            onFieldChange(i, 'endDate', end?.trim() || '');
+                        }} isEditing={isEditing} className="text-right text-sm text-gray-600 italic" />
+                         <FormInput value={edu.institution} onChange={v => onFieldChange(i, 'institution', v)} isEditing={isEditing} />
+                    </div>
+                </div>
+             ))}
+        </ResumeSection>
+    );
+});
+
+const ResumeProjectsDisplay = memo<{
+    projects: Project[];
+    isEditing: boolean;
+    onFieldChange: (index: number, field: keyof Project, value: any) => void;
+    onRemoveSection: () => void;
+    onRemoveItem: (id: string) => void;
+}>(({ projects, isEditing, onFieldChange, onRemoveSection, onRemoveItem }) => {
+    if (!projects || projects.length === 0) return null;
+    return (
+        <ResumeSection title="Projects" isEditing={isEditing} onRemove={onRemoveSection}>
+            {projects.map((proj, i) => (
+                <div key={proj.id} className="relative group">
+                     {isEditing && (
+                        <button onClick={() => onRemoveItem(proj.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
+                            <TrashIcon />
+                        </button>
+                    )}
+                    <FormInput value={proj.name} onChange={v => onFieldChange(i, 'name', v)} isEditing={isEditing} className="font-bold text-gray-900"/>
+                    <FormTextarea value={proj.description} onChange={v => onFieldChange(i, 'description', v)} isEditing={isEditing} rows={2}/>
+                    <FormInput value={proj.technologiesUsed} onChange={v => onFieldChange(i, 'technologiesUsed', v)} isEditing={isEditing} className="text-sm italic text-gray-600"/>
+                </div>
+            ))}
+        </ResumeSection>
+    );
+});
+
+
+const ResumeSkillsDisplay = memo<{
+    skills: { name: string, type: 'technical' | 'soft' | 'tool'}[];
+    isEditing: boolean;
+    onRemove: () => void;
+}>(({ skills, isEditing, onRemove }) => {
+    if (skills.length === 0) return null;
+    return (
+        <ResumeSection title="Skills" isEditing={isEditing} onRemove={onRemove}>
+            <p>{skills.map(s => s.name).join(', ')}</p>
+        </ResumeSection>
+    );
+});
+
+
+// --- MAIN COMPONENT ---
+
+interface EditableDocumentProps {
+  documentType: 'resume' | 'cover-letter';
+  initialContent: string;
+  onSave: (newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => void;
+  structuredContent?: Partial<ProfileData> | ParsedCoverLetter | null;
+}
+
+interface HistoryState {
+  formData: Partial<ProfileData> | ParsedCoverLetter | null;
+  sectionOrder: string[];
+}
+
+const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initialContent, onSave, structuredContent }) => {
   const [editedContent, setEditedContent] = useState(initialContent);
+  const [formData, setFormData] = useState<Partial<ProfileData> | ParsedCoverLetter | null | undefined>(structuredContent);
+  const [sectionOrder, setSectionOrder] = useState<string[]>([]);
+  const [initialSectionOrder, setInitialSectionOrder] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryState[]>([]);
+
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  const recordUndoState = useCallback(() => {
+    setHistory(prev => [...prev, { formData, sectionOrder }]);
+  }, [formData, sectionOrder]);
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    const lastState = history[history.length - 1];
+    setFormData(lastState.formData);
+    setSectionOrder(lastState.sectionOrder);
+    setHistory(prev => prev.slice(0, -1));
+  };
 
   useEffect(() => {
     setEditedContent(initialContent);
-  }, [initialContent]);
-  
-  useEffect(() => {
-    if (downloadError) {
-        const timer = setTimeout(() => setDownloadError(null), 15000);
-        return () => clearTimeout(timer);
-    }
-  }, [downloadError]);
+    setFormData(structuredContent);
+    if (isParsedResume(structuredContent)) {
+        const defaultOrder: string[] = ['summary', 'experience', 'education', 'projects', 'skills'];
+        const initialOrder = structuredContent.sectionOrder || defaultOrder;
 
+        const availableSections = initialOrder.filter(key => {
+            if (key === 'skills') {
+                return (structuredContent.technicalSkills?.length ?? 0 > 0) ||
+                       (structuredContent.softSkills?.length ?? 0 > 0) ||
+                       (structuredContent.tools?.length ?? 0 > 0);
+            }
+            const data = structuredContent[key as keyof ProfileData];
+            return Array.isArray(data) ? data.length > 0 : !!data;
+        });
+        setSectionOrder(availableSections);
+        setInitialSectionOrder(availableSections);
+    }
+  }, [initialContent, structuredContent]);
+
+  useEffect(() => {
+    if (isEditing) {
+        setHistory([]);
+    }
+  }, [isEditing]);
 
   const handleSave = () => {
-    onSave(editedContent);
+    let newMarkdown = editedContent;
+    let newFormData = formData;
+
+    if (isParsedCoverLetter(formData)) {
+        newMarkdown = coverLetterToMarkdown(formData);
+    } else if (isParsedResume(formData)) {
+        const dataToSave: Partial<ProfileData> = { ...formData, sectionOrder };
+        newMarkdown = profileToMarkdown(dataToSave, sectionOrder);
+        newFormData = dataToSave;
+    }
+    onSave(newMarkdown, newFormData);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setEditedContent(initialContent);
+    setFormData(structuredContent);
+    if (isParsedResume(structuredContent)) {
+        setSectionOrder(initialSectionOrder);
+    }
     setIsEditing(false);
   };
 
-  const handleDownloadPdf = async () => {
-      setIsDownloadingPdf(true);
-      setDownloadError(null);
-      try {
-          // Step 1: Convert Markdown to LaTeX using Gemini
-          const latexCode = await convertToLatex(initialContent);
-
-          // Step 2: Compile the LaTeX code into a PDF blob
-          const pdfBlob = await compileLatexToPdf(latexCode);
-
-          // Step 3: Trigger the browser download
-          const url = URL.createObjectURL(pdfBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'resume.pdf';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-      } catch (err: any) {
-          setDownloadError(err.message || "An unexpected error occurred during PDF generation.");
-      } finally {
-          setIsDownloadingPdf(false);
-      }
+  const handleDownloadPdf = () => {
+    // This is now a dummy button. Functionality is removed.
+    console.log("Download PDF button clicked, but functionality is disabled as per request.");
+  };
+  
+  const handleDragStart = (e: React.DragEvent, position: number) => {
+    dragItem.current = position;
+    e.currentTarget.classList.add('dragging');
+  };
+  
+  const handleDragEnter = (e: React.DragEvent, position: number) => {
+    dragOverItem.current = position;
+    e.currentTarget.classList.add('drag-indicator');
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    recordUndoState();
+    const newSectionOrder = [...sectionOrder];
+    const dragItemContent = newSectionOrder.splice(dragItem.current, 1)[0];
+    newSectionOrder.splice(dragOverItem.current, 0, dragItemContent);
+    
+    setSectionOrder(newSectionOrder);
 
-  const isDirty = editedContent !== initialContent;
-  const isResume = title === 'Generated Resume';
+    dragItem.current = null;
+    dragOverItem.current = null;
+    e.currentTarget.classList.remove('drag-indicator');
+  };
 
-  return (
-    <>
-      <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-lg animate-slide-in-up">
-        <h2 className="text-2xl font-bold text-neutral border-b pb-4 mb-6">{title}</h2>
-        {isEditing ? (
-          <>
-            <textarea
-              className="w-full h-96 p-4 border border-gray-300 rounded-md focus:ring-primary focus:border-primary font-mono text-sm resize-y"
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              aria-label={`Edit ${title} content`}
-            />
-            <div className="mt-4 flex justify-end space-x-2">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!isDirty}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                Save Changes
-              </button>
+  const isDirty = (structuredContent && formData)
+    ? JSON.stringify(formData) !== JSON.stringify(structuredContent) || (isParsedResume(formData) && JSON.stringify(sectionOrder) !== JSON.stringify(initialSectionOrder))
+    : editedContent !== initialContent;
+
+  const renderResumeForm = () => {
+    if (!formData || !isParsedResume(formData)) return null;
+
+    const handleFieldChange = (section: keyof ProfileData, index: number, field: string, value: any) => {
+        recordUndoState();
+        setFormData(prev => {
+            if (!prev || !isParsedResume(prev)) return null;
+            const sectionData = prev[section];
+            if (!Array.isArray(sectionData)) return prev;
+
+            const newSection = sectionData.map((item, i) => {
+                if (i !== index) return item;
+                if (typeof item === 'object' && item !== null) return { ...item, [field]: value };
+                return item;
+            });
+            return { ...prev, [section]: newSection };
+        });
+    };
+    
+    const handleAchievementChange = (expIndex: number, achIndex: number, value: string) => {
+        recordUndoState();
+        setFormData(prev => {
+             if (!prev || !isParsedResume(prev) || !prev.experience) return null;
+             const newExperience = prev.experience.map((exp, eIndex) => {
+                 if (eIndex !== expIndex) return exp;
+                 const newAchievements = (exp.achievements || []).map((ach, aIndex) => (aIndex !== achIndex) ? ach : { ...ach, text: value });
+                 return { ...exp, achievements: newAchievements };
+             });
+             return { ...prev, experience: newExperience };
+        });
+    };
+    
+    const removeSection = (sectionKey: string) => {
+        recordUndoState();
+        setSectionOrder(prev => prev.filter(key => key !== sectionKey));
+    };
+
+    const removeItem = (sectionKey: 'experience' | 'education' | 'projects', itemId: string) => {
+        recordUndoState();
+        setFormData(prev => {
+            if (!prev || !isParsedResume(prev)) return null;
+            const oldSection = prev[sectionKey];
+            if (!Array.isArray(oldSection)) return prev;
+            // @ts-ignore
+            const newSection = oldSection.filter(item => item.id !== itemId);
+            return { ...prev, [sectionKey]: newSection };
+        });
+    };
+
+    const removeAchievement = (expId: string, achId: string) => {
+        recordUndoState();
+        setFormData(prev => {
+            if (!prev || !isParsedResume(prev) || !prev.experience) return null;
+            const newExperience = prev.experience.map(exp => {
+                if (exp.id !== expId) return exp;
+                const newAchievements = (exp.achievements || []).filter(ach => ach.id !== achId);
+                return { ...exp, achievements: newAchievements };
+            });
+            return { ...prev, experience: newExperience };
+        });
+    };
+
+    const combinedSkills = [
+        ...(formData.technicalSkills || []).map(s => ({ id: s.id, name: s.name, type: 'technical' as const })),
+        ...(formData.softSkills || []).map(s => ({ id: s.id, name: s.name, type: 'soft' as const })),
+        ...(formData.tools || []).map(s => ({ id: s.id, name: s.name, type: 'tool' as const })),
+    ];
+    
+    const sectionComponents: { [key: string]: React.ReactNode } = {
+        summary: <ResumeSummaryDisplay summary={formData.summary} isEditing={isEditing} onSummaryChange={v => { recordUndoState(); setFormData(p => p ? {...p, summary: v} : null); }} onRemove={() => removeSection('summary')} />,
+        experience: <ResumeExperienceDisplay experience={formData.experience || []} isEditing={isEditing} onFieldChange={(i, f, v) => handleFieldChange('experience', i, f, v)} onAchievementChange={handleAchievementChange} onRemoveSection={() => removeSection('experience')} onRemoveExperience={(id) => removeItem('experience', id)} onRemoveAchievement={removeAchievement} />,
+        education: <ResumeEducationDisplay education={formData.education || []} isEditing={isEditing} onFieldChange={(i, f, v) => handleFieldChange('education', i, f, v)} onRemoveSection={() => removeSection('education')} onRemoveItem={(id) => removeItem('education', id)} />,
+        projects: <ResumeProjectsDisplay projects={formData.projects || []} isEditing={isEditing} onFieldChange={(i, f, v) => handleFieldChange('projects', i, f, v)} onRemoveSection={() => removeSection('projects')} onRemoveItem={(id) => removeItem('projects', id)} />,
+        skills: <ResumeSkillsDisplay skills={combinedSkills} isEditing={isEditing} onRemove={() => removeSection('skills')} />,
+    };
+
+    return (
+      <div className="prose max-w-none">
+        <style>{`
+            .drag-indicator { border-top: 2px dashed #3b82f6; }
+            .dragging { opacity: 0.5; }
+        `}</style>
+        {/* Header */}
+        <div className="text-center">
+            <FormInput value={formData.fullName} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, fullName: v} : null); }} isEditing={isEditing} className="text-3xl font-bold" placeholder="Full Name" />
+            <div className="flex justify-center flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-2">
+                <FormInput value={formData.phone} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, phone: v} : null); }} isEditing={isEditing} placeholder="Phone"/>
+                <FormInput value={formData.email} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, email: v} : null); }} isEditing={isEditing} placeholder="Email"/>
+                <FormInput value={formData.website} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, website: v} : null); }} isEditing={isEditing} placeholder="Website"/>
+                <FormInput value={formData.location} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, location: v} : null); }} isEditing={isEditing} placeholder="Location"/>
             </div>
-          </>
-        ) : (
-          <>
-            <div
-              className="prose max-w-none prose-h1:text-gray-800 prose-h2:text-gray-700 prose-strong:text-gray-900"
-              dangerouslySetInnerHTML={{ __html: formatContent(initialContent) }}
-            />
-            <div className="mt-6">
-                <div className="flex justify-end items-center space-x-3">
-                    {isResume && (
-                        <button
-                            onClick={handleDownloadPdf}
-                            disabled={isDownloadingPdf}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-200 disabled:cursor-not-allowed"
-                            aria-label="Download resume as PDF"
-                        >
-                             {isDownloadingPdf ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Generating...
-                                </>
-                            ) : (
-                                <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                    Download PDF
-                                </>
-                            )}
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                        aria-label={`Edit ${title}`}
-                    >
-                        Edit
-                    </button>
-                </div>
+        </div>
 
-                {downloadError && (
-                    <div className="mt-4 bg-red-50 border-l-4 border-red-400 p-3 text-red-700 text-xs">
-                        <p className="font-bold">PDF Generation Failed</p>
-                        <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{downloadError}</pre>
+        {/* Draggable Sections */}
+        {sectionOrder.map((sectionKey, index) => (
+            <div
+                key={sectionKey}
+                className={`relative ${isEditing ? 'pl-8 py-2' : ''}`}
+                draggable={isEditing}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragLeave={(e) => e.currentTarget.classList.remove('drag-indicator')}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDrop(e)}
+                onDragEnd={(e) => e.currentTarget.classList.remove('dragging')}
+            >
+                {isEditing && (
+                     <div className="absolute top-1/2 left-0 -translate-y-1/2 cursor-move text-gray-400 hover:text-gray-700 p-1" title="Drag to reorder">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
                     </div>
                 )}
+                {sectionComponents[sectionKey]}
             </div>
-          </>
-        )}
+        ))}
       </div>
-    </>
+    );
+  };
+
+  const renderCoverLetterForm = () => {
+    if (!formData || !isParsedCoverLetter(formData)) return null;
+
+    const handleFieldChange = (field: keyof ParsedCoverLetter, value: string) => {
+        recordUndoState();
+        setFormData(prev => {
+            if (!prev || !isParsedCoverLetter(prev)) return prev;
+            return { ...prev, [field]: value };
+        });
+    };
+    
+    return (
+        <div className="prose max-w-none font-serif text-gray-800">
+            {/* Sender Info */}
+            <div className="mb-6 text-right">
+                <FormInput isEditing={isEditing} value={formData.senderName} onChange={v => handleFieldChange('senderName', v)} className="font-bold text-lg" placeholder="Your Name" />
+                <FormTextarea isEditing={isEditing} value={formData.senderAddress} onChange={v => handleFieldChange('senderAddress', v)} rows={2} className="text-sm" placeholder="Your Address"/>
+                <FormInput isEditing={isEditing} value={formData.senderContact} onChange={v => handleFieldChange('senderContact', v)} className="text-sm" placeholder="Email | Phone"/>
+            </div>
+
+            {/* Date */}
+            <div className="mb-6">
+                <FormInput isEditing={isEditing} value={formData.date} onChange={v => handleFieldChange('date', v)} placeholder="Date" />
+            </div>
+
+            {/* Recipient Info */}
+            <div className="mb-6">
+                <FormInput isEditing={isEditing} value={formData.recipientName} onChange={v => handleFieldChange('recipientName', v)} className="font-bold" placeholder="Recipient Name" />
+                <FormInput isEditing={isEditing} value={formData.recipientTitle} onChange={v => handleFieldChange('recipientTitle', v)} placeholder="Recipient Title" />
+                <FormInput isEditing={isEditing} value={formData.companyName} onChange={v => handleFieldChange('companyName', v)} placeholder="Company Name" />
+                <FormTextarea isEditing={isEditing} value={formData.companyAddress} onChange={v => handleFieldChange('companyAddress', v)} rows={2} className="text-sm" placeholder="Company Address" />
+            </div>
+
+            {/* Salutation */}
+            <div className="mb-4">
+                <FormInput isEditing={isEditing} value={formData.salutation} onChange={v => handleFieldChange('salutation', v)} className="font-bold" placeholder="Dear Hiring Manager," />
+            </div>
+
+            {/* Body */}
+            <FormTextarea isEditing={isEditing} value={formData.body} onChange={v => handleFieldChange('body', v)} rows={12} placeholder="Cover letter body..." />
+
+            {/* Closing & Signature */}
+            <div className="mt-6">
+                <FormInput isEditing={isEditing} value={formData.closing} onChange={v => handleFieldChange('closing', v)} placeholder="Sincerely," />
+                <FormInput isEditing={isEditing} value={formData.signature} onChange={v => handleFieldChange('signature', v)} className="mt-4 font-bold" placeholder="Your Name"/>
+            </div>
+        </div>
+    );
+};
+  
+  return (
+    <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-lg animate-slide-in-up">
+      {isEditing ? (
+          isParsedCoverLetter(formData) ? renderCoverLetterForm() :
+          isParsedResume(formData) ? renderResumeForm() : (
+              <textarea
+                  className="w-full h-96 p-4 border border-gray-300 rounded-md focus:ring-primary focus:border-primary font-mono text-sm resize-y"
+                  value={editedContent}
+                  onChange={(e) => { recordUndoState(); setEditedContent(e.target.value); }}
+                  aria-label={`Edit document content`}
+              />
+          )
+      ) : (
+          isParsedCoverLetter(formData) ? renderCoverLetterForm() :
+          isParsedResume(formData) ? renderResumeForm() : (
+              <div
+                  className="prose max-w-none prose-p:mb-4"
+                  dangerouslySetInnerHTML={{ __html: formatContentForDisplay(initialContent) }}
+              />
+          )
+      )}
+          
+      <div className="mt-6 flex flex-col items-end">
+          <div className="flex flex-wrap justify-end items-center gap-3">
+              {isEditing ? (
+                <>
+                  <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
+                    Undo
+                  </button>
+                  <button onClick={handleCancel} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Cancel</button>
+                  <button onClick={handleSave} disabled={!isDirty} className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400">Save Changes</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={handleDownloadPdf} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      Download PDF
+                  </button>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Edit</button>
+                </>
+              )}
+          </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateTailoredDocuments } from '../services/geminiService';
-import type { ProfileData, GenerationOptions, GeneratedContent } from '../types';
-import EditableDocument from '../components/EditableDocument'; // Changed from GeneratedDocument
+import { generateTailoredDocuments, parseGeneratedResume, parseGeneratedCoverLetter } from '../services/geminiService';
+import type { ProfileData, GenerationOptions, GeneratedContent, ParsedCoverLetter } from '../types';
+import EditableDocument from '../components/EditableDocument';
 
 
 const ThinkingIcon: React.FC = () => (
@@ -40,7 +40,8 @@ const STEPS = [
   { text: "Identifying key skills...", duration: 1500 },
   { text: "Crafting tailored resume sections...", duration: 3000 },
   { text: "Writing compelling cover letter...", duration: 3000 },
-  { text: "Finalizing documents...", duration: 2000 },
+  { text: "Structuring resume content...", duration: 1500 },
+  { text: "Finalizing documents...", duration: 1000 },
 ];
 const THINKING_STEPS = [
     { text: "Initiating deep analysis...", duration: 3000 },
@@ -48,7 +49,8 @@ const THINKING_STEPS = [
     { text: "Formulating advanced strategic narrative...", duration: 6000 },
     { text: "Constructing highly-detailed resume arguments...", duration: 8000 },
     { text: "Composing a nuanced and persuasive cover letter...", duration: 8000 },
-    { text: "Performing final quality assurance checks...", duration: 5000 },
+    { text: "Structuring resume for review...", duration: 3000 },
+    { text: "Performing final quality assurance checks...", duration: 4000 },
 ];
 
 const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode: boolean }> = ({ currentStep, thinkingMode }) => {
@@ -85,10 +87,18 @@ const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode:
     );
 };
 
+// --- Type Guards ---
+function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
+  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
+}
+
+function isParsedResume(content: any): content is Partial<ProfileData> {
+  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
+}
+
 
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();
-    const navigate = useNavigate();
     const profileContext = useContext(ProfileContext);
 
     const { profile, options, jobDescription } = location.state as {
@@ -99,8 +109,10 @@ const GenerationResultPage: React.FC = () => {
 
     const [isLoading, setIsLoading] = useState(true);
     const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
+    const [parsedResume, setParsedResume] = useState<Partial<ProfileData> | null>(null);
+    const [parsedCoverLetter, setParsedCoverLetter] = useState<ParsedCoverLetter | null>(null);
     const [generationError, setGenerationError] = useState<string | null>(null);
-    const [currentProgressStep, setCurrentProgressStep] = useState(-1);
+    const [currentProgressStep, setCurrentProgressStep] = useState(0);
 
     const progressTimeoutRef = useRef<number | null>(null);
 
@@ -111,25 +123,52 @@ const GenerationResultPage: React.FC = () => {
             return;
         }
 
-        const fetchDocuments = async () => {
+        const fetchAndParse = async () => {
             setIsLoading(true);
             setGenerationError(null);
             setGeneratedContent(null);
+            setParsedResume(null);
+            setParsedCoverLetter(null);
 
             try {
+                // Step 1: Generate documents
                 const result = await generateTailoredDocuments(profile, options);
                 setGeneratedContent(result);
+
+                // Step 2: Parse resume if it exists
+                if (result.resume) {
+                    try {
+                        const parsed = await parseGeneratedResume(result.resume);
+                        setParsedResume(parsed);
+                    } catch (parsingError: any) {
+                        console.warn("Could not parse the generated resume into a form. Displaying as raw text.", parsingError);
+                    }
+                }
+
+                // Step 3: Parse cover letter if it exists
+                if (result.coverLetter) {
+                    try {
+                        const parsedCL = await parseGeneratedCoverLetter(result.coverLetter);
+                        setParsedCoverLetter(parsedCL);
+                    } catch (parsingError: any) {
+                        console.warn("Could not parse the generated cover letter into a form. Displaying as raw text.", parsingError);
+                    }
+                }
+
             } catch (e: any) {
-                setGenerationError(e.message || 'An unexpected error occurred during document generation. Please try again.');
+                setGenerationError(e.message || 'An unexpected error occurred. Please try again.');
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchDocuments();
+        fetchAndParse();
     }, [profileContext, profile, options, jobDescription]);
 
     useEffect(() => {
+        // This effect manages the progress bar animation based on the `isLoading` state.
+        
+        // Cleanup function to be returned. It will clear any pending timeout.
         const cleanup = () => {
             if (progressTimeoutRef.current) {
                 clearTimeout(progressTimeoutRef.current);
@@ -139,45 +178,49 @@ const GenerationResultPage: React.FC = () => {
 
         if (isLoading) {
             const steps = options.thinkingMode ? THINKING_STEPS : STEPS;
-            setCurrentProgressStep(0); // Start with the first step immediately
+            let stepIndex = 0;
 
-            const advanceStep = (stepIndex: number) => {
+            const advanceStep = () => {
+                // If we've gone through all the steps, just stop.
                 if (stepIndex >= steps.length) {
                     return;
                 }
-
+                
+                // Set the current step for the UI to display.
+                setCurrentProgressStep(stepIndex);
+                
+                // Set a timeout to advance to the next step after the current step's duration.
+                const duration = steps[stepIndex].duration;
                 progressTimeoutRef.current = window.setTimeout(() => {
-                    setCurrentProgressStep(stepIndex);
-                    // Only advance if still loading. If loading became false, this chain should stop.
-                    if (isLoading) {
-                        advanceStep(stepIndex + 1);
-                    }
-                }, steps[stepIndex].duration);
+                    stepIndex++;
+                    advanceStep();
+                }, duration);
             };
 
-            // Start advancing from the second step (index 1), as index 0 is set initially
-            if (steps.length > 1) {
-                advanceStep(1);
-            }
+            advanceStep(); // Start the animation.
         } else {
-            setCurrentProgressStep(-1); // Reset or indicate completion
+            // If loading has finished, make sure the progress bar shows 100% completion.
             cleanup();
+            const steps = options.thinkingMode ? THINKING_STEPS : STEPS;
+            setCurrentProgressStep(steps.length);
         }
 
-        return cleanup;
+        return cleanup; // Return the cleanup function.
     }, [isLoading, options.thinkingMode]);
 
 
-    const handleGenerateNewRole = useCallback(() => {
-        navigate('/generate');
-    }, [navigate]);
-
-    const handleSaveResume = useCallback((newContent: string) => {
+    const handleSaveResume = useCallback((newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => {
         setGeneratedContent(prev => prev ? { ...prev, resume: newContent } : null);
+        if (newStructuredData && isParsedResume(newStructuredData)) {
+            setParsedResume(newStructuredData);
+        }
     }, []);
 
-    const handleSaveCoverLetter = useCallback((newContent: string) => {
+    const handleSaveCoverLetter = useCallback((newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => {
         setGeneratedContent(prev => prev ? { ...prev, coverLetter: newContent } : null);
+        if (newStructuredData && isParsedCoverLetter(newStructuredData)) {
+            setParsedCoverLetter(newStructuredData);
+        }
     }, []);
 
     return (
@@ -199,30 +242,37 @@ const GenerationResultPage: React.FC = () => {
             )}
 
             {!isLoading && generatedContent && (
-                <div className="space-y-8">
+                <div>
+                    <div className="text-center mb-12 animate-slide-in-up">
+                        <h1 className="text-4xl font-extrabold text-neutral tracking-tight">Your Generated Documents</h1>
+                        <p className="mt-4 max-w-3xl mx-auto text-lg text-gray-600">
+                            Here are the generated document(s). Please feel free to edit the text or the order of items and save when you are satisfied. When you want it in PDF form, please press the "Download PDF" button.
+                        </p>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-in-up">
                         {generatedContent.resume && (
-                            <EditableDocument
-                                title="Generated Resume"
-                                initialContent={generatedContent.resume}
-                                onSave={handleSaveResume}
-                            />
+                            <div className="space-y-4">
+                                <h2 className="text-3xl font-bold text-neutral">Generated Resume</h2>
+                                <EditableDocument
+                                    documentType="resume"
+                                    initialContent={generatedContent.resume}
+                                    onSave={handleSaveResume}
+                                    structuredContent={parsedResume}
+                                />
+                            </div>
                         )}
                         {generatedContent.coverLetter && (
-                            <EditableDocument
-                                title="Generated Cover Letter"
-                                initialContent={generatedContent.coverLetter}
-                                onSave={handleSaveCoverLetter}
-                            />
+                            <div className="space-y-4">
+                                <h2 className="text-3xl font-bold text-neutral">Generated Cover Letter</h2>
+                                <EditableDocument
+                                    documentType="cover-letter"
+                                    initialContent={generatedContent.coverLetter}
+                                    onSave={handleSaveCoverLetter}
+                                    structuredContent={parsedCoverLetter}
+                                />
+                            </div>
                         )}
-                    </div>
-                    <div className="text-center mt-8">
-                        <button
-                            onClick={handleGenerateNewRole}
-                            className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-transform transform hover:scale-105"
-                        >
-                            Generate for a New Role
-                        </button>
                     </div>
                 </div>
             )}
