@@ -6,6 +6,7 @@ import GenerationResultPage from './pages/GenerationResultPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import GDPRPage from './pages/GDPRPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import type { ProfileData } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -54,6 +55,8 @@ export const ProfileContext = createContext<{
   setProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
   saveProfile: (profileToSave: ProfileData) => boolean;
   lastSavedProfile: ProfileData;
+  tokens: number;
+  setTokens: React.Dispatch<React.SetStateAction<number>>;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
@@ -70,6 +73,7 @@ const App: React.FC = () => {
   });
 
   const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData>(profile);
+  const [tokens, setTokens] = useState(65);
 
   // Function to explicitly save profile (and update lastSavedProfile)
   const saveProfile = useCallback((profileToSave: ProfileData) => {
@@ -98,7 +102,7 @@ const App: React.FC = () => {
     };
   }, [profile, lastSavedProfile, saveProfile]); // Dependencies on profile and lastSavedProfile
 
-  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile }), [profile, setProfile, saveProfile, lastSavedProfile]);
+  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens]);
 
   return (
     <ProfileContext.Provider value={contextValue}>
@@ -110,6 +114,7 @@ const App: React.FC = () => {
               <Route path="/" element={<HomePage />} />
               <Route path="/generate" element={<GeneratePage />} />
               <Route path="/generate/results" element={<GenerationResultPage />} />
+              <Route path="/subscription" element={<SubscriptionPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/gdpr" element={<GDPRPage />} />
