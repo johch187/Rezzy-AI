@@ -182,11 +182,21 @@ const ResumeExperienceDisplay = memo<{
                     )}
                     <div className="grid grid-cols-2 gap-x-4">
                         <FormInput value={exp.title} onChange={v => onFieldChange(i, 'title', v)} isEditing={isEditing} className="font-bold text-gray-900" />
-                        <FormInput value={`${exp.startDate} - ${exp.endDate}`} onChange={v => {
-                            const [start, end] = v.split(' - ');
-                            onFieldChange(i, 'startDate', start?.trim() || '');
-                            onFieldChange(i, 'endDate', end?.trim() || '');
-                        }} isEditing={isEditing} className="text-right text-sm text-gray-600 italic" />
+                        <div className="text-right text-sm text-gray-600 italic">
+                             <FormInput 
+                                 value={exp.startDate} 
+                                 onChange={v => onFieldChange(i, 'startDate', v)} 
+                                 isEditing={isEditing}
+                                 className="w-24 inline-block text-right"
+                                 placeholder="Start Date" />
+                             <span className="mx-1"> - </span>
+                             <FormInput 
+                                 value={exp.endDate} 
+                                 onChange={v => onFieldChange(i, 'endDate', v)} 
+                                 isEditing={isEditing} 
+                                 className="w-24 inline-block text-right"
+                                 placeholder="End Date" />
+                         </div>
                         <FormInput value={exp.company} onChange={v => onFieldChange(i, 'company', v)} isEditing={isEditing} />
                         <FormInput value={exp.location} onChange={v => onFieldChange(i, 'location', v)} isEditing={isEditing} className="text-right text-sm text-gray-500" />
                     </div>
@@ -223,22 +233,46 @@ const ResumeEducationDisplay = memo<{
              {education.map((edu, i) => (
                 <div key={edu.id} className="relative group">
                     {isEditing && (
-                        <button onClick={() => onRemoveItem(edu.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
+                        <button onClick={() => onRemoveItem(edu.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
                             <TrashIcon />
                         </button>
                     )}
-                    <div className="grid grid-cols-2 gap-x-4">
-                        <FormInput value={`${edu.degree}, ${edu.fieldOfStudy}`} onChange={v => {
-                            const [degree, field] = v.split(', ');
-                            onFieldChange(i, 'degree', degree?.trim() || '');
-                            onFieldChange(i, 'fieldOfStudy', field?.trim() || '');
-                        }} isEditing={isEditing} className="font-bold" />
-                        <FormInput value={`${edu.startDate} - ${edu.endDate}`} onChange={v => {
-                            const [start, end] = v.split(' - ');
-                            onFieldChange(i, 'startDate', start?.trim() || '');
-                            onFieldChange(i, 'endDate', end?.trim() || '');
-                        }} isEditing={isEditing} className="text-right text-sm text-gray-600 italic" />
-                         <FormInput value={edu.institution} onChange={v => onFieldChange(i, 'institution', v)} isEditing={isEditing} />
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        {/* Row 1 */}
+                        <FormInput 
+                            value={edu.degree}
+                            onChange={v => onFieldChange(i, 'degree', v)} 
+                            isEditing={isEditing} 
+                            className="font-bold"
+                            placeholder="Degree" />
+                        <div className="text-right text-sm text-gray-600 italic">
+                             <FormInput 
+                                 value={edu.startDate} 
+                                 onChange={v => onFieldChange(i, 'startDate', v)} 
+                                 isEditing={isEditing}
+                                 className="w-24 inline-block text-right"
+                                 placeholder="Start Date" />
+                             <span className="mx-1"> - </span>
+                             <FormInput 
+                                 value={edu.endDate} 
+                                 onChange={v => onFieldChange(i, 'endDate', v)} 
+                                 isEditing={isEditing} 
+                                 className="w-24 inline-block text-right"
+                                 placeholder="End Date" />
+                         </div>
+                        
+                        {/* Row 2 */}
+                        <FormInput 
+                            value={edu.institution} 
+                            onChange={v => onFieldChange(i, 'institution', v)} 
+                            isEditing={isEditing}
+                            placeholder="Institution" />
+                        <FormInput
+                             value={edu.fieldOfStudy}
+                             onChange={v => onFieldChange(i, 'fieldOfStudy', v)}
+                             isEditing={isEditing}
+                             className="text-right text-sm"
+                             placeholder="Field of Study" />
                     </div>
                 </div>
              ))}

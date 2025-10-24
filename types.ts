@@ -108,6 +108,27 @@ export interface ParsedCoverLetter {
   signature: string;
 }
 
+export interface GenerationOptions {
+  jobDescription: string;
+  generateResume: boolean;
+  generateCoverLetter: boolean;
+  resumeLength: '1 page max' | '2 pages max';
+  includeSummary: boolean;
+  includeCoverLetterSkills: boolean;
+  tone: number;
+  technicality: number;
+  focus: string;
+  thinkingMode: boolean;
+  uploadedResume: string | null;
+  uploadedCoverLetter: string | null;
+}
+
+export interface GeneratedContent {
+  resume: string | null;
+  coverLetter: string | null;
+}
+
+// Fix: Add missing IncludedProfileSelections interface.
 export interface IncludedProfileSelections {
   summary: boolean;
   additionalInformation: boolean;
@@ -122,25 +143,4 @@ export interface IncludedProfileSelections {
   interestIds: Set<string>;
   customSectionIds: Set<string>;
   customSectionItemIds: { [sectionId: string]: Set<string> };
-}
-
-export interface GenerationOptions {
-  jobDescription: string;
-  generateResume: boolean;
-  generateCoverLetter: boolean;
-  resumeLength: '1 page max' | '2 pages max';
-  includeSummary: boolean;
-  includeCoverLetterSkills: boolean;
-  tone: number;
-  technicality: number;
-  focus: string;
-  thinkingMode: boolean;
-  uploadedResume: string | null;
-  uploadedCoverLetter: string | null;
-  includedProfileSelections: IncludedProfileSelections;
-}
-
-export interface GeneratedContent {
-  resume: string | null;
-  coverLetter: string | null;
 }

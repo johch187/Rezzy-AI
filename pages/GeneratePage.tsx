@@ -1,11 +1,10 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { fetchJobDescriptionFromUrl } from '../services/geminiService';
-import type { GenerationOptions, ProfileData, IncludedProfileSelections } from '../types';
+import { fetchJobDescriptionFromUrl } from '../services/generationService';
+import type { GenerationOptions, ProfileData } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
-import ProfileContentSelector from '../components/ProfileContentSelector';
 import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
 import ContentAccordion from '../components/ContentAccordion';
 import TemplateSelector from '../components/TemplateSelector';
@@ -35,37 +34,13 @@ const TextAreaSkeleton: React.FC = () => (
   </div>
 );
 
-const initializeIncludedSelections = (profile: ProfileData): IncludedProfileSelections => {
-  const customSectionItemIds: { [sectionId: string]: Set<string> } = {};
-  profile.customSections.forEach(cs => {
-    customSectionItemIds[cs.id] = new Set(cs.items.map(item => item.id));
-  });
-
-  return {
-    summary: !!profile.summary,
-    additionalInformation: !!profile.additionalInformation,
-    educationIds: new Set(profile.education.map(e => e.id)),
-    experienceIds: new Set(profile.experience.map(e => e.id)),
-    projectIds: new Set(profile.projects.map(p => p.id)),
-    technicalSkillIds: new Set(profile.technicalSkills.map(s => s.id)),
-    softSkillIds: new Set(profile.softSkills.map(s => s.id)),
-    toolIds: new Set(profile.tools.map(t => t.id)),
-    languageIds: new Set(profile.languages.map(l => l.id)),
-    certificationIds: new Set(profile.certifications.map(c => c.id)),
-    interestIds: new Set(profile.interests.map(i => i.id)),
-    customSectionIds: new Set(profile.customSections.map(cs => cs.id)),
-    customSectionItemIds: customSectionItemIds,
-  };
-};
-
-
 const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const navigate = useNavigate();
 
   const { profile, isFetchingUrl, setIsFetchingUrl } = profileContext!;
 
-  const [options, setOptions] = useState<Omit<GenerationOptions, 'jobDescription' | 'includedProfileSelections'>>({
+  const [options, setOptions] = useState<Omit<GenerationOptions, 'jobDescription'>>({
     generateResume: true,
     generateCoverLetter: true,
     resumeLength: '1 page max',
@@ -79,13 +54,6 @@ const GeneratePage: React.FC = () => {
     uploadedCoverLetter: null,
   });
   
-  const [includedProfileSelections, setIncludedProfileSelections] = useState<IncludedProfileSelections>(() => initializeIncludedSelections(profile));
-
-  useEffect(() => {
-    setIncludedProfileSelections(initializeIncludedSelections(profile));
-  }, [profile]);
-
-
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
 
@@ -138,11 +106,11 @@ const GeneratePage: React.FC = () => {
     navigate('/generate/results', { 
         state: { 
             profile: profileContext.profile, 
-            options: { ...options, jobDescription, includedProfileSelections }, 
+            options: { ...options, jobDescription }, 
             jobDescription 
         } 
     });
-  }, [profileContext, jobDescription, options, includedProfileSelections, navigate]);
+  }, [profileContext, jobDescription, options, navigate]);
 
   const clearFile = (type: 'resume' | 'coverLetter') => {
     if (type === 'resume') {
@@ -447,13 +415,6 @@ const GeneratePage: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    
-                    <ProfileContentSelector 
-                        profile={profile}
-                        includedSelections={includedProfileSelections}
-                        setIncludedSelections={setIncludedProfileSelections}
-                    />
-
                 </div>
             </div>
           </aside>

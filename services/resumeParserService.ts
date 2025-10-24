@@ -8,6 +8,9 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
+const LAST_PARSE_TIMESTAMP_KEY = 'lastResumeParseTimestamp';
+const PRO_MODEL_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
 const parseError = (error: any): { message: string, isRetryable: boolean } => {
     const errorMessage = String(error?.message || error).toLowerCase();
 
@@ -198,9 +201,10 @@ const transformApiResponseToProfile = (parsedData: any): Partial<ProfileData> =>
 /**
  * Internal core function to parse resume text using the Gemini API.
  * @param resumeText The full text content of the resume.
+ * @param modelName The specific Gemini model to use for this parsing task.
  * @returns A promise that resolves to the parsed ProfileData.
  */
-const _parseResumeText = async (resumeText: string): Promise<Partial<ProfileData>> => {
+const _parseResumeText = async (resumeText: string, modelName: 'gemini-2.5-pro' | 'gemini-2.5-flash'): Promise<Partial<ProfileData>> => {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY is not configured. Cannot parse resume.");
   }
@@ -219,17 +223,18 @@ const _parseResumeText = async (resumeText: string): Promise<Partial<ProfileData
 
   try {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: modelName,
         contents: prompt,
         config: {
             responseMimeType: "application/json",
             responseSchema: PARSING_SCHEMA,
+            ...(modelName === 'gemini-2.5-pro' && { thinkingConfig: { thinkingBudget: 32768 } })
         }
     });
 
     return transformApiResponseToProfile(JSON.parse(response.text.trim()));
   } catch (error: any) {
-    console.error("Error during resume parsing:", error);
+    console.error(`Error during resume parsing with ${modelName}:`, error);
     const { message } = parseError(error);
     throw new Error(message);
   }
@@ -238,19 +243,41 @@ const _parseResumeText = async (resumeText: string): Promise<Partial<ProfileData
 
 /**
  * Parses a resume from an uploaded file (.pdf, .txt, .md).
+ * It dynamically selects a model: 'gemini-2.5-flash' for the first parse,
+ * and upgrades to 'gemini-2.5-pro' for reparses within a 10-minute window for higher accuracy.
  * @param file The file object to parse.
  * @returns A promise resolving to the parsed profile data.
  */
 export const importAndParseResume = async (file: File): Promise<Partial<ProfileData>> => {
   const resumeText = await readFileContent(file);
-  return await _parseResumeText(resumeText);
+
+  const now = Date.now();
+  const lastParseTimeStr = localStorage.getItem(LAST_PARSE_TIMESTAMP_KEY);
+  const lastParseTime = lastParseTimeStr ? parseInt(lastParseTimeStr, 10) : 0;
+
+  let modelToUse: 'gemini-2.5-pro' | 'gemini-2.5-flash';
+
+  if (lastParseTime && (now - lastParseTime < PRO_MODEL_WINDOW_MS)) {
+      modelToUse = 'gemini-2.5-pro';
+      console.log("Recent parse detected within 10 minutes. Upgrading to gemini-2.5-pro for enhanced accuracy.");
+  } else {
+      modelToUse = 'gemini-2.5-flash';
+  }
+
+  // Always update the timestamp to the current time for the next call.
+  localStorage.setItem(LAST_PARSE_TIMESTAMP_KEY, now.toString());
+
+  return await _parseResumeText(resumeText, modelToUse);
 };
 
 /**
  * Parses a resume from a markdown string (e.g., previously generated content).
+ * Uses the high-accuracy 'gemini-2.5-pro' model to ensure fidelity when converting
+ * AI-generated markdown back into a structured, editable form.
  * @param resumeMarkdown The markdown string of the resume.
  * @returns A promise resolving to the parsed profile data.
  */
 export const parseGeneratedResume = async (resumeMarkdown: string): Promise<Partial<ProfileData>> => {
-  return await _parseResumeText(resumeMarkdown);
+  // This internal parsing should always be high-quality.
+  return await _parseResumeText(resumeMarkdown, 'gemini-2.5-pro');
 };
