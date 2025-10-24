@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateTailoredDocuments, parseGeneratedResume, parseGeneratedCoverLetter } from '../services/geminiService';
+import { generateTailoredDocuments, parseGeneratedCoverLetter } from '../services/geminiService';
+import { parseGeneratedResume } from '../services/resumeParserService';
 import type { ProfileData, GenerationOptions, GeneratedContent, ParsedCoverLetter } from '../types';
 import EditableDocument from '../components/EditableDocument';
 import { ThinkingIcon, XCircleIcon, CheckIcon, SpinnerIcon, PendingIcon } from '../components/Icons';

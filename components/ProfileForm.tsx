@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import type { ProfileData, Education, Experience, Project, Skill, Language, Certification, Interest, CustomSection, CustomSectionItem } from '../types';
-import { importAndParseResume } from '../services/geminiService';
+import { importAndParseResume } from '../services/resumeParserService';
 import { ProfileContext } from '../App';
 import AccordionItem from './AccordionItem';
-import { TrashIcon, XCircleIcon, QuestionMarkCircleIcon } from './Icons';
+import { TrashIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from './Icons';
 
 
 type AccordionSection = 'personal' | 'summary' | 'education' | 'experience' | 'projects' | 'technicalSkills' | 'softSkills' | 'tools' | 'languages' | 'certifications' | 'interests' | 'custom' | 'additional' | null;
@@ -48,19 +48,6 @@ const TooltipLabel: React.FC<{ text: string; children: React.ReactNode }> = ({ t
             </span>
         </span>
     </span>
-);
-
-const ParsingModal: React.FC = () => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-    <div className="bg-white rounded-lg p-8 flex flex-col items-center shadow-2xl">
-      <svg className="animate-spin h-12 w-12 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <h3 className="text-xl font-semibold text-neutral">Parsing Your Resume..</h3>
-      <p className="text-gray-500 mt-2">Extracting your info. This might take a moment.</p>
-    </div>
-  </div>
 );
 
 const ErrorMessage: React.FC<{ message?: string; id: string }> = ({ message, id }) => {
@@ -575,7 +562,7 @@ const ProfileForm: React.FC = () => {
 
   const [openSections, setOpenSections] = useState<Set<AccordionSection>>(() => new Set(['personal'])); 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
+  const [isAutofilling, setIsAutofilling] = useState(false);
   const [parsingError, setParsingError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -608,13 +595,26 @@ const ProfileForm: React.FC = () => {
     if (!file) return;
 
     setParsingError(null);
-    setIsParsing(true);
-    e.target.value = '';
+    setIsAutofilling(true);
+    e.target.value = ''; // Clear the input so the same file can be re-uploaded if needed
 
+    // --- Enhanced File Validation ---
     const MAX_FILE_SIZE_MB = 2;
+    const ALLOWED_MIME_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
+    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md'];
+
+    // Check 1: File Size
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       setParsingError(`File too large: Please upload a file smaller than ${MAX_FILE_SIZE_MB}MB.`);
-      setIsParsing(false);
+      setIsAutofilling(false);
+      return;
+    }
+
+    // Check 2: File Type (MIME type is more reliable, but extension is a good fallback)
+    const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+    if (!ALLOWED_MIME_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
+      setParsingError(`Unsupported file type: '${fileExtension}'. Please upload a PDF, TXT, or MD file.`);
+      setIsAutofilling(false);
       return;
     }
 
@@ -655,14 +655,13 @@ const ProfileForm: React.FC = () => {
     } catch (err: any) {
         setParsingError(err.message || "An unexpected error occurred during parsing.");
     } finally {
-        setIsParsing(false);
+        setIsAutofilling(false);
     }
   };
 
 
   return (
     <>
-    {isParsing && <ParsingModal />}
     <div className="bg-white p-6 rounded-2xl shadow-lg">
       <div className="border-b pb-6">
         <div className="flex justify-between items-start">
@@ -679,10 +678,17 @@ const ProfileForm: React.FC = () => {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isParsing}
+              disabled={isAutofilling}
               className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Autofill from Resume
+              {isAutofilling ? (
+                <>
+                  <LoadingSpinnerIcon className="h-5 w-5 mr-2" />
+                  Parsing...
+                </>
+              ) : (
+                'Autofill from Resume'
+              )}
             </button>
             <p className="mt-2 text-xs text-gray-500">Accepted formats: .pdf, .txt, .md</p>
           </div>
