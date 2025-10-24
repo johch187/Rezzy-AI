@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 // Import TextItem and PDFPageProxy types directly from pdfjs-dist/types/src/display/api
-import type { TextItem, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import type { TextItem, PDFPageProxy } from 'dist/types/src/display/api';
 
 // Set up the PDF.js worker. This is crucial for PDF parsing to work in a web environment.
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
@@ -121,8 +121,29 @@ export async function extractTextFromPdfPage(page: PDFPageProxy): Promise<string
     // Re-sort lines based on their representative y-coordinate to ensure strict top-to-bottom order
     lines.sort((a, b) => b.y - a.y);
 
-    // --- 3. Reconstruct content with formatting and structure ---
-    const COLUMN_BREAK_THRESHOLD = avgCharWidth * 4; // Gap of ~4 chars indicates a new column
+    // --- 3. Calculate median line gap for adaptive paragraph detection ---
+    const verticalGaps: number[] = [];
+    if (lines.length > 1) {
+        for (let i = 0; i < lines.length - 1; i++) {
+            const currentLineAvgY = lines[i].items.reduce((sum, item) => sum + item.y, 0) / lines[i].items.length;
+            const nextLineAvgY = lines[i+1].items.reduce((sum, item) => sum + item.y, 0) / lines[i+1].items.length;
+            const gap = currentLineAvgY - nextLineAvgY;
+            // Only consider reasonable gaps, not huge section breaks, for calculating the typical spacing
+            if (gap > 0 && gap < avgLineHeight * 3) {
+                verticalGaps.push(gap);
+            }
+        }
+    }
+
+    let medianLineGap = avgLineHeight * 1.2; // A sensible default
+    if (verticalGaps.length > 0) {
+        verticalGaps.sort((a, b) => a - b);
+        medianLineGap = verticalGaps[Math.floor(verticalGaps.length / 2)];
+    }
+
+    // --- 4. Reconstruct content with formatting and structure ---
+    const COLUMN_BREAK_THRESHOLD = avgCharWidth * 5; // Gap of ~5 chars indicates a new column
+    const PARAGRAPH_BREAK_THRESHOLD = medianLineGap * 1.5; // Threshold is purely adaptive based on the measured median gap (line density).
     const pageTextSegments: string[] = [];
 
     lines.forEach((line, lineIndex) => {
@@ -138,7 +159,7 @@ export async function extractTextFromPdfPage(page: PDFPageProxy): Promise<string
         
         line.items.forEach((item, itemIndex) => {
             // Check for bold styling in font name
-            const isBold = /bold|demi|heavy|black/i.test(item.fontName);
+            const isBold = /bold|demi|heavy|black|book|medium|semibold|extrabold|ultrabold|extra-bold|semi-bold/i.test(item.fontName);
             let itemText = item.str;
 
             // Add spaces for columns or word gaps
@@ -183,7 +204,7 @@ export async function extractTextFromPdfPage(page: PDFPageProxy): Promise<string
             const nextLineAvgY = nextLine.items.reduce((sum, i) => sum + i.y, 0) / nextLine.items.length;
             const verticalGap = currentLineAvgY - nextLineAvgY;
             
-            if (verticalGap > avgLineHeight * 1.5) {
+            if (verticalGap > PARAGRAPH_BREAK_THRESHOLD) {
                 pageTextSegments.push(''); // This will be rendered as a newline, creating a blank line
             }
         }

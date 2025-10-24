@@ -16,6 +16,7 @@ const Footer: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-6 text-sm">
+            <Link to="/subscription" className="hover:underline">Pricing</Link>
             <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
             <Link to="/terms" className="hover:underline">Terms of Service</Link>
             <Link to="/gdpr" className="hover:underline">GDPR</Link>

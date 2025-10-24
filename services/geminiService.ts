@@ -11,33 +11,57 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 /**
  * Parses a caught error object from an API call and returns a user-friendly message
  * and a flag indicating if the operation is retryable.
- * @param error The catught error object.
+ * @param error The caught error object.
  * @returns An object with a user-friendly `message` and a boolean `isRetryable`.
  */
 const parseError = (error: any): { message: string, isRetryable: boolean } => {
     const errorMessage = String(error?.message || error).toLowerCase();
+    const errorCode = (error as any).code;
 
-    if (error instanceof SyntaxError) {
-        return { message: "The AI returned a response in an unexpected format which couldn't be processed. This is often a temporary issue. Please try again.", isRetryable: true };
+    // --- Scraping-specific errors (from fetchJobDescriptionFromUrl) ---
+    if (errorCode === 'NOT_FOUND') {
+        return { message: "The page at the provided URL could not be found (404 Not Found). Please check if the URL is correct.", isRetryable: false };
     }
+    if (errorCode === 'ACCESS_DENIED') {
+        return { message: "Access to the URL was denied. This often happens with sites that require a login or have bot protection. Please paste the description manually.", isRetryable: false };
+    }
+    if (errorCode === 'NO_CONTENT') {
+        return { message: "We accessed the page, but couldn't find a job description. The content might be loaded in a way that's hard for the AI to read. Please paste it manually.", isRetryable: false };
+    }
+    if (errorCode === 'SERVER_ERROR') {
+        return { message: "The server for the URL reported an error (e.g., 500 Internal Server Error). The site might be temporarily down. Please try again later or paste the description manually.", isRetryable: true };
+    }
+
+    // --- Gemini API & Network Errors ---
+
+    // Non-Retryable Errors (User action required or permanent failure)
     if (errorMessage.includes('api key not valid')) {
-        return { message: "API Key Error: The configured API key is invalid or has expired.", isRetryable: false };
-    }
-    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
-        return { message: "The service is currently experiencing high traffic (Rate Limit Exceeded). Please wait a moment before trying again.", isRetryable: true };
+        return { message: "Invalid API Key: The API key provided is not valid. Please ensure you have configured it correctly.", isRetryable: false };
     }
     if (errorMessage.includes('content has been blocked') || errorMessage.includes('safety policy')) {
-        return { message: "Content Blocked: The request was blocked due to safety policies. Please revise your input to remove any potentially sensitive content and try again.", isRetryable: false };
+        return { message: "Content Blocked: Your request was blocked due to safety settings. Please modify your input and try again.", isRetryable: false };
     }
-    if (errorMessage.includes('503') || errorMessage.includes('unavailable') || errorMessage.includes('overloaded')) {
-        return { message: "Service Unavailable: The AI service is temporarily unavailable or overloaded. This is usually temporary, so please try again in a few moments.", isRetryable: true };
+    if (errorMessage.includes('400') || errorMessage.includes('bad request')) {
+        return { message: "Invalid Request: The data sent to the AI was malformed. This could be due to a bug. Please try again, and if the problem persists, contact support.", isRetryable: false };
     }
-    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch')) {
-         return { message: "Network Error: Could not connect to the AI service. Please check your internet connection.", isRetryable: true };
+    
+    // Retryable Errors (Temporary issues)
+    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
+        return { message: "Service Busy: The AI service is currently experiencing high traffic. Please wait a moment before trying again.", isRetryable: true };
     }
-
-    // Default fallback
-    const displayMessage = error.message ? `An unexpected error occurred: ${error.message}` : "An unknown error occurred. Please check the console for more details.";
+    if (errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable') || errorMessage.includes('internal error')) {
+        return { message: "Service Unavailable: The AI service is temporarily unavailable. This is usually a short-term issue. Please try again in a few moments.", isRetryable: true };
+    }
+    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch') || errorMessage.includes('network error') || errorMessage.includes('timed out')) {
+         return { message: "Network Error: We couldn't connect to the service. Please check your internet connection and try again.", isRetryable: true };
+    }
+    if (error instanceof SyntaxError || errorMessage.includes('json')) {
+        return { message: "Invalid AI Response: The model returned a response in an unexpected format. This can be a temporary issue, please try again.", isRetryable: true };
+    }
+    
+    // Default/Unknown Errors
+    console.error("Unhandled API Error:", error);
+    const displayMessage = `An unexpected error occurred. Please try again. Details: ${error.message || 'No additional details available.'}`;
     return { message: displayMessage, isRetryable: false };
 };
 
@@ -142,26 +166,8 @@ export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> =
 
                 if (extractedText.startsWith('FETCH_ERROR:')) {
                     const errorCode = extractedText.replace('FETCH_ERROR:', '').trim();
-                    let userMessage: string;
-
-                    switch (errorCode) {
-                        case 'NOT_FOUND':
-                            userMessage = "The page at the provided URL could not be found (404 Not Found). Please check if the URL is correct.";
-                            break;
-                        case 'ACCESS_DENIED':
-                            userMessage = "Access to the URL was denied. This often happens with sites that require a login or have bot protection. Please paste the description manually.";
-                            break;
-                        case 'SERVER_ERROR':
-                            userMessage = "The server for the URL reported an error (e.g., 500 Internal Server Error). The site might be temporarily down. Please try again later or paste the description manually.";
-                            break;
-                        case 'NO_CONTENT':
-                            userMessage = "We accessed the page, but couldn't find a job description. The content might be loaded in a way that's hard for the AI to read. Please paste it manually.";
-                            break;
-                        default:
-                            userMessage = "The AI could not extract a job description from the URL for an unknown reason. Please paste the description manually.";
-                    }
-                    const error = new Error(userMessage);
-                    (error as any).code = errorCode; // Attach code for retry logic
+                    const error = new Error(`Scraping failed with code: ${errorCode}`);
+                    (error as any).code = errorCode; // Attach code for parseError to handle
                     return reject(error);
 
                 } else if (!extractedText || extractedText.length < 50) {
@@ -170,9 +176,8 @@ export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> =
                     return resolve(extractedText);
                 }
             } catch (error) {
-                // Catches errors from the ai.models.generateContent call itself and re-throws a user-friendly version.
-                const { message } = parseError(error);
-                return reject(new Error(message));
+                // Catches errors from the ai.models.generateContent call itself
+                return reject(error);
             }
         });
         
@@ -186,26 +191,22 @@ export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> =
         return result; // Success! Exit the loop and return.
     } catch (error: any) {
         lastError = error;
-        const errorCode = error.code;
+        const { message, isRetryable } = parseError(error);
 
-        // A definitive failure from scraping (e.g., 404, 403, or no content found). Don't retry these.
-        const isNonRetryableScrapingError = errorCode && ['NOT_FOUND', 'ACCESS_DENIED', 'NO_CONTENT'].includes(errorCode);
-        
-        if (isNonRetryableScrapingError) {
-            throw error;
-        }
-
-        // It's a transient error (timeout, Gemini API error, or a 5xx from the target site). Let's retry.
-        if (i < MAX_RETRIES - 1) {
+        if (isRetryable && i < MAX_RETRIES - 1) {
             const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
-            console.warn(`URL fetch failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
+            console.warn(`Attempt ${i + 1}/${MAX_RETRIES} failed: ${message}. Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+            // Non-retryable error, or final attempt failed.
+            throw new Error(message);
         }
     }
   }
-
-  // If all retries failed, throw a comprehensive error.
-  throw new Error(`Failed to fetch the URL after ${MAX_RETRIES} attempts. The website or AI service may be temporarily unavailable. Last error: ${lastError?.message || 'Unknown error'}`);
+  
+  // This should theoretically not be reached if the catch block always throws.
+  const { message } = parseError(lastError);
+  throw new Error(message || `Failed to fetch URL after ${MAX_RETRIES} attempts.`);
 };
 
 /**
@@ -262,43 +263,51 @@ export const generateTailoredDocuments = async (
   const filteredProfile = filterProfileData(profile, options.includedProfileSelections);
   
   const prompt = `
-    You are a world-class professional resume and cover letter writer. Your task is to create tailored application documents for a job application.
+    You are a world-class professional resume and cover letter writer. Your task is to create tailored application documents for a job application by synthesizing all of the following information.
 
-    **Candidate's Profile:**
-    The following is a detailed JSON object of the candidate's professional profile. It is highly structured, including specific achievements, categorized skills (technical, soft, tools), project details, and more. Use this granular information to create highly specific and compelling content.
+    **1. Candidate's Profile Data:**
+    This is a detailed JSON object of the candidate's professional profile. It includes their experience, skills, education, career goals, and more. Use this granular information to create highly specific and compelling content that accurately reflects the candidate.
     ${JSON.stringify(filteredProfile)}
 
-    **Job Description:**
+    **2. Target Job Description:**
+    This is the job the candidate is applying for. Analyze it meticulously to understand the required skills, responsibilities, and company culture.
     ${options.jobDescription}
 
-    **Instructions:**
-    1. **Industry:** The candidate is targeting the "${profile.industry}" industry. Ensure the language, skills, and examples are highly relevant to this field.
-    2. **Experience Level & Vibe:** The candidate is targeting a(n) "${profile.experienceLevel}" role and wants to convey a vibe that is: "${profile.vibe}". Reflect this in the language and focus of the documents.
-    3. **Resume Template Style:** The user chose the "${profile.selectedResumeTemplate}" template. The resume should reflect this style (e.g., 'classic' is traditional, 'modern' is clean and minimalist, 'creative' might use more unique formatting).
-    4. **Cover Letter Template Style:** The user chose the "${profile.selectedCoverLetterTemplate}" template. The cover letter should also reflect this style.
-    5. **Resume Length:** Create a resume with a maximum length of ${options.resumeLength}.
-    6. **Resume Summary:** ${options.includeSummary ? 'The resume MUST include a professional summary section at the top. Use the user-provided summary as a strong base, but refine it to perfectly match the job description.' : 'The resume MUST NOT include a professional summary section.'}
-    7. **Cover Letter Skills:** ${options.includeCoverLetterSkills ? 'The cover letter MUST include a dedicated "Key Skills" section. This section should be a concise, bulleted list of 3-5 of the most relevant skills from the candidate\'s profile (technical, soft, and tools) that are directly applicable to the job description.' : 'The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate, dedicated "Key Skills" section.'}
-    8. **Tone:** The tone should be adjusted based on this scale: 0 is extremely formal business, 100 is very personal and conversational. The user selected: ${options.tone}.
-    9. **Language Style:** The language should be adjusted on this scale: 0 is highly technical and full of jargon, 100 is general and easy to understand for a non-technical audience. The user selected: ${options.technicality}.
-    10. **Key Focus Areas:** The user wants to specifically highlight these topics: "${options.focus}". Ensure these are prominent.
-    11. **Documents to Generate:** 
-        - Resume: ${options.generateResume}
-        - Cover Letter: ${options.generateCoverLetter}
+    **3. Inspiration Documents (Style Guide):**
+    The user has provided the following documents for stylistic inspiration. Analyze their structure, tone, and key phrases. Use them as a guide to match the candidate's personal style, but create entirely new, tailored content for the target job. Do not simply copy the old documents.
+    ${options.uploadedResume ? `--- OLD RESUME FOR INSPIRATION ---\n${options.uploadedResume}\n--- END OLD RESUME ---` : ''}
+    ${options.uploadedCoverLetter ? `--- OLD COVER LETTER FOR INSPIRATION ---\n${options.uploadedCoverLetter}\n--- END OLD COVER LETTER ---` : ''}
+
+    **4. Detailed Generation Instructions & Constraints:**
+    You MUST follow every instruction below to meet the user's requirements.
+
+    - **Career Goals:**
+      - **Industry:** The candidate is targeting the "${profile.industry}" industry.
+      - **Experience Level:** The role is at the "${profile.experienceLevel}" level.
+      - **Vibe/Focus:** The documents must convey a professional vibe that is: "${profile.vibe}".
+
+    - **Template & Formatting:**
+      - **Resume Template:** The user chose the "${profile.selectedResumeTemplate}" template style. The resume's structure and feel should reflect this choice (e.g., 'classic' is traditional, 'tech' is modern and skill-focused).
+      - **Cover Letter Template:** The user chose the "${profile.selectedCoverLetterTemplate}" template style. The cover letter must also align with this choice.
+      - **Resume Length:** The resume's final length MUST NOT exceed ${options.resumeLength}.
+
+    - **Content Rules:**
+      - **Resume Summary:** ${options.includeSummary ? 'The resume MUST include a professional summary section at the top. Use the user-provided summary as a strong base, but refine it to perfectly match the job description.' : 'The resume MUST NOT include a professional summary section.'}
+      - **Cover Letter Skills:** ${options.includeCoverLetterSkills ? 'The cover letter MUST include a dedicated "Key Skills" section. This section should be a concise, bulleted list of 3-5 of the most relevant skills from the candidate\'s profile that directly apply to the job description.' : 'The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate "Key Skills" section.'}
+
+    - **Style & Tone:**
+      - **Tone Scale:** On a scale of 0 (extremely formal) to 100 (very personal), the user selected: ${options.tone}. Adjust your writing accordingly.
+      - **Language Style Scale:** On a scale of 0 (highly technical/jargon) to 100 (general audience), the user selected: ${options.technicality}.
+      - **Keywords to Emphasize:** The user wants to specifically highlight these topics: "${options.focus}". Ensure these are prominent.
+
+    - **Documents to Generate:**
+      - **Create Resume:** ${options.generateResume}
+      - **Create Cover Letter:** ${options.generateCoverLetter}
     
-    ${options.uploadedResume || options.uploadedCoverLetter ? `
-    **Inspiration Documents:**
-    The user has provided the following documents for inspiration. Use their style, tone, and key phrases as a guide, but create entirely new, tailored content for the target job. Do not simply copy the old documents.
+    **Final Task:**
+    Synthesize ALL the information provided above (Profile, Job Description, Inspiration Docs, and all Instructions). Create a resume and/or cover letter that strategically highlights the most relevant skills and experiences. Transform achievement bullet points into powerful, quantified statements. Write a compelling cover letter that tells a story and directly connects the candidate's experience to the company's needs.
 
-    ${options.uploadedResume ? `--- OLD RESUME FOR INSPIRATION ---\n${options.uploadedResume}` : ''}
-    ${options.uploadedCoverLetter ? `--- OLD COVER LETTER FOR INSPIRATION ---\n${options.uploadedCoverLetter}` : ''}
-    ` : ''}
-
-    **Task:**
-    - Analyze the candidate's detailed profile and the job description in detail.
-    - Create a resume that strategically highlights the most relevant skills (from all categories) and experiences. Transform the achievement bullet points into powerful, quantified statements.
-    - Create a compelling cover letter that tells a story, directly connects the candidate's experience to the company's needs as stated in the job description, and perfectly reflects the desired tone, language style, and template choice.
-    - Structure the output as a JSON object with two keys: "resume" and "coverLetter". The value for each key should be the full document content in Markdown format. If a document is not requested, its value should be null.
+    Structure your final output as a single JSON object with two keys: "resume" and "coverLetter". The value for each key should be the full document content in Markdown format. If a document was not requested, its value MUST be null.
   `;
   
   const MAX_RETRIES = 3;
@@ -362,48 +371,63 @@ export const generateTailoredDocuments = async (
 // --- Resume Parsing Logic ---
 
 const PARSING_PROMPT_DETAILS = `
-    **Core Objective:** Your goal is to convert the unstructured resume TEXT content into a clean, accurate, and comprehensive JSON object that populates as much of the user's profile as possible. Be meticulous and infer structure intelligently.
+    **Core Task:** You are an elite data extraction AI. Your mission is to meticulously parse the provided resume text and convert it into a structured, comprehensive JSON object that perfectly matches the provided schema. Your output will be used to automatically populate a user's professional profile. Accuracy, completeness, and adherence to the schema are critical.
+
+    **General Principles:**
+    1.  **Extract, Don't Invent:** Only extract information explicitly present or strongly implied in the resume. Never invent data, dates, or details.
+    2.  **Comprehensive Sweep:** Scour the entire document for information. Data for a single field (like skills) may be scattered across multiple sections (summary, experience, etc.).
+    3.  **Prioritize Structure:** Follow the JSON schema precisely. The integrity of the final output depends on your accuracy.
+    4.  **Best Effort Extraction:** If some information for an entry (like an end date for a job) is missing or unclear, extract all the other available details for that entry. Do not discard the entire entry due to a single missing piece of optional information.
 
     **Detailed Parsing Instructions:**
 
-    1.  **Core Information**: Extract the candidate's \`fullName\`, current or most recent \`jobTitle\`, \`email\`, \`phone\`, \`location\`, \`website\`, \`linkedin\`, and \`github\`. The \`jobTitle\` is often found right under the name.
+    1.  **Layout Interpretation (Multi-Column PDFs):** Resume text may originate from multi-column PDFs, often using tab characters ('\\t') as separators. Content on the left (e.g., job titles, dates) often corresponds to content on the right (e.g., company names, descriptions). You must correctly associate these related pieces of information.
 
-    2.  **Experience Section (Crucial):**
-        - For each role, identify the company, title, location, and precise \`startDate\` and \`endDate\` (e.g., 'YYYY' or 'MM/YYYY' or 'Present').
-        - **Achievements vs. Responsibilities:** This is a critical distinction. An achievement demonstrates impact and value. Actively search for bullet points or sentences that contain:
-            - **Quantifiable Metrics:** Numbers, percentages, dollar amounts (e.g., "Increased revenue by 15%", "Managed a budget of $500k", "Reduced server costs by 20%").
-            - **Specific Outcomes:** Words indicating completion or positive results (e.g., "Launched," "Delivered," "Implemented," "Resolved," "Optimized," "Awarded").
-            - **Strong Action Verbs:** "Led," "Developed," "Engineered," "Managed," "Mentored," etc.
-        - **Formatting:** Ensure EACH impactful bullet point from the resume is a SEPARATE string in the \`achievements\` array. Do not combine them.
+    2.  **Contact Information (Header):** This is usually at the top.
+        -   \`fullName\`: The candidate's full name.
+        -   \`jobTitle\`: The candidate's current or most recent job title.
+        -   \`email\`: Meticulously scan for an email address, which is identifiable by the "@" symbol. Extract it precisely.
+        -   \`phone\`: Look for phone numbers in various formats like (XXX) XXX-XXXX or XXX.XXX.XXXX.
+        -   \`location\`: Extract the city and state/country (e.g., "San Francisco, CA").
+        -   \`website\`, \`linkedin\`, \`github\`: Actively search for URLs.
+            -   \`website\`: Identify personal portfolio links (e.g., ending in .dev, .io, .me, or personal names).
+            -   \`linkedin\`: Find and extract the full URL containing "linkedin.com/in/".
+            -   \`github\`: Find and extract the full URL containing "github.com/".
 
-    3.  **Education Section:**
-        - For each entry, extract the institution, degree, field of study, GPA (if mentioned), relevant coursework, awards/honors, and precise \`startDate\` and \`endDate\` (e.g., 'YYYY' or 'MM/YYYY').
+    3.  **Professional Experience (Crucial):**
+        -   **Identify the Section:** Look for headers like **'Experience', 'Work History', 'Employment', 'Professional Experience'**, or similar.
+        -   **Extract Each Job:** For each role, you MUST identify: \`company\`, \`title\`, \`location\`, and dates of employment.
+        -   **Dates:** Be flexible with formats ('May 2020 - Present', '2019 - 2021', '05/20 - Current'). Standardize them to 'MM/YYYY' or 'YYYY', and use the single word "Present" for current roles.
+        -   **Achievements / Bullet Points (TOP PRIORITY):**
+            -   Your most important task is to **extract every single bullet point** or descriptive paragraph associated with a job. Do not skip any.
+            -   Extract them exactly as written first. As a secondary step, you can enhance them by ensuring they start with a strong action verb and include quantifiable results (numbers, %, $) where possible.
+            -   **Example:** If the resume says "Responsible for the marketing budget," your first priority is to extract that text. Your second priority is to transform it into "Managed and allocated the annual marketing budget..."
 
-    4.  **Projects Section (Enhanced):**
-        - For each project, extract its name, description, URL (if present), technologies used, and precise \`startDate\` and \`endDate\` (e.g., 'YYYY' or 'MM/YYYY').
+    4.  **Education:**
+        -   **Identify the Section:** Look for headers like **'Education', 'Academic Background', 'Qualifications'**, or similar.
+        -   **Extract Each Entry:** For each entry, you MUST extract the \`institution\` name, the \`degree\` (e.g., B.S., M.A.), the \`fieldOfStudy\`, and the attendance dates. Also capture \`gpa\`, \`relevantCoursework\`, and \`awardsHonors\` if they are present.
 
-    5.  **Skills Section (Precise Categorization & Inference):**
-        - Scour the ENTIRE resume for skills, not just a dedicated 'Skills' section. Look for them in summaries, experience descriptions, project details, and any explicit skill lists.
-        - Use the following definitions to categorize them accurately:
-            - **Technical Skills:** Core abilities related to the "how" of a job, involving specific technologies, programming, data, or technical methodologies.
-                - **Examples:** Python, React.js, SQL, Machine Learning, Data Analysis, Cloud Computing, AWS, Agile Methodologies, Network Security, REST APIs.
-                - **Rule:** If it's a programming language, framework, technical concept, or methodology, it's a Technical Skill.
-            - **Tools:** Specific software, platforms, or hardware used to perform tasks.
-                - **Examples:** Git & GitHub, Docker, JIRA, Salesforce, Figma, Adobe Premiere Pro, HubSpot, Microsoft Office Suite, Jenkins.
-                - **Rule:** If you can "open" or "log into" it, it's likely a Tool.
-            - **Soft Skills:** Interpersonal attributes, personal qualities, and transferable skills demonstrated in professional contexts. Actively infer these from descriptions of teamwork, leadership, problem-solving, communication, adaptability, and collaboration within experience and project sections, even if not explicitly listed.
-                - **Examples:** Team Leadership, Strategic Communication, Complex Problem Solving, Adaptability, Client Relations, Mentorship, Cross-functional Collaboration.
-                - **Rule:** If it describes "how" you work with others, manage yourself, or impact team dynamics, it's a Soft Skill.
+    5.  **Projects:**
+        - For each project, extract: \`name\`, \`description\`, \`url\` (if present), \`technologiesUsed\`, and precise \`startDate\` and \`endDate\`.
 
-    6.  **General Inferences:**
-        - From the job titles, summary, and overall content, accurately infer the \`industry\` (e.g., "Software Engineering", "Digital Marketing", "Healthcare IT") and \`experienceLevel\` ("internship", "entry", "mid", "senior", "executive").
-        - Generate a concise, professional \`vibe\` string based on the resume's overall tone and focus (e.g., "Innovative problem-solver with a focus on data-driven results", "Client-focused sales leader driving revenue growth").
+    6.  **Skills (Precise Categorization & Inference):**
+        - **CRITICAL:** You MUST find skills throughout the ENTIRE resume, not just a 'Skills' section. Analyze the summary, experience bullet points, and project descriptions. For example, if a bullet says "Developed a REST API using Node.js and deployed with Docker," you must extract "Node.js" and "REST APIs" as technical skills and "Docker" as a tool.
+        - Use these definitions for accurate categorization:
+            - **Technical Skills:** Core abilities, programming languages, frameworks, methodologies, and technical concepts.
+                - **Examples:** Python, React.js, SQL, Machine Learning, Data Analysis, Cloud Computing, AWS, Agile, Scrum, REST APIs, System Design.
+            - **Tools:** Specific software, platforms, or hardware.
+                - **Examples:** Git, GitHub, Docker, Kubernetes, JIRA, Salesforce, Figma, Adobe Photoshop, Microsoft Office Suite, Jenkins, Terraform.
+            - **Soft Skills:** Interpersonal attributes and professional qualities. Infer these from descriptions of teamwork, leadership, and problem-solving.
+                - **Examples:** Team Leadership, Strategic Communication, Complex Problem-Solving, Adaptability, Client Relations, Mentorship, Cross-functional Collaboration.
 
-    7.  **Data Integrity & Formatting:**
-        - **Be Comprehensive:** Your primary goal is to extract as much information as possible into the corresponding fields in the JSON schema.
-        - **Do NOT Invent Data:** If information for a specific optional field (e.g., GPA, GitHub URL) is clearly not present in the resume, omit the key for that field. Do not use placeholders like "N/A".
-        - **Handle Empty Sections:** If an entire section like 'Projects' or 'Certifications' is absent from the resume, you MUST return an empty array for that key (e.g., \`"projects": []\`). Do not omit the key for entire sections.
-        - **Date Format:** When extracting dates (startDate, endDate), prioritize "YYYY" or "MM/YYYY" format. If only years are available, use "YYYY". If "Present" is indicated, use "Present".
+    7.  **General Inferences:**
+        - From job titles and content, infer the \`industry\` (e.g., "Software Engineering," "Digital Marketing") and \`experienceLevel\` ("internship," "entry," "mid," "senior," "executive").
+        - Generate a concise, professional \`vibe\` string based on the resume's tone (e.g., "Innovative problem-solver with a focus on data-driven results").
+
+    8.  **Data Integrity & Formatting (VERY IMPORTANT - FOLLOW THESE RULES STRICTLY):**
+        - **Rule 1: Omit Keys for Missing Optional Data.** If information for an optional field (e.g., \`gpa\`, \`github\`, \`website\`) is NOT in the resume, you MUST OMIT the entire key-value pair for that field from the final JSON. Do not use \`null\`, \`"N/A"\`, or \`""\`.
+        - **Rule 2: Use Empty Arrays for Empty Sections.** If an entire section (like 'Projects' or 'Certifications') is absent from the resume, you MUST return an empty array for that key. Do not omit the key for the entire section.
+        - **Rule 3: Standardize Dates.** Format all dates (\`startDate\`, \`endDate\`) as "YYYY" or "MM/YYYY". If the resume says "Present," use the string "Present".
 `;
 
 const PARSING_SCHEMA = {
@@ -671,142 +695,5 @@ export const parseGeneratedCoverLetter = async (coverLetterMarkdown: string): Pr
         console.error("Error parsing generated cover letter:", error);
         const { message } = parseError(error);
         throw new Error(message);
-    }
-};
-
-
-export const convertToLatex = async (markdownContent: string): Promise<string> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY is not configured. Cannot convert to LaTeX.");
-    }
-
-    const prompt = `
-        You are an expert LaTeX document creator specializing in professional resumes and cover letters.
-        Your task is to convert the following document, provided in Markdown format, into a complete, clean, and compilable LaTeX document.
-
-        **Input Document (Markdown):**
-        ---
-        ${markdownContent}
-        ---
-
-        **LaTeX Output Requirements:**
-
-        1.  **Complete Document:** The output MUST be a full LaTeX file, starting with \`\\documentclass{article}\` and ending with \`\\end{document}\`.
-        2.  **No Explanations:** Do NOT include any explanations, comments, or markdown formatting (like \`\`\`latex\`) in your response. The output must be ONLY the raw LaTeX code.
-        3.  **Professional Layout:**
-            *   Use the \`article\` document class.
-            *   Set margins appropriately for a professional document using the \`geometry\` package (e.g., \`\\usepackage[left=0.75in, right=0.75in, top=0.5in, bottom=0.5in]{geometry}\`).
-            *   Remove page numbering (\`\\pagestyle{empty}\`).
-            *   Use a clean, modern font if possible (e.g., \`\\usepackage{helvet}\`, \`\\renewcommand{\\familydefault}{\\sfdefault}\`).
-            *   For **resumes**, the candidate's name (if present, usually the first H1) should be large and centered. Contact information should be presented neatly below the name.
-            *   For **cover letters**, use standard business letter formatting (sender address, date, recipient address, salutation, body, closing).
-        4.  **Structure Mapping:**
-            *   Map Markdown headings (\`#\`, \`##\`) to LaTeX sections (e.g., \`\\section*{...}\`). Use the starred version to avoid section numbering.
-            *   Map Markdown bullet points (\`-\` or \`*\`) to a LaTeX \`itemize\` environment, with each point being an \`\\item\`.
-            *   Map Markdown bold (\`**text**\`) to LaTeX bold (\`\\textbf{text}\`).
-        5.  **Packages:** Include necessary packages like \`geometry\`, \`hyperref\` (for clickable links), \`needspace\`.
-        6.  **Hyperlinks:** Ensure any web links in the contact information are clickable using \`hyperref\`.
-        7.  **Handle Special Characters**: Escape LaTeX special characters (e.g., #, $, %, &, _, {, }) appropriately. For example, an email like "a&b@test.com" should be "a\\&b@test.com".
-
-        **Example Resume Structure Snippet:**
-        \`\`\`latex
-        \\documentclass{article}
-        \\usepackage[utf8]{inputenc}
-        \\usepackage{geometry}
-        \\usepackage{hyperref}
-        \\geometry{left=0.75in, right=0.75in, top=0.5in, bottom=0.5in}
-        \\pagestyle{empty}
-
-        \\begin{document}
-
-        \\begin{center}
-            {\\Huge \\textbf{Alex Doe}} \\\\
-            \\vspace{2mm}
-            (555) 123-4567 | \\href{mailto:alex.doe@example.com}{alex.doe@example.com} | \\href{http://alexdoe.dev}{alexdoe.dev}
-        \\end{center}
-
-        \\section*{Summary}
-        A highly motivated Software Engineer...
-
-        \\section*{Experience}
-        \\textbf{Software Engineer} | Tech Solutions Inc. \\hfill 2022 - Present \\\\
-        \\begin{itemize}
-            \\item Developed and maintained web applications...
-        \\end{itemize}
-
-        \\end{document}
-        \`\`\`
-        Now, based on these instructions, convert the provided Markdown document, correctly identifying if it is a resume or a cover letter and applying the appropriate formatting.
-    `;
-    
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-
-        return response.text.trim();
-    } catch(error: any) {
-        console.error("Error converting to LaTeX:", error);
-        const { message } = parseError(error);
-        throw new Error(message);
-    }
-};
-
-/**
- * Compiles LaTeX code into a PDF using an external service.
- * @param latexCode The full LaTeX document as a string.
- * @returns A promise that resolves to a Blob containing the PDF data.
- */
-export const compileLatexToPdf = async (latexCode: string): Promise<Blob> => {
-    // This uses a public, free-to-use LaTeX compilation service that appears more robust.
-    // For production applications, a more reliable, private, or paid service is recommended.
-    const TEX2DOC_API_URL = 'https://cloud.tex2doc.com/api/v1/pdf';
-
-    try {
-        const response = await fetch(TEX2DOC_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                latex_body: latexCode,
-                output_format: 'pdf',
-            }),
-        });
-
-        if (!response.ok) {
-            // This API returns a JSON error object on failure.
-            try {
-                const errorResult = await response.json();
-                const errorMessage = errorResult.message || `The PDF compilation service returned an error: ${response.status} ${response.statusText}`;
-                console.error("LaTeX Compilation Failed:", errorResult);
-                throw new Error(errorMessage);
-            } catch (jsonError) {
-                // If the error response isn't JSON, fall back to the status text.
-                throw new Error(`The PDF compilation service returned an error: ${response.status} ${response.statusText}`);
-            }
-        }
-        
-        // The API should return the PDF blob directly on success.
-        const pdfBlob = await response.blob();
-        
-        if (pdfBlob.type !== 'application/pdf') {
-             // Sometimes services return an error (e.g., HTML or text) with a 200 OK status.
-             // We can try to read it as text to find an error message.
-             const errorText = await pdfBlob.text();
-             console.error("LaTeX Compilation returned non-PDF content:", errorText);
-             throw new Error(`LaTeX compilation failed. The service returned an unexpected content type. Log: ${errorText.substring(0, 500)}`);
-        }
-
-        return pdfBlob;
-
-    } catch (error) {
-        console.error("Network or compilation service error:", error);
-        if (error instanceof Error) {
-             // The most common client-side error is "Failed to fetch", which indicates a network or CORS issue.
-             throw new Error(`Could not connect to the PDF compilation service. Please check your internet connection or try again later. (Details: ${error.message})`);
-        }
-        throw new Error("An unknown error occurred while connecting to the PDF compilation service.");
     }
 };

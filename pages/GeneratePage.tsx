@@ -5,39 +5,22 @@ import { fetchJobDescriptionFromUrl } from '../services/geminiService';
 import type { GenerationOptions, ProfileData, IncludedProfileSelections } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
-import ProfileContentSelector from '../components/ProfileContentSelector'; // New component
-
-const ThinkingIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 9a1 1 0 011-1h1.757l.38-1.517a1 1 0 011.956-.011L11 8h2a1 1 0 110 2h-1.243l-.38 1.517a1 1 0 01-1.956.011L9 10H7a1 1 0 01-1-1V9z" clipRule="evenodd" />
-    </svg>
-);
-
-const ArrowIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${!collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-);
-
-const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-    </svg>
-);
-
-const QuestionMarkCircleIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 inline-block text-gray-400 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
+import ProfileContentSelector from '../components/ProfileContentSelector';
+import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
+import ContentAccordion from '../components/ContentAccordion';
+import TemplateSelector from '../components/TemplateSelector';
 
 const TooltipLabel: React.FC<{ htmlFor: string; text: string; children: React.ReactNode }> = ({ htmlFor, text, children }) => (
-  <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700 relative group cursor-help">
-    {children}
-    <QuestionMarkCircleIcon />
-    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 text-center">
-      {text}
-      <svg className="absolute text-gray-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+  <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
+    <span className="inline-flex items-center">
+        {children}
+        <span className="relative group/tooltip cursor-help">
+            <QuestionMarkCircleIcon />
+            <span className="absolute bottom-full left-0 mb-2 w-72 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-center">
+                {text}
+                <svg className="absolute text-gray-800 h-2 w-4 left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+            </span>
+        </span>
     </span>
   </label>
 );
@@ -51,24 +34,6 @@ const TextAreaSkeleton: React.FC = () => (
     <div className="h-4 bg-gray-200 rounded w-5/6"></div>
   </div>
 );
-
-const ContentAccordion: React.FC<{ title: string, children: React.ReactNode, initiallyOpen?: boolean }> = ({ title, children, initiallyOpen = false }) => {
-    const [isOpen, setIsOpen] = useState(initiallyOpen);
-    return (
-        <div className="border-t border-gray-200 last:border-b-0">
-            <button
-                className="flex items-center justify-between w-full py-5 font-medium text-left text-gray-600 hover:text-gray-900 focus:outline-none"
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <span className="text-lg font-semibold">{title}</span>
-                <ArrowIcon collapsed={!isOpen} />
-            </button>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[1500px] pb-5' : 'max-h-0'}`}>
-                {children}
-            </div>
-        </div>
-    );
-};
 
 const initializeIncludedSelections = (profile: ProfileData): IncludedProfileSelections => {
   const customSectionItemIds: { [sectionId: string]: Set<string> } = {};
@@ -98,7 +63,7 @@ const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const navigate = useNavigate();
 
-  const { profile } = profileContext!;
+  const { profile, isFetchingUrl, setIsFetchingUrl } = profileContext!;
 
   const [options, setOptions] = useState<Omit<GenerationOptions, 'jobDescription' | 'includedProfileSelections'>>({
     generateResume: true,
@@ -125,7 +90,6 @@ const GeneratePage: React.FC = () => {
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
 
   const [jobUrl, setJobUrl] = useState('');
-  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const [jobDescription, setJobDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -162,7 +126,7 @@ const GeneratePage: React.FC = () => {
     } finally {
       setIsFetchingUrl(false);
     }
-  }, [jobUrl]);
+  }, [jobUrl, setIsFetchingUrl]);
 
   const handleGenerate = useCallback(() => {
     if (!profileContext?.profile || !jobDescription) {
@@ -234,10 +198,7 @@ const GeneratePage: React.FC = () => {
 
   const fetchButtonContent = isFetchingUrl ? (
     <>
-      <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
+      <LoadingSpinnerIcon className="-ml-1 mr-3 h-5 w-5" />
       <span>Fetching...</span>
     </>
   ) : (
@@ -298,7 +259,7 @@ const GeneratePage: React.FC = () => {
                       <p className="text-sm text-gray-600 mb-4">
                         Provide your previous documents to help the AI match your unique style, tone, and formatting. This is highly recommended for best results.
                       </p>
-                       <div className="space-y-3">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <input type="file" accept=".txt,.md,.pdf" ref={resumeInputRef} onChange={(e) => handleFileChange(e, 'resume')} className="hidden" />
                                 {resumeFile ? (
@@ -307,12 +268,12 @@ const GeneratePage: React.FC = () => {
                                         <button onClick={() => clearFile('resume')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
                                     </div>
                                 ) : (
-                                    <div onClick={() => resumeInputRef.current?.click()} className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 text-center cursor-pointer hover:border-primary">
+                                    <div onClick={() => resumeInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
                                         <div>
                                             <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                 <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
                                             </svg>
-                                            <div className="mt-4 flex text-sm leading-6 text-gray-600">
+                                            <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
                                                 <span className="font-semibold text-primary">Upload a resume</span>
                                             </div>
                                             <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
@@ -328,12 +289,12 @@ const GeneratePage: React.FC = () => {
                                         <button onClick={() => clearFile('coverLetter')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
                                     </div>
                                 ) : (
-                                    <div onClick={() => coverLetterInputRef.current?.click()} className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 text-center cursor-pointer hover:border-primary">
+                                    <div onClick={() => coverLetterInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
                                         <div>
                                             <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                 <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
                                             </svg>
-                                            <div className="mt-4 flex text-sm leading-6 text-gray-600">
+                                            <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
                                                 <span className="font-semibold text-primary">Upload a cover letter</span>
                                             </div>
                                             <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
@@ -355,43 +316,12 @@ const GeneratePage: React.FC = () => {
                         )}
                     </ContentAccordion>
 
-                    {options.generateResume && (
-                      <ContentAccordion title="Resume Customization" initiallyOpen={true}>
-                          <div className="space-y-6">
-                              <div className="relative flex items-start">
-                                  <div className="flex h-6 items-center">
-                                      <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                  </div>
-                                  <div className="ml-3 text-sm leading-6">
-                                      <label htmlFor="summary" className="font-medium text-gray-900">Include Professional Summary</label>
-                                      <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
-                                  </div>
-                              </div>
-                              <div>
-                                  <label htmlFor="resume-length" className="block text-sm font-medium text-gray-700 mb-2">Maximum Resume Length</label>
-                                  <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
-                                      <option value="1 page max">1 Page Max</option>
-                                      <option value="2 pages max">2 Pages Max</option>
-                                  </select>
-                              </div>
-                          </div>
-                      </ContentAccordion>
-                    )}
-                    
-                    {options.generateCoverLetter && (
-                      <ContentAccordion title="Cover Letter Customization" initiallyOpen={true}>
-                          <div className="relative flex items-start">
-                              <div className="flex h-6 items-center">
-                                  <input id="cover-letter-skills" type="checkbox" checked={options.includeCoverLetterSkills} onChange={(e) => setOptions(o => ({...o, includeCoverLetterSkills: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                              </div>
-                              <div className="ml-3 text-sm leading-6">
-                                  <label htmlFor="cover-letter-skills" className="font-medium text-gray-900">Include Key Skills Section</label>
-                                  <p className="text-gray-500">Adds a bulleted list of your most relevant skills to the cover letter.</p>
-                                  </div>
-                              </div>
-                      </ContentAccordion>
-                    )}
-
+                    <ContentAccordion title="Templates" initiallyOpen={true}>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Select the templates you'd like to use for your generated documents. Double-click any template to see a larger preview.
+                        </p>
+                        <TemplateSelector />
+                    </ContentAccordion>
 
                     <ContentAccordion title="Style & Tone" initiallyOpen={true}>
                          <div className="space-y-6">
@@ -467,39 +397,55 @@ const GeneratePage: React.FC = () => {
                 </div>
                 
                 <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isGenerationOptionsCollapsed ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100 mt-4'}`}>
-                    <div className="py-4 space-y-4">
-                        <div className="flex items-center">
-                            <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                            <label htmlFor="resume" className="ml-3 block text-sm font-medium text-gray-900">Create Resume</label>
-                        </div>
-
-                        <div className="flex items-center pt-2 border-t border-gray-100">
-                            <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                            <label htmlFor="coverLetter" className="ml-3 block text-sm font-medium text-gray-900">Create Cover Letter</label>
-                        </div>
-
-                        {(options.generateResume || options.generateCoverLetter) && (
-                            <div className="pt-4 border-t border-gray-100">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Selected Templates</label>
-                                <p className="text-xs text-gray-500 mb-2">Templates can be changed on the <Link to="/" className="text-primary hover:underline font-medium">homepage</Link>.</p>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {options.generateResume && selectedResumeTpl && (
-                                        <div>
-                                            <div className="block w-full rounded border-2 border-gray-300 shadow-sm">
-                                                <img src={selectedResumeTpl.imageUrl.replace('200x280', '80x112')} alt={selectedResumeTpl.name} className="w-full h-auto" />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {options.generateCoverLetter && selectedCoverLetterTpl && (
-                                    <div>
-                                            <div className="block w-full rounded border-2 border-gray-300 shadow-sm">
-                                                <img src={selectedCoverLetterTpl.imageUrl.replace('200x280', '80x112')} alt={selectedCoverLetterTpl.name} className="w-full h-auto" />
-                                            </div>
-                                    </div>
-                                    )}
-                                </div>
+                    <div className="py-4 space-y-6">
+                        {/* Resume Group */}
+                        <div>
+                            <div className="flex items-center">
+                                <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="resume" className="ml-3 block text-sm font-medium text-gray-900">Create Resume</label>
                             </div>
-                        )}
+                            {options.generateResume && (
+                                <div className="pl-7 mt-4 space-y-4">
+                                    <div className="relative flex items-start">
+                                        <div className="flex h-6 items-center">
+                                            <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                        </div>
+                                        <div className="ml-3 text-sm leading-6">
+                                            <label htmlFor="summary" className="font-medium text-gray-900">Include Professional Summary</label>
+                                            <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="resume-length" className="block text-sm font-medium text-gray-700 mb-2">Maximum Resume Length</label>
+                                        <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                                            <option value="1 page max">1 Page Max</option>
+                                            <option value="2 pages max">2 Pages Max</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Cover Letter Group */}
+                        <div className="pt-6 border-t border-gray-200">
+                             <div className="flex items-center">
+                                <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="coverLetter" className="ml-3 block text-sm font-medium text-gray-900">Create Cover Letter</label>
+                            </div>
+                            {options.generateCoverLetter && (
+                                <div className="pl-7 mt-4 space-y-4">
+                                    <div className="relative flex items-start">
+                                        <div className="flex h-6 items-center">
+                                            <input id="cover-letter-skills" type="checkbox" checked={options.includeCoverLetterSkills} onChange={(e) => setOptions(o => ({...o, includeCoverLetterSkills: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                        </div>
+                                        <div className="ml-3 text-sm leading-6">
+                                            <label htmlFor="cover-letter-skills" className="font-medium text-gray-900">Include Key Skills Section</label>
+                                            <p className="text-gray-500">Adds a bulleted list of your most relevant skills to the cover letter.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     
                     <ProfileContentSelector 

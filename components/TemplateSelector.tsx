@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { ProfileContext } from '../App';
+import { ArrowIcon, MagnifyingGlassIcon } from './Icons';
 
 export const templates = {
   resume: [
@@ -12,23 +13,9 @@ export const templates = {
   ]
 };
 
-const ArrowIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${!collapsed && 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-);
-
-const MagnifyingGlassIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-  </svg>
-);
-
-
 const TemplateSelector: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const [modalImage, setModalImage] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (!profileContext) return null;
 
@@ -58,7 +45,7 @@ const TemplateSelector: React.FC = () => {
           aria-label={`Select ${template.name} ${type} template`}
         >
           <img src={template.imageUrl} alt={template.name} className="w-full h-auto object-cover" />
-          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-sm p-1 text-center">{template.name}</div>
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">{template.name}</div>
         </button>
         {/* Magnifying glass icon for explicit preview */}
         <button
@@ -66,7 +53,7 @@ const TemplateSelector: React.FC = () => {
             e.stopPropagation(); // Prevent the parent button's onClick from firing
             openPreview(template.imageUrl);
           }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           aria-label={`Preview ${template.name} ${type} template`}
           title="Click to preview template"
         >
@@ -78,29 +65,18 @@ const TemplateSelector: React.FC = () => {
   
   return (
     <>
-      <div className="bg-white p-6 rounded-2xl shadow-lg">
-        <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsCollapsed(!isCollapsed)}>
-          <h2 className="text-2xl font-bold text-neutral">Templates</h2>
-          <button className="p-2 rounded-full hover:bg-gray-100" aria-label={isCollapsed ? 'Expand templates' : 'Collapse templates'}>
-              <ArrowIcon collapsed={isCollapsed} />
-          </button>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Resume Templates</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {renderTemplateOptions('resume')}
+          </div>
         </div>
-        
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100 mt-4'}`}>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Resume Templates</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {renderTemplateOptions('resume')}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Cover Letter Templates</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {renderTemplateOptions('coverLetter')}
-                </div>
-              </div>
-            </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Cover Letter Templates</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {renderTemplateOptions('coverLetter')}
+          </div>
         </div>
       </div>
 

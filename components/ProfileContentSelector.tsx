@@ -1,29 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { ProfileData, IncludedProfileSelections } from '../types';
-
-const ArrowIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${!collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-);
-
-const ContentAccordion: React.FC<{ title: string, children: React.ReactNode, initiallyOpen?: boolean }> = ({ title, children, initiallyOpen = false }) => {
-    const [isOpen, setIsOpen] = useState(initiallyOpen);
-    return (
-        <div className="border-t border-gray-200 last:border-b-0">
-            <button
-                className="flex items-center justify-between w-full py-5 font-medium text-left text-gray-600 hover:text-gray-900 focus:outline-none"
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <span className="text-lg font-semibold">{title}</span>
-                <ArrowIcon collapsed={!isOpen} />
-            </button>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[1500px] pb-5' : 'max-h-0'}`}>
-                {children}
-            </div>
-        </div>
-    );
-};
+import ContentAccordion from './ContentAccordion';
 
 interface ProfileContentSelectorProps {
     profile: ProfileData;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowIcon } from './Icons';
 
 const AccordionItem: React.FC<{
   sectionId: string;
@@ -9,7 +10,7 @@ const AccordionItem: React.FC<{
 }> = ({ sectionId, title, isOpen, setIsOpen, children }) => {
   const contentId = `${sectionId}-content`;
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
+    <div className="border border-gray-300 rounded-lg">
       <h2>
         <button
           type="button"
@@ -19,14 +20,7 @@ const AccordionItem: React.FC<{
           aria-controls={contentId}
         >
           <span>{title}</span>
-          <svg
-            className={`w-6 h-6 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ArrowIcon collapsed={!isOpen} />
         </button>
       </h2>
       {isOpen && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import type { ProfileData, Experience, Education, Project, ParsedCoverLetter, Skill } from '../types';
+import { TrashIcon, XCircleIcon } from './Icons';
 
 // --- UTILITY & HELPER COMPONENTS ---
 
@@ -7,18 +8,6 @@ const Spinner: React.FC<{ size?: string, color?: string }> = ({ size = 'h-5 w-5'
     <svg className={`animate-spin ${size} ${color}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
-
-const TrashIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-
-const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
     </svg>
 );
 
@@ -131,14 +120,14 @@ const formatContentForDisplay = (text: string) => {
 const FormInput: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string }> = 
 ({ value = '', onChange, isEditing, className = '', placeholder = '' }) => (
     isEditing ? 
-    <input value={value} onChange={e => onChange(e.target.value)} className={`w-full p-1 border rounded bg-blue-50/50 border-blue-200 focus:ring-1 focus:ring-primary ${className}`} placeholder={placeholder} /> :
+    <input value={value} onChange={e => onChange(e.target.value)} className={`w-full p-1 border rounded bg-blue-100 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
     <span className={className}>{value}</span>
 );
 
 const FormTextarea: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string, rows?: number }> = 
 ({ value = '', onChange, isEditing, className = '', placeholder = '', rows = 4 }) => (
     isEditing ? 
-    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={`w-full p-2 border rounded bg-blue-50/50 border-blue-200 focus:ring-1 focus:ring-primary ${className}`} placeholder={placeholder} /> :
+    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={`w-full p-2 border rounded bg-blue-100 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
     <p className={`whitespace-pre-wrap ${className}`}>{value}</p>
 );
 
@@ -187,7 +176,7 @@ const ResumeExperienceDisplay = memo<{
             {experience.map((exp, i) => (
                 <div key={exp.id} className="relative group">
                     {isEditing && (
-                        <button onClick={() => onRemoveExperience(exp.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
+                        <button onClick={() => onRemoveExperience(exp.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
                             <TrashIcon />
                         </button>
                     )}
@@ -234,7 +223,7 @@ const ResumeEducationDisplay = memo<{
              {education.map((edu, i) => (
                 <div key={edu.id} className="relative group">
                     {isEditing && (
-                        <button onClick={() => onRemoveItem(edu.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
+                        <button onClick={() => onRemoveItem(edu.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
                             <TrashIcon />
                         </button>
                     )}
@@ -270,7 +259,7 @@ const ResumeProjectsDisplay = memo<{
             {projects.map((proj, i) => (
                 <div key={proj.id} className="relative group">
                      {isEditing && (
-                        <button onClick={() => onRemoveItem(proj.id)} className="absolute top-0 right-0 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
+                        <button onClick={() => onRemoveItem(proj.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
                             <TrashIcon />
                         </button>
                     )}
@@ -552,7 +541,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     };
     
     return (
-        <div className="prose max-w-none font-serif text-gray-800">
+        <div className="prose max-w-none text-gray-800">
             {/* Sender Info */}
             <div className="mb-6 text-right">
                 <FormInput isEditing={isEditing} value={formData.senderName} onChange={v => handleFieldChange('senderName', v)} className="font-bold text-lg" placeholder="Your Name" />

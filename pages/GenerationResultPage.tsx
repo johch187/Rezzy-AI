@@ -4,35 +4,16 @@ import { ProfileContext } from '../App';
 import { generateTailoredDocuments, parseGeneratedResume, parseGeneratedCoverLetter } from '../services/geminiService';
 import type { ProfileData, GenerationOptions, GeneratedContent, ParsedCoverLetter } from '../types';
 import EditableDocument from '../components/EditableDocument';
+import { ThinkingIcon, XCircleIcon, CheckIcon, SpinnerIcon, PendingIcon } from '../components/Icons';
 
+// --- Type Guards ---
+function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
+  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
+}
 
-const ThinkingIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5 9a1 1 0 011-1h1.757l.38-1.517a1 1 0 011.956-.011L11 8h2a1 1 0 110 2h-1.243l-.38 1.517a1 1 0 01-1.956.011L9 10H7a1 1 0 01-1-1V9z" clipRule="evenodd" />
-    </svg>
-);
-
-const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-    </svg>
-);
-
-const CheckIcon: React.FC = () => (
-    <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-      </svg>
-    </div>
-);
-
-const SpinnerIcon: React.FC = () => (
-    <div className="h-6 w-6 rounded-full border-2 border-t-primary border-r-primary border-b-gray-200 border-l-gray-200 animate-spin" />
-);
-
-const PendingIcon: React.FC = () => (
-    <div className="h-6 w-6 rounded-full border-2 border-gray-300" />
-);
+function isParsedResume(content: any): content is Partial<ProfileData> {
+  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
+}
 
 const STEPS = [
   { text: "Analyzing your profile...", duration: 1500 },
@@ -86,15 +67,6 @@ const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode:
         </div>
     );
 };
-
-// --- Type Guards ---
-function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
-  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
-}
-
-function isParsedResume(content: any): content is Partial<ProfileData> {
-  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
-}
 
 
 const GenerationResultPage: React.FC = () => {

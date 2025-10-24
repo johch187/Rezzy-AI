@@ -3,6 +3,7 @@ import type { ProfileData, Education, Experience, Project, Skill, Language, Cert
 import { importAndParseResume } from '../services/geminiService';
 import { ProfileContext } from '../App';
 import AccordionItem from './AccordionItem';
+import { TrashIcon, XCircleIcon, QuestionMarkCircleIcon } from './Icons';
 
 
 type AccordionSection = 'personal' | 'summary' | 'education' | 'experience' | 'projects' | 'technicalSkills' | 'softSkills' | 'tools' | 'languages' | 'certifications' | 'interests' | 'custom' | 'additional' | null;
@@ -18,11 +19,15 @@ type ProfileFormErrors = {
 const validateProfile = (profile: ProfileData): ProfileFormErrors => {
   const errors: ProfileFormErrors = {};
   if (!profile.fullName.trim()) errors.fullName = "Full name is required.";
+  
+  // Stricter email validation regex
+  const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   if (!profile.email.trim()) {
     errors.email = "Email is required.";
-  } else if (!/\S+@\S+\.\S+/.test(profile.email)) {
-    errors.email = "Invalid email address.";
+  } else if (!emailRegex.test(profile.email)) {
+    errors.email = "Invalid email address. Please enter a valid email format.";
   }
+  
   const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
   if (profile.website && !urlRegex.test(profile.website)) errors.website = "Invalid URL format.";
   if (profile.linkedin && !/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?$/.test(profile.linkedin)) errors.linkedin = "Invalid LinkedIn URL.";
@@ -31,6 +36,20 @@ const validateProfile = (profile: ProfileData): ProfileFormErrors => {
 };
 
 // --- Helper & Icon Components ---
+
+const TooltipLabel: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => (
+    <span className="inline-flex items-center">
+        {children}
+        <span className="relative group/tooltip cursor-help">
+            <QuestionMarkCircleIcon />
+            <span className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-center">
+            {text}
+            <svg className="absolute text-gray-800 h-2 w-4 left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" ><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+            </span>
+        </span>
+    </span>
+);
+
 const ParsingModal: React.FC = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
     <div className="bg-white rounded-lg p-8 flex flex-col items-center shadow-2xl">
@@ -38,28 +57,10 @@ const ParsingModal: React.FC = () => (
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <h3 className="text-xl font-semibold text-neutral">Parsing Your Resume...</h3>
-      <p className="text-gray-500 mt-2">The AI is extracting your info. This might take a moment.</p>
+      <h3 className="text-xl font-semibold text-neutral">Parsing Your Resume..</h3>
+      <p className="text-gray-500 mt-2">Extracting your info. This might take a moment.</p>
     </div>
   </div>
-);
-
-const TrashIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-
-const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-    </svg>
-);
-
-const ArrowIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${!collapsed && 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
 );
 
 const ErrorMessage: React.FC<{ message?: string; id: string }> = ({ message, id }) => {
@@ -77,6 +78,27 @@ const PersonalInfoSection = React.memo(() => {
     const { profile, setProfile } = useContext(ProfileContext)!;
     const [errors, setErrors] = useState<ProfileFormErrors>({});
     
+    // Local state for first and last name to manage them separately in the UI
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+
+    // Effect to split fullName from context into local state when it changes
+    useEffect(() => {
+        const nameParts = profile.fullName.trim().split(' ');
+        const first = nameParts[0] || '';
+        const last = nameParts.slice(1).join(' ');
+        setFirstName(first);
+        setLastName(last);
+    }, [profile.fullName]);
+
+    // Handler to update local state and then join back into fullName for the context
+    const handleNameChange = (newFirstName: string, newLastName: string) => {
+        setFirstName(newFirstName);
+        setLastName(newLastName);
+        const newFullName = `${newFirstName} ${newLastName}`.trim();
+        setProfile(prev => ({ ...prev, fullName: newFullName }));
+    };
+    
     useEffect(() => {
         setErrors(validateProfile(profile));
     }, [profile.fullName, profile.email, profile.website, profile.linkedin, profile.github]);
@@ -89,13 +111,13 @@ const PersonalInfoSection = React.memo(() => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input name="fullName" value={profile.fullName} onChange={handleChange} className={`${baseInputStyles} ${errors.fullName ? errorInputStyles : validInputStyles}`} />
+                <label className="block text-sm font-medium text-gray-700">First Name</label>
+                <input name="firstName" value={firstName} onChange={(e) => handleNameChange(e.target.value, lastName)} className={`${baseInputStyles} ${errors.fullName ? errorInputStyles : validInputStyles}`} />
                 <ErrorMessage message={errors.fullName} id="fullName-error" />
             </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Job Title</label>
-                <input name="jobTitle" value={profile.jobTitle || ''} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="e.g., Senior Software Engineer" />
+             <div>
+                <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                <input name="lastName" value={lastName} onChange={(e) => handleNameChange(firstName, e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
@@ -103,25 +125,25 @@ const PersonalInfoSection = React.memo(() => {
                 <ErrorMessage message={errors.email} id="email-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <input name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Location</label>
-                <input name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="e.g., San Francisco, CA" />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Website/Portfolio</label>
+                <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="Link to your personal website or online portfolio. e.g., 'yourname.dev'">Website/Portfolio</TooltipLabel></label>
                 <input name="website" value={profile.website} onChange={handleChange} className={`${baseInputStyles} ${errors.website ? errorInputStyles : validInputStyles}`} />
                 <ErrorMessage message={errors.website} id="website-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">LinkedIn</label>
+                <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="Your professional contact number. e.g., (555) 123-4567">Phone</TooltipLabel></label>
+                <input name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="Full URL to your LinkedIn profile. e.g., 'linkedin.com/in/yourname'">LinkedIn</TooltipLabel></label>
                 <input name="linkedin" value={profile.linkedin} onChange={handleChange} className={`${baseInputStyles} ${errors.linkedin ? errorInputStyles : validInputStyles}`} />
                 <ErrorMessage message={errors.linkedin} id="linkedin-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">GitHub</label>
+                <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="Your city and state. e.g., 'San Francisco, CA'">Location</TooltipLabel></label>
+                <input name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="e.g., San Francisco, CA" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="Full URL to your GitHub profile. e.g., 'github.com/yourusername'">GitHub</TooltipLabel></label>
                 <input name="github" value={profile.github} onChange={handleChange} className={`${baseInputStyles} ${errors.github ? errorInputStyles : validInputStyles}`} />
                 <ErrorMessage message={errors.github} id="github-error" />
             </div>
@@ -170,19 +192,19 @@ const EducationSection = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.education.map((edu) => (
-                <div key={edu.id} className="p-4 border rounded-lg relative group bg-gray-50/50">
-                    <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
+                <div key={edu.id} className="p-4 border rounded-lg relative group/item bg-gray-50/50">
+                    <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
                         <TrashIcon />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600">Institution</label><input value={edu.institution} onChange={e => handleChange(edu.id, 'institution', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Degree</label><input value={edu.degree} onChange={e => handleChange(edu.id, 'degree', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Field of Study</label><input value={edu.fieldOfStudy} onChange={e => handleChange(edu.id, 'fieldOfStudy', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">GPA</label><input value={edu.gpa} onChange={e => handleChange(edu.id, 'gpa', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Start Date</label><input value={edu.startDate} onChange={e => handleChange(edu.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">End Date</label><input value={edu.endDate} onChange={e => handleChange(edu.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600">Relevant Coursework</label><textarea value={edu.relevantCoursework} onChange={e => handleChange(edu.id, 'relevantCoursework', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600">Awards & Honors</label><textarea value={edu.awardsHonors} onChange={e => handleChange(edu.id, 'awardsHonors', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Name of the university, college, or bootcamp.">Institution</TooltipLabel></label><input value={edu.institution} onChange={e => handleChange(edu.id, 'institution', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="e.g., 'Bachelor of Science', 'M.S.', 'Ph.D.'">Degree</TooltipLabel></label><input value={edu.degree} onChange={e => handleChange(edu.id, 'degree', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="e.g., 'Computer Science', 'Business Administration'">Field of Study</TooltipLabel></label><input value={edu.fieldOfStudy} onChange={e => handleChange(edu.id, 'fieldOfStudy', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Enter your Grade Point Average. e.g., '3.8/4.0'">GPA</TooltipLabel></label><input value={edu.gpa} onChange={e => handleChange(edu.id, 'gpa', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Year you started. e.g., '2018'">Start Date</TooltipLabel></label><input value={edu.startDate} onChange={e => handleChange(edu.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Year you graduated or 'Present'. e.g., '2022'">End Date</TooltipLabel></label><input value={edu.endDate} onChange={e => handleChange(edu.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="List key courses relevant to your target roles.">Relevant Coursework</TooltipLabel></label><textarea value={edu.relevantCoursework} onChange={e => handleChange(edu.id, 'relevantCoursework', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="List any academic awards, scholarships, or honors.">Awards & Honors</TooltipLabel></label><textarea value={edu.awardsHonors} onChange={e => handleChange(edu.id, 'awardsHonors', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
                     </div>
                 </div>
             ))}
@@ -247,20 +269,20 @@ const ExperienceSection = React.memo(() => {
     return (
          <div className="space-y-6">
             {profile.experience.map((exp) => (
-                <div key={exp.id} className="p-4 border rounded-lg relative group bg-gray-50/50">
-                    <button onClick={() => removeExperience(exp.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
+                <div key={exp.id} className="p-4 border rounded-lg relative group/item bg-gray-50/50">
+                    <button onClick={() => removeExperience(exp.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
                         <TrashIcon />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600">Company</label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Title</label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Location</label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="The name of the company.">Company</TooltipLabel></label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Your job title for this role.">Title</TooltipLabel></label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="e.g., 'Remote' or 'City, CA'">Location</TooltipLabel></label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
                         <div></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Start Date</label><input value={exp.startDate} onChange={e => handleChange(exp.id, 'startDate', e.target.value)} placeholder="YYYY or MM/YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">End Date</label><input value={exp.endDate} onChange={e => handleChange(exp.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Start date of employment. e.g., 'MM/YYYY' or 'YYYY'">Start Date</TooltipLabel></label><input value={exp.startDate} onChange={e => handleChange(exp.id, 'startDate', e.target.value)} placeholder="YYYY or MM/YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="End date of employment. e.g., 'MM/YYYY' or 'Present'">End Date</TooltipLabel></label><input value={exp.endDate} onChange={e => handleChange(exp.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
                     </div>
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">Achievements / Responsibilities</label>
+                        <label className="block text-sm font-medium text-gray-700"><TooltipLabel text="List your accomplishments with strong action verbs and quantifiable results where possible.">Achievements / Responsibilities</TooltipLabel></label>
                         <div className="space-y-2 mt-1">
                             {exp.achievements.map(ach => (
                                 <div key={ach.id} className="flex items-center space-x-2">
@@ -311,17 +333,17 @@ const ProjectSection = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.projects.map(proj => (
-                <div key={proj.id} className="p-4 border rounded-lg relative group bg-gray-50/50">
-                    <button onClick={() => removeProject(proj.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
+                <div key={proj.id} className="p-4 border rounded-lg relative group/item bg-gray-50/50">
+                    <button onClick={() => removeProject(proj.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
                         <TrashIcon />
                     </button>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600">Project Name</label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Project URL</label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">Start Date</label><input value={proj.startDate} onChange={e => handleChange(proj.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600">End Date</label><input value={proj.endDate} onChange={e => handleChange(proj.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600">Technologies Used</label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="e.g., React, Node.js, PostgreSQL" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600">Description</label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="The official name of your project.">Project Name</TooltipLabel></label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Link to the live project or its repository (e.g., GitHub).">Project URL</TooltipLabel></label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Year the project started. e.g., '2023'">Start Date</TooltipLabel></label><input value={proj.startDate} onChange={e => handleChange(proj.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Year the project ended or 'Present'.">End Date</TooltipLabel></label><input value={proj.endDate} onChange={e => handleChange(proj.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Comma-separated list of key technologies. e.g., 'React, Node.js, PostgreSQL'">Technologies Used</TooltipLabel></label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="e.g., React, Node.js, PostgreSQL" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600"><TooltipLabel text="Briefly describe the project's purpose and your role.">Description</TooltipLabel></label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} /></div>
                     </div>
                 </div>
             ))}
@@ -383,14 +405,14 @@ const SimpleListItemForm = React.memo(({
     return (
         <div className="space-y-3">
             {items.map((item) => (
-                <div key={item.id} className="flex items-center space-x-2 group">
+                <div key={item.id} className="flex items-center space-x-2 group/item">
                     <input
                         value={item.name}
                         onChange={e => handleNameChange(item.id, e.target.value)}
                         placeholder={placeholder}
                         className={`${baseInputStyles} ${validInputStyles}`}
                     />
-                    <button onClick={() => handleRemove(item.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove ${placeholder} item`}>
+                    <button onClick={() => handleRemove(item.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove ${placeholder} item`}>
                         <TrashIcon />
                     </button>
                 </div>
@@ -429,7 +451,7 @@ const LanguagesSection = React.memo(() => {
     return (
         <div className="space-y-3">
             {profile.languages.map(lang => (
-                <div key={lang.id} className="flex items-center space-x-2 group">
+                <div key={lang.id} className="flex items-center space-x-2 group/item">
                     <input
                         value={lang.name}
                         onChange={e => handleChange(lang.id, 'name', e.target.value)}
@@ -446,7 +468,7 @@ const LanguagesSection = React.memo(() => {
                         <option value="fluent">Fluent</option>
                         <option value="native">Native</option>
                     </select>
-                    <button onClick={() => removeLanguage(lang.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove language item`}>
+                    <button onClick={() => removeLanguage(lang.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove language item`}>
                         <TrashIcon />
                     </button>
                 </div>
@@ -511,8 +533,8 @@ const CustomSections = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.customSections.map(cs => (
-                <div key={cs.id} className="p-4 border rounded-lg relative group bg-gray-50/50">
-                    <button onClick={() => removeSection(cs.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove custom section ${cs.title}`}>
+                <div key={cs.id} className="p-4 border rounded-lg relative group/item bg-gray-50/50">
+                    <button onClick={() => removeSection(cs.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove custom section ${cs.title}`}>
                         <TrashIcon />
                     </button>
                     <div>
@@ -551,7 +573,6 @@ const ProfileForm: React.FC = () => {
 
   const { profile, setProfile, saveProfile, lastSavedProfile } = profileContext;
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Set<AccordionSection>>(() => new Set(['personal'])); 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -612,14 +633,24 @@ const ProfileForm: React.FC = () => {
         setProfile(newProfile);
         saveProfile(newProfile);
 
-        // Expand all sections after autofill
-        const allSections: AccordionSection[] = [
-            'personal', 'summary', 'education', 'experience', 'projects',
-            'technicalSkills', 'softSkills', 'tools', 'languages', 'certifications',
-            'interests', 'custom', 'additional'
-        ];
-        setOpenSections(new Set(allSections));
-        setIsCollapsed(false);
+        // Intelligently expand sections that were populated by the resume import.
+        setOpenSections(prevOpenSections => {
+            const newOpenSections = new Set(prevOpenSections);
+            newOpenSections.add('personal'); // Always show personal info
+
+            if (parsedData.summary?.trim()) newOpenSections.add('summary');
+            if (parsedData.experience?.length) newOpenSections.add('experience');
+            if (parsedData.education?.length) newOpenSections.add('education');
+            if (parsedData.projects?.length) newOpenSections.add('projects');
+            if (parsedData.technicalSkills?.length) newOpenSections.add('technicalSkills');
+            if (parsedData.softSkills?.length) newOpenSections.add('softSkills');
+            if (parsedData.tools?.length) newOpenSections.add('tools');
+            if (parsedData.languages?.length) newOpenSections.add('languages');
+            if (parsedData.certifications?.length) newOpenSections.add('certifications');
+            if (parsedData.interests?.length) newOpenSections.add('interests');
+            
+            return newOpenSections;
+        });
 
     } catch (err: any) {
         setParsingError(err.message || "An unexpected error occurred during parsing.");
@@ -634,24 +665,28 @@ const ProfileForm: React.FC = () => {
     {isParsing && <ParsingModal />}
     <div className="bg-white p-6 rounded-2xl shadow-lg">
       <div className="border-b pb-6">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept=".pdf,.txt,.md"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isParsing}
-          className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-accent hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-          Autofill from Resume
-        </button>
-        <p className="mt-2 text-sm text-gray-500">Upload a resume (.pdf, .txt, .md) to let the AI automatically populate your profile.</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral">Your Profile</h2>
+          </div>
+          <div className="text-right">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.txt,.md"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isParsing}
+              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              Autofill from Resume
+            </button>
+            <p className="mt-2 text-xs text-gray-500">Accepted formats: .pdf, .txt, .md</p>
+          </div>
+        </div>
         
         {parsingError && (
           <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
@@ -666,13 +701,7 @@ const ProfileForm: React.FC = () => {
         )}
       </div>
 
-      <div className="flex justify-between items-center cursor-pointer mt-4" onClick={() => setIsCollapsed(!isCollapsed)}>
-        <h2 className="text-2xl font-bold text-neutral">Your Profile</h2>
-        <button className="p-2 rounded-full hover:bg-gray-100" aria-label={isCollapsed ? 'Expand profile' : 'Collapse profile'}>
-          <ArrowIcon collapsed={isCollapsed} />
-        </button>
-      </div>
-      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[7000px] opacity-100 mt-4'}`}>
+      <div className="mt-6">
         <div className="space-y-2">
             <AccordionItem sectionId="personal" title="Personal Info" isOpen={openSections.has('personal')} setIsOpen={() => handleToggle('personal')}>
               <PersonalInfoSection />

@@ -13,7 +13,8 @@
     "@google/genai": "^1.26.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "pdfjs-dist": "^5.4.296"
+    "pdfjs-dist": "^5.4.296",
+    "dist": "^0.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
