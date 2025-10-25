@@ -91,6 +91,9 @@ export interface ProfileData {
   selectedResumeTemplate: string;
   selectedCoverLetterTemplate: string;
   sectionOrder?: string[];
+  targetJobTitle: string;
+  companyKeywords: string;
+  keySkillsToHighlight: string;
 }
 
 export interface ParsedCoverLetter {
@@ -114,10 +117,8 @@ export interface GenerationOptions {
   generateCoverLetter: boolean;
   resumeLength: '1 page max' | '2 pages max';
   includeSummary: boolean;
-  includeCoverLetterSkills: boolean;
   tone: number;
   technicality: number;
-  focus: string;
   thinkingMode: boolean;
   uploadedResume: string | null;
   uploadedCoverLetter: string | null;

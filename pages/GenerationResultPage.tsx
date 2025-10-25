@@ -220,7 +220,7 @@ const GenerationResultPage: React.FC = () => {
                     <div className="text-center mb-12 animate-slide-in-up">
                         <h1 className="text-4xl font-extrabold text-neutral tracking-tight">Your Generated Documents</h1>
                         <p className="mt-4 max-w-3xl mx-auto text-lg text-gray-600">
-                            Here are the generated document(s). Please feel free to edit the text or the order of items and save when you are satisfied. When you want it in PDF form, please press the "Download PDF" button.
+                            Here are the generated document(s). Feel free to edit the text or the order of items and save when you are satisfied.
                         </p>
                     </div>
 

@@ -4,19 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Resume & Cover Letter Builder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
             colors: {
-              primary: '#1e40af',
-              secondary: '#3b82f6',
-              accent: '#9333ea',
-              neutral: '#1f2937',
+              primary: '#2563eb', // A strong, friendly blue
+              secondary: '#4f46e5', // A vibrant indigo for accents
+              accent: '#db2777', // A bold pink for specific highlights
+              neutral: '#111827', // Dark gray for primary text
               'base-100': '#ffffff',
-              'base-200': '#f3f4f6',
-              'base-300': '#e5e7eb',
+              'base-200': '#f3f4f6', // Light gray for backgrounds
+              'base-300': '#e5e7eb', // Slightly darker gray
+            },
+            boxShadow: {
+                'lg': '0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)',
+                'xl': '0 20px 25px -5px rgb(0 0 0 / 0.07), 0 8px 10px -6px rgb(0 0 0 / 0.07)',
+                '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.15)',
             },
             animation: {
               'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -51,7 +62,7 @@
 }
 </script>
 </head>
-  <body class="bg-base-200">
+  <body class="bg-base-200 font-sans">
     <div id="root"></div>
   </body>
 </html>

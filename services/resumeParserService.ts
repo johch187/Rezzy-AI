@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { ProfileData } from '../types';
-import { readFileContent } from '../utils';
+import { readFileContent, parseError } from '../utils';
 
 if (!process.env.API_KEY) {
     console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
@@ -10,39 +10,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const LAST_PARSE_TIMESTAMP_KEY = 'lastResumeParseTimestamp';
 const PRO_MODEL_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-
-const parseError = (error: any): { message: string, isRetryable: boolean } => {
-    const errorMessage = String(error?.message || error).toLowerCase();
-
-    // --- Gemini API & Network Errors ---
-    if (errorMessage.includes('api key not valid')) {
-        return { message: "Invalid API Key: The API key provided is not valid. Please ensure you have configured it correctly.", isRetryable: false };
-    }
-    if (errorMessage.includes('content has been blocked') || errorMessage.includes('safety policy')) {
-        return { message: "Content Blocked: Your request was blocked due to safety settings. Please modify your input and try again.", isRetryable: false };
-    }
-    if (errorMessage.includes('400') || errorMessage.includes('bad request')) {
-        return { message: "Invalid Request: The data sent to the AI was malformed. This could be due to a bug. Please try again, and if the problem persists, contact support.", isRetryable: false };
-    }
-    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
-        return { message: "Service Busy: The AI service is currently experiencing high traffic. Please wait a moment before trying again.", isRetryable: true };
-    }
-    if (errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable') || errorMessage.includes('internal error')) {
-        return { message: "Service Unavailable: The AI service is temporarily unavailable. This is usually a short-term issue. Please try again in a few moments.", isRetryable: true };
-    }
-    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch') || errorMessage.includes('network error') || errorMessage.includes('timed out')) {
-         return { message: "Network Error: We couldn't connect to the service. Please check your internet connection and try again.", isRetryable: true };
-    }
-    if (error instanceof SyntaxError || errorMessage.includes('json')) {
-        return { message: "Invalid AI Response: The model returned a response in an unexpected format. This can be a temporary issue, please try again.", isRetryable: true };
-    }
-    
-    // Default/Unknown Errors
-    console.error("Unhandled API Error:", error);
-    const displayMessage = `An unexpected error occurred. Please try again. Details: ${error.message || 'No additional details available.'}`;
-    return { message: displayMessage, isRetryable: false };
-};
-
 
 // --- Resume Parsing Logic ---
 
@@ -70,6 +37,14 @@ const PARSING_PROMPT_DETAILS = `
         - **Tools:** e.g., Git, Docker, JIRA, Figma.
         - **Soft Skills:** Infer from descriptions of teamwork, leadership, etc. (e.g., Project Management, Client Relations).
 
+    **Target Role & Style Inference (Critical):**
+    Beyond direct extraction, you must synthesize the entire resume to infer the candidate's career goals and style.
+    - \`targetJobTitle\`: This is crucial. Analyze the career progression, years of experience, and skills to infer the logical next step or target role. It might be the current role or a more senior one (e.g., infer 'Senior Software Engineer' for someone with 5 years as a Software Engineer).
+    - \`industry\`: Infer the primary industry from company descriptions and roles (e.g., 'FinTech', 'Healthcare Technology', 'SaaS').
+    - \`experienceLevel\`: Based on the years of experience and roles, determine the seniority: 'internship', 'entry', 'mid', 'senior', or 'executive'.
+    - \`keySkillsToHighlight\`: Identify the 5-7 most critical and frequently mentioned skills that define the candidate's core expertise. This should be a comma-separated string.
+    - \`vibe\`: Analyze the language of the resume (e.g., action verbs, project descriptions) to create a short phrase describing the writing style and focus. Examples: 'Professional, results-oriented, and collaborative.', 'Creative and user-focused with a passion for design.', 'Data-driven and analytical with a focus on optimization.'
+
     **Common Pitfalls to Avoid:**
     - **Column Confusion:** Do not read text straight across multi-column layouts.
     - **Header/Footer Noise:** Ignore repeating text like page numbers.
@@ -79,7 +54,7 @@ const PARSING_SCHEMA = {
     type: Type.OBJECT,
     properties: {
       fullName: { type: Type.STRING, description: "Full name of the candidate." },
-      jobTitle: { type: Type.STRING, description: "The candidate's current or most recent job title." },
+      targetJobTitle: { type: Type.STRING, description: "The candidate's inferred target job title, which might be a step up from their current role." },
       email: { type: Type.STRING, description: "Email address." },
       phone: { type: Type.STRING, description: "Phone number." },
       website: { type: Type.STRING, description: "Personal website or portfolio URL." },
@@ -156,6 +131,7 @@ const PARSING_SCHEMA = {
       industry: { type: Type.STRING, description: "Inferred target industry." },
       experienceLevel: { type: Type.STRING, description: "Inferred experience level.", enum: ['internship', 'entry', 'mid', 'senior', 'executive'] },
       vibe: { type: Type.STRING, description: "Inferred professional vibe or focus." },
+      keySkillsToHighlight: { type: Type.STRING, description: "A comma-separated string of the 5-7 most important skills to highlight." },
     }
 };
 
@@ -221,23 +197,40 @@ const _parseResumeText = async (resumeText: string, modelName: 'gemini-2.5-pro' 
       ${PARSING_PROMPT_DETAILS}
     `;
 
-  try {
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: PARSING_SCHEMA,
-            ...(modelName === 'gemini-2.5-pro' && { thinkingConfig: { thinkingBudget: 32768 } })
-        }
-    });
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF_MS = 1000;
+  let lastError: Error | null = null;
 
-    return transformApiResponseToProfile(JSON.parse(response.text.trim()));
-  } catch (error: any) {
-    console.error(`Error during resume parsing with ${modelName}:`, error);
-    const { message } = parseError(error);
-    throw new Error(message);
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+        const response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: PARSING_SCHEMA,
+                ...(modelName === 'gemini-2.5-pro' && { thinkingConfig: { thinkingBudget: 32768 } })
+            }
+        });
+
+        return transformApiResponseToProfile(JSON.parse(response.text.trim()));
+    } catch (error: any) {
+        lastError = error;
+        const { message, isRetryable } = parseError(error);
+
+        if (isRetryable && i < MAX_RETRIES - 1) {
+            const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
+            console.warn(`Resume parsing failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+            console.error(`Non-retryable or final error during resume parsing with ${modelName}:`, error);
+            throw new Error(message);
+        }
+    }
   }
+
+  // This line should not be reachable if the loop logic is correct
+  throw new Error(parseError(lastError).message || 'Failed to parse resume after multiple attempts.');
 };
 
 

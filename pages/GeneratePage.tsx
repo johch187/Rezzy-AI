@@ -45,10 +45,8 @@ const GeneratePage: React.FC = () => {
     generateCoverLetter: true,
     resumeLength: '1 page max',
     includeSummary: true,
-    includeCoverLetterSkills: false,
     tone: 50,
     technicality: 50,
-    focus: '',
     thinkingMode: false,
     uploadedResume: null,
     uploadedCoverLetter: null,
@@ -313,12 +311,6 @@ const GeneratePage: React.FC = () => {
                                 <span className="text-xs text-gray-500">General</span>
                               </div>
                             </div>
-                            <div>
-                              <TooltipLabel htmlFor="focus" text="Specify keywords or key phrases you want the AI to strongly emphasize and highlight throughout your resume and cover letter.">
-                                Personalization Focus (Keywords to Emphasize)
-                              </TooltipLabel>
-                              <textarea id="focus" value={options.focus} onChange={(e) => setOptions(o => ({...o, focus: e.target.value}))} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" placeholder="e.g., 'customer success, SaaS sales, account management' or 'React, Node.js, AWS, Agile methodologies'" />
-                            </div>
                         </div>
                     </ContentAccordion>
                     
@@ -369,8 +361,8 @@ const GeneratePage: React.FC = () => {
                         {/* Resume Group */}
                         <div>
                             <div className="flex items-center">
-                                <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                <label htmlFor="resume" className="ml-3 block text-sm font-medium text-gray-900">Create Resume</label>
+                                <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">Create Resume</label>
                             </div>
                             {options.generateResume && (
                                 <div className="pl-7 mt-4 space-y-4">
@@ -397,22 +389,9 @@ const GeneratePage: React.FC = () => {
                         {/* Cover Letter Group */}
                         <div className="pt-6 border-t border-gray-200">
                              <div className="flex items-center">
-                                <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                <label htmlFor="coverLetter" className="ml-3 block text-sm font-medium text-gray-900">Create Cover Letter</label>
+                                <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">Create Cover Letter</label>
                             </div>
-                            {options.generateCoverLetter && (
-                                <div className="pl-7 mt-4 space-y-4">
-                                    <div className="relative flex items-start">
-                                        <div className="flex h-6 items-center">
-                                            <input id="cover-letter-skills" type="checkbox" checked={options.includeCoverLetterSkills} onChange={(e) => setOptions(o => ({...o, includeCoverLetterSkills: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                        </div>
-                                        <div className="ml-3 text-sm leading-6">
-                                            <label htmlFor="cover-letter-skills" className="font-medium text-gray-900">Include Key Skills Section</label>
-                                            <p className="text-gray-500">Adds a bulleted list of your most relevant skills to the cover letter.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

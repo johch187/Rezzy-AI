@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-base-300 text-gray-600">
+    <footer className="bg-base-100 border-t border-base-300 text-gray-500">
       <div className="container mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left space-y-4 md:space-y-0">
           <div className="text-sm">
@@ -16,10 +16,11 @@ const Footer: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-6 text-sm">
-            <Link to="/subscription" className="hover:underline">Pricing</Link>
-            <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
-            <Link to="/terms" className="hover:underline">Terms of Service</Link>
-            <Link to="/gdpr" className="hover:underline">GDPR</Link>
+            <Link to="/" className="hover:text-primary hover:underline">Home</Link>
+            <Link to="/subscription" className="hover:text-primary hover:underline">Pricing</Link>
+            <Link to="/privacy" className="hover:text-primary hover:underline">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-primary hover:underline">Terms of Service</Link>
+            <Link to="/gdpr" className="hover:text-primary hover:underline">GDPR</Link>
           </div>
         </div>
       </div>

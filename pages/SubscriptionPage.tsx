@@ -33,7 +33,7 @@ const SubscriptionPage: React.FC = () => {
     const buttonClasses = isCurrent
       ? "w-full text-center px-4 py-3 border border-gray-300 text-sm font-bold rounded-lg text-gray-500 bg-gray-100 cursor-default"
       : isPopular
-      ? "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-primary hover:bg-blue-800 transition-transform transform hover:scale-105 shadow-lg hover:shadow-primary/50"
+      ? "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-primary hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg hover:shadow-primary/50"
       : "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-neutral hover:bg-gray-800 transition-transform transform hover:scale-105";
 
     return (
@@ -61,7 +61,7 @@ const SubscriptionPage: React.FC = () => {
 
         <div className="mt-10">
           <button disabled={isCurrent} className={buttonClasses}>
-            {isCurrent ? "Current Plan" : "Get Started"}
+            {isCurrent ? "Your Current Plan" : "Get Started"}
           </button>
         </div>
       </div>
@@ -69,14 +69,14 @@ const SubscriptionPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-50 py-12 sm:py-16 animate-fade-in">
+    <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Our Subscription Plans</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Find the Perfect Plan</h1>
             <p className="mt-4 text-xl text-gray-500">
-              Choose the plan that's right for you. Upgrade, downgrade, or cancel anytime.
+              Start for free, and unlock powerful features when you're ready.
             </p>
           </div>
 
@@ -91,7 +91,7 @@ const SubscriptionPage: React.FC = () => {
                 checked={billingCycle === 'annually'}
                 onChange={() => setBillingCycle(prev => prev === 'monthly' ? 'annually' : 'monthly')}
               />
-              <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-gray-50 peer-focus:ring-primary peer-checked:bg-primary transition-colors"></div>
+              <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-base-200 peer-focus:ring-primary peer-checked:bg-primary transition-colors"></div>
               <div className="absolute top-1 left-1 bg-white border-gray-300 border rounded-full h-6 w-6 peer-checked:translate-x-full transition-transform"></div>
             </label>
             <span className={`font-medium transition-colors ${billingCycle === 'annually' ? 'text-primary' : 'text-gray-500'}`}>
@@ -132,9 +132,9 @@ const SubscriptionPage: React.FC = () => {
 
           {/* Boost Applications Section */}
           <div className="mt-20 text-center bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-200">
-            <h3 className="text-3xl font-bold text-neutral">Boost Your Applications</h3>
+            <h3 className="text-3xl font-bold text-neutral">Need a Quick Boost?</h3>
             <p className="mt-3 text-gray-600 max-w-2xl mx-auto">
-              Need a few extra documents to apply for more roles? Purchase a one-time generation pack. No subscription required, and your generations never expire.
+              Purchase a one-time pack of tokens for extra document generations. They never expire and there's no subscription required.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 max-w-lg mx-auto">
                 <select 
@@ -145,7 +145,7 @@ const SubscriptionPage: React.FC = () => {
                     <option value="20">20 Generations Pack - €5</option>
                     <option value="50">50 Generations Pack - €10</option>
                 </select>
-                <button className="w-full sm:w-auto flex-shrink-0 text-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg text-white bg-accent hover:bg-purple-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+                <button className="w-full sm:w-auto flex-shrink-0 text-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
                   Purchase Pack
                 </button>
             </div>

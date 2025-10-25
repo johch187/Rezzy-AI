@@ -1,69 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { ProfileData, GenerationOptions, GeneratedContent } from '../types';
+import { parseError } from '../utils';
 
 if (!process.env.API_KEY) {
     console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-
-/**
- * Parses a caught error object from an API call and returns a user-friendly message
- * and a flag indicating if the operation is retryable.
- * @param error The caught error object.
- * @returns An object with a user-friendly `message` and a boolean `isRetryable`.
- */
-const parseError = (error: any): { message: string, isRetryable: boolean } => {
-    const errorMessage = String(error?.message || error).toLowerCase();
-    const errorCode = (error as any).code;
-
-    // --- Scraping-specific errors (from fetchJobDescriptionFromUrl) ---
-    if (errorCode === 'NOT_FOUND') {
-        return { message: "The page at the provided URL could not be found (404 Not Found). Please check if the URL is correct.", isRetryable: false };
-    }
-    if (errorCode === 'ACCESS_DENIED') {
-        return { message: "Access to the URL was denied. This often happens with sites that require a login or have bot protection. Please paste the description manually.", isRetryable: false };
-    }
-    if (errorCode === 'NO_CONTENT') {
-        return { message: "We accessed the page, but couldn't find a job description. The content might be loaded in a way that's hard for the AI to read. Please paste it manually.", isRetryable: false };
-    }
-    if (errorCode === 'SERVER_ERROR') {
-        return { message: "The server for the URL reported an error (e.g., 500 Internal Server Error). The site might be temporarily down. Please try again later or paste the description manually.", isRetryable: true };
-    }
-
-    // --- Gemini API & Network Errors ---
-
-    // Non-Retryable Errors (User action required or permanent failure)
-    if (errorMessage.includes('api key not valid')) {
-        return { message: "Invalid API Key: The API key provided is not valid. Please ensure you have configured it correctly.", isRetryable: false };
-    }
-    if (errorMessage.includes('content has been blocked') || errorMessage.includes('safety policy')) {
-        return { message: "Content Blocked: Your request was blocked due to safety settings. Please modify your input and try again.", isRetryable: false };
-    }
-    if (errorMessage.includes('400') || errorMessage.includes('bad request')) {
-        return { message: "Invalid Request: The data sent to the AI was malformed. This could be due to a bug. Please try again, and if the problem persists, contact support.", isRetryable: false };
-    }
-    
-    // Retryable Errors (Temporary issues)
-    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
-        return { message: "Service Busy: The AI service is currently experiencing high traffic. Please wait a moment before trying again.", isRetryable: true };
-    }
-    if (errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable') || errorMessage.includes('internal error')) {
-        return { message: "Service Unavailable: The AI service is temporarily unavailable. This is usually a short-term issue. Please try again in a few moments.", isRetryable: true };
-    }
-    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch') || errorMessage.includes('network error') || errorMessage.includes('timed out')) {
-         return { message: "Network Error: We couldn't connect to the service. Please check your internet connection and try again.", isRetryable: true };
-    }
-    if (error instanceof SyntaxError || errorMessage.includes('json')) {
-        return { message: "Invalid AI Response: The model returned a response in an unexpected format. This can be a temporary issue, please try again.", isRetryable: true };
-    }
-    
-    // Default/Unknown Errors
-    console.error("Unhandled API Error:", error);
-    const displayMessage = `An unexpected error occurred. Please try again. Details: ${error.message || 'No additional details available.'}`;
-    return { message: displayMessage, isRetryable: false };
-};
-
 
 const MOCK_RESPONSE: GeneratedContent = {
   resume: `# Alex Doe
@@ -238,10 +181,13 @@ export const generateTailoredDocuments = async (
     **4. Detailed Generation Instructions & Constraints:**
     You MUST follow every instruction below to meet the user's requirements.
 
-    - **Career Goals:**
+    - **Career Goals & Role Definition:**
+      - **Target Job Title:** The candidate is applying for the role of "${profile.targetJobTitle}".
       - **Industry:** The candidate is targeting the "${profile.industry}" industry.
       - **Experience Level:** The role is at the "${profile.experienceLevel}" level.
-      - **Vibe/Focus:** The documents must convey a professional vibe that is: "${profile.vibe}".
+      - **Company Keywords:** Pay attention to these keywords about the company's culture, products, or values: "${profile.companyKeywords}".
+      - **Key Skills to Highlight:** The candidate wants to emphasize these specific skills: "${profile.keySkillsToHighlight}". Ensure these are prominent.
+      - **Writing Style & Focus:** The documents must convey a professional vibe that is: "${profile.vibe}".
 
     - **Template & Formatting:**
       - **Resume Template:** The user chose the "${profile.selectedResumeTemplate}" template style. The resume's structure and feel should reflect this choice (e.g., 'classic' is traditional, 'tech' is modern and skill-focused).
@@ -250,12 +196,11 @@ export const generateTailoredDocuments = async (
 
     - **Content Rules:**
       - **Resume Summary:** ${options.includeSummary ? 'The resume MUST include a professional summary section at the top. Use the user-provided summary as a strong base, but refine it to perfectly match the job description.' : 'The resume MUST NOT include a professional summary section.'}
-      - **Cover Letter Skills:** ${options.includeCoverLetterSkills ? 'The cover letter MUST include a dedicated "Key Skills" section. This section should be a concise, bulleted list of 3-5 of the most relevant skills from the candidate\'s profile that directly apply to the job description.' : 'The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate "Key Skills" section.'}
+      - **Cover Letter Skills:** The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate "Key Skills" section.
 
     - **Style & Tone:**
       - **Tone Scale:** On a scale of 0 (extremely formal) to 100 (very personal), the user selected: ${options.tone}. Adjust your writing accordingly.
       - **Language Style Scale:** On a scale of 0 (highly technical/jargon) to 100 (general audience), the user selected: ${options.technicality}.
-      - **Keywords to Emphasize:** The user wants to specifically highlight these topics: "${options.focus}". Ensure these are prominent.
 
     - **Documents to Generate:**
       - **Create Resume:** ${options.generateResume}

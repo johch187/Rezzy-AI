@@ -2,10 +2,10 @@ import React from 'react';
 
 const PrivacyPolicyPage: React.FC = () => {
   return (
-    <div className="bg-white py-12 sm:py-16 animate-fade-in">
+    <div className="bg-white py-16 sm:py-24 animate-fade-in">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <div className="prose prose-lg text-gray-700">
+          <div className="prose prose-lg max-w-none prose-h1:text-neutral prose-h2:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
             <h1 className="text-center">Privacy Policy</h1>
             <p>
               Johanchen AB (“we” or “us”) respects your privacy and collects minimal

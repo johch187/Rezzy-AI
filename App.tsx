@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import type { ProfileData } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import LandingPage from './pages/LandingPage';
 
 const initialProfile: ProfileData = {
   fullName: 'Alex Doe',
@@ -50,6 +51,9 @@ const initialProfile: ProfileData = {
   vibe: 'Professional, results-oriented, and collaborative.',
   selectedResumeTemplate: 'modern',
   selectedCoverLetterTemplate: 'professional',
+  targetJobTitle: 'Senior Software Engineer',
+  companyKeywords: 'Fast-paced, innovative, SaaS',
+  keySkillsToHighlight: 'React, TypeScript, Node.js, AWS, System Design',
 };
 
 export const ProfileContext = createContext<{
@@ -112,11 +116,12 @@ const App: React.FC = () => {
   return (
     <ProfileContext.Provider value={contextValue}>
       <HashRouter>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-base-200 flex flex-col">
           <Header />
           <main className="flex-grow">
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/builder" element={<HomePage />} />
               <Route path="/generate" element={<GeneratePage />} />
               <Route path="/generate/results" element={<GenerationResultPage />} />
               <Route path="/subscription" element={<SubscriptionPage />} />

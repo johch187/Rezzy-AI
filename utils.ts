@@ -6,6 +6,64 @@ import type { TextItem, PDFPageProxy } from 'dist/types/src/display/api';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
 
 /**
+ * Parses a caught error object from an API call and returns a user-friendly message
+ * and a flag indicating if the operation is retryable.
+ * @param error The caught error object.
+ * @returns An object with a user-friendly `message` and a boolean `isRetryable`.
+ */
+export const parseError = (error: any): { message: string, isRetryable: boolean } => {
+    const errorMessage = String(error?.message || error).toLowerCase();
+    const errorCode = (error as any).code;
+
+    // --- Scraping-specific errors (from fetchJobDescriptionFromUrl) ---
+    if (errorCode === 'NOT_FOUND') {
+        return { message: "The page at the provided URL could not be found (404 Not Found). Please check if the URL is correct.", isRetryable: false };
+    }
+    if (errorCode === 'ACCESS_DENIED') {
+        return { message: "Access to the URL was denied. This often happens with sites that require a login or have bot protection. Please paste the description manually.", isRetryable: false };
+    }
+    if (errorCode === 'NO_CONTENT') {
+        return { message: "We accessed the page, but couldn't find a job description. The content might be loaded in a way that's hard for the AI to read. Please paste it manually.", isRetryable: false };
+    }
+    if (errorCode === 'SERVER_ERROR') {
+        return { message: "The server for the URL reported an error (e.g., 500 Internal Server Error). The site might be temporarily down. Please try again later or paste the description manually.", isRetryable: true };
+    }
+
+    // --- Gemini API & Network Errors ---
+
+    // Non-Retryable Errors (User action required or permanent failure)
+    if (errorMessage.includes('api key not valid')) {
+        return { message: "Invalid API Key: The API key provided is not valid. Please ensure you have configured it correctly.", isRetryable: false };
+    }
+    if (errorMessage.includes('content has been blocked') || errorMessage.includes('safety policy')) {
+        return { message: "Content Blocked: Your request was blocked due to safety settings. Please modify your input and try again.", isRetryable: false };
+    }
+    if (errorMessage.includes('400') || errorMessage.includes('bad request')) {
+        return { message: "Invalid Request: The data sent to the AI was malformed. This could be due to a bug. Please try again, and if the problem persists, contact support.", isRetryable: false };
+    }
+    
+    // Retryable Errors (Temporary issues)
+    if (errorMessage.includes('rate limit') || errorMessage.includes('resource has been exhausted')) {
+        return { message: "Service Busy: The AI service is currently experiencing high traffic. Please wait a moment before trying again.", isRetryable: true };
+    }
+    if (errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable') || errorMessage.includes('internal error')) {
+        return { message: "Service Unavailable: The AI service is temporarily unavailable. This is usually a short-term issue. Please try again in a few moments.", isRetryable: true };
+    }
+    if (errorMessage.includes('network request failed') || errorMessage.includes('fetch') || errorMessage.includes('network error') || errorMessage.includes('timed out')) {
+         return { message: "Network Error: We couldn't connect to the service. Please check your internet connection and try again.", isRetryable: true };
+    }
+    if (error instanceof SyntaxError || errorMessage.includes('json')) {
+        return { message: "Invalid AI Response: The model returned a response in an unexpected format. This can be a temporary issue, please try again.", isRetryable: true };
+    }
+    
+    // Default/Unknown Errors
+    console.error("Unhandled API Error:", error);
+    const displayMessage = `An unexpected error occurred. Please try again. Details: ${error.message || 'No additional details available.'}`;
+    return { message: displayMessage, isRetryable: false };
+};
+
+
+/**
  * Type guard to check if an item from PDF's text content is a TextItem (has 'str' property).
  */
 function isTextItem(item: any): item is TextItem {
