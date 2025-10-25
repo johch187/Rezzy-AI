@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import type { ProfileData, Experience, Education, Project, ParsedCoverLetter, Skill } from '../types';
-import { TrashIcon, XCircleIcon } from './Icons';
+import { TrashIcon, XCircleIcon, DownloadIcon, EditIcon, SaveIcon, CheckIcon } from './Icons';
 
 // --- UTILITY & HELPER COMPONENTS ---
 
@@ -342,6 +342,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   const [initialSectionOrder, setInitialSectionOrder] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [history, setHistory] = useState<HistoryState[]>([]);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -398,6 +399,22 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     }
     onSave(newMarkdown, newFormData);
     setIsEditing(false);
+    setShowSaveConfirmation(true);
+    setTimeout(() => setShowSaveConfirmation(false), 3000);
+  };
+
+  const handleDownload = () => {
+    const filename = documentType === 'resume' ? 'resume.md' : 'cover-letter.md';
+    const blob = new Blob([editedContent], { type: 'text/markdown;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleCancel = () => {
@@ -630,22 +647,39 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
           )
       )}
           
-      <div className="mt-6 flex flex-col items-end">
-          <div className="flex flex-wrap justify-end items-center gap-3">
-              {isEditing ? (
-                <>
-                  <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
-                    Undo
-                  </button>
-                  <button onClick={handleCancel} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Cancel</button>
-                  <button onClick={handleSave} disabled={!isDirty} className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400">Save Changes</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Edit</button>
-                </>
+      <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-end items-center gap-4">
+               {showSaveConfirmation && (
+                  <div className="flex items-center text-green-600 text-sm font-medium transition-opacity duration-300 animate-fade-in" role="status">
+                      <CheckIcon /> <span className="ml-2">Saved successfully!</span>
+                  </div>
               )}
+              <div className="flex flex-wrap justify-end items-center gap-3">
+                  {isEditing ? (
+                    <>
+                      <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
+                        Undo
+                      </button>
+                      <button onClick={handleCancel} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Cancel</button>
+                      <button onClick={handleSave} disabled={!isDirty} className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400">
+                        <SaveIcon className="h-5 w-5 mr-2" />
+                        Save
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={handleDownload} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <DownloadIcon className="h-5 w-5 mr-2" />
+                        Download
+                      </button>
+                      <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <EditIcon className="h-5 w-5 mr-2" />
+                        Edit
+                      </button>
+                    </>
+                  )}
+              </div>
           </div>
       </div>
     </div>

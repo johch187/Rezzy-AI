@@ -170,6 +170,12 @@ const GeneratePage: React.FC = () => {
   ) : (
     <span>Fetch</span>
   );
+  
+  const generateButton = (
+    <button onClick={handleGenerate} disabled={!jobDescription} className="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-primary py-3 px-8 text-base font-medium text-white shadow-sm hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105">
+      {'Generate Documents'}
+    </button>
+  );
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -186,9 +192,9 @@ const GeneratePage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <main className="lg:col-span-2">
-             <div className="bg-white p-8 rounded-2xl shadow-lg">
+             <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-start cursor-pointer" onClick={() => setIsConfigCollapsed(!isConfigCollapsed)}>
                     <div>
                         <h1 className="text-3xl font-bold text-neutral">Tailor Your Application</h1>
@@ -338,14 +344,16 @@ const GeneratePage: React.FC = () => {
                     </ContentAccordion>
                 </div>
             </div>
-            
+            {/* Mobile-only Generate Button */}
+            <div className="mt-6 lg:hidden">
+              {generateButton}
+            </div>
           </main>
           
           <aside className="lg:col-span-1 sticky top-24 space-y-6">
-            <div className="w-full">
-                <button onClick={handleGenerate} disabled={!jobDescription} className="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-primary py-3 px-8 text-base font-medium text-white shadow-sm hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105">
-                {'Generate Documents'}
-                </button>
+            {/* Desktop-only Generate Button */}
+            <div className="w-full hidden lg:block">
+              {generateButton}
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-lg">
