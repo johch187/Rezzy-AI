@@ -95,6 +95,8 @@ const Header: React.FC = () => {
                         <div className="py-1" role="none">
                           <Link to="/" onClick={() => setDropdownOpen(false)} className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">My Profile</Link>
                           <Link to="/account" onClick={() => setDropdownOpen(false)} className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Account Settings</Link>
+                          <div className="border-t border-gray-100 my-1"></div>
+                          <Link to="/login" onClick={() => setDropdownOpen(false)} className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Login/Logout</Link>
                         </div>
                     </div>
                   )}

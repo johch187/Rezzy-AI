@@ -8,6 +8,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import GDPRPage from './pages/GDPRPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
+import LoginPage from './pages/LoginPage';
 import type { ProfileData } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -120,6 +121,7 @@ const App: React.FC = () => {
               <Route path="/generate/results" element={<GenerationResultPage />} />
               <Route path="/subscription" element={<SubscriptionPage />} />
               <Route path="/account" element={<ManageSubscriptionPage />} />
+              <Route path="/login" element={<LoginPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/gdpr" element={<GDPRPage />} />
