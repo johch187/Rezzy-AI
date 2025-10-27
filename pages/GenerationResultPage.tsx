@@ -39,9 +39,18 @@ const THINKING_STEPS = [
 const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode: boolean }> = ({ currentStep, thinkingMode }) => {
     const steps = thinkingMode ? THINKING_STEPS : STEPS;
     const title = thinkingMode ? "AI is Thinking Deeply..." : "AI is Generating...";
+    const totalSteps = steps.length;
 
     return (
-        <div className="bg-white p-8 rounded-2xl shadow-lg animate-fade-in" role="status" aria-live="polite">
+        <div 
+            className="bg-white p-8 rounded-2xl shadow-lg animate-fade-in" 
+            role="progressbar" 
+            aria-live="polite"
+            aria-valuemin={0}
+            aria-valuemax={totalSteps}
+            aria-valuenow={currentStep}
+            aria-valuetext={`Step ${currentStep} of ${totalSteps}: ${steps[currentStep-1]?.text || 'Initializing'}`}
+        >
             <h2 className="text-2xl font-bold text-neutral text-center">{title}</h2>
             <p className="text-gray-500 text-center mt-2">Your documents are being crafted. This may take a moment.</p>
             <div className="mt-8 space-y-4">
@@ -74,6 +83,7 @@ const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode:
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();
     const profileContext = useContext(ProfileContext);
+    const { tokens, setTokens } = profileContext!;
 
     const { profile, options, jobDescription } = location.state as {
         profile: ProfileData;
@@ -196,6 +206,18 @@ const GenerationResultPage: React.FC = () => {
             setParsedCoverLetter(newStructuredData);
         }
     }, []);
+    
+    // Determine layout based on the number of generated documents
+    const hasResume = !isLoading && generatedContent?.resume && generatedContent.resume !== 'null';
+    const hasCoverLetter = !isLoading && generatedContent?.coverLetter && generatedContent.coverLetter !== 'null';
+    const documentCount = (hasResume ? 1 : 0) + (hasCoverLetter ? 1 : 0);
+
+    const containerClasses = documentCount === 1
+      ? "flex justify-center" // Center when only one document
+      : "grid grid-cols-1 lg:grid-cols-2 gap-8";
+
+    // When there's only one document, we constrain its width to look good.
+    const itemWrapperClasses = documentCount === 1 ? "w-full max-w-3xl" : "";
 
     return (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -224,26 +246,30 @@ const GenerationResultPage: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-in-up">
-                        {generatedContent.resume && (
-                            <div className="space-y-4">
+                    <div className={`w-full ${containerClasses} animate-slide-in-up`}>
+                        {hasResume && (
+                            <div className={`space-y-4 ${itemWrapperClasses}`}>
                                 <h2 className="text-3xl font-bold text-neutral">Generated Resume</h2>
                                 <EditableDocument
                                     documentType="resume"
-                                    initialContent={generatedContent.resume}
+                                    initialContent={generatedContent.resume!}
                                     onSave={handleSaveResume}
                                     structuredContent={parsedResume}
+                                    tokens={tokens}
+                                    setTokens={setTokens}
                                 />
                             </div>
                         )}
-                        {generatedContent.coverLetter && (
-                            <div className="space-y-4">
+                        {hasCoverLetter && (
+                            <div className={`space-y-4 ${itemWrapperClasses}`}>
                                 <h2 className="text-3xl font-bold text-neutral">Generated Cover Letter</h2>
                                 <EditableDocument
                                     documentType="cover-letter"
-                                    initialContent={generatedContent.coverLetter}
+                                    initialContent={generatedContent.coverLetter!}
                                     onSave={handleSaveCoverLetter}
                                     structuredContent={parsedCoverLetter}
+                                    tokens={tokens}
+                                    setTokens={setTokens}
                                 />
                             </div>
                         )}

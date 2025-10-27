@@ -37,20 +37,6 @@ const VibeFocusSelector: React.FC = () => {
                         />
                     </div>
                     <div>
-                        <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
-                            Industry
-                        </label>
-                        <input
-                            type="text"
-                            id="industry"
-                            name="industry"
-                            value={profile.industry}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="Technology, Finance, Healthcare"
-                        />
-                    </div>
-                    <div>
                         <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700">
                             Seniority
                         </label>
@@ -67,6 +53,20 @@ const VibeFocusSelector: React.FC = () => {
                             <option value="senior">Senior</option>
                             <option value="executive">Executive</option>
                         </select>
+                    </div>
+                    <div>
+                        <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
+                            Industry
+                        </label>
+                        <input
+                            type="text"
+                            id="industry"
+                            name="industry"
+                            value={profile.industry}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                            placeholder="Technology, Finance, Healthcare"
+                        />
                     </div>
                      <div>
                         <label htmlFor="companyKeywords" className="block text-sm font-medium text-gray-700">

@@ -39,14 +39,15 @@ const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const navigate = useNavigate();
 
-  const { profile, isFetchingUrl, setIsFetchingUrl } = profileContext!;
+  const { profile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl } = profileContext!;
 
   const [options, setOptions] = useState<Omit<GenerationOptions, 'jobDescription'>>({
     generateResume: true,
     generateCoverLetter: true,
     resumeLength: '1 page max',
+    coverLetterLength: 'medium',
     includeSummary: true,
-    tone: 50,
+    tone: 'persuasive',
     technicality: 50,
     thinkingMode: false,
     uploadedResume: null,
@@ -143,6 +144,13 @@ const GeneratePage: React.FC = () => {
     }
     setError(null);
 
+    const generationCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
+    if (tokens < generationCost) {
+        setError('You do not have enough tokens to generate these documents.');
+        return;
+    }
+    setTokens(prev => prev - generationCost);
+
     // Filter the profile based on user selections
     const { profile } = profileContext;
     const filteredProfile: ProfileData = {
@@ -173,7 +181,7 @@ const GeneratePage: React.FC = () => {
             jobDescription 
         } 
     });
-  }, [profileContext, jobDescription, options, navigate, includedProfileSelections]);
+  }, [profileContext, jobDescription, options, navigate, includedProfileSelections, tokens, setTokens]);
 
   const clearFile = (type: 'resume' | 'coverLetter') => {
     if (type === 'resume') {
@@ -236,9 +244,41 @@ const GeneratePage: React.FC = () => {
     <span>Fetch</span>
   );
   
+  const generationCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
+  const hasEnoughTokens = tokens >= generationCost;
+  const canGenerate = jobDescription && hasEnoughTokens && generationCost > 0;
+
+  let buttonContent;
+  if (generationCost === 0) {
+      buttonContent = (
+          <div className="text-center">
+              <span className="block text-base font-bold">Select a Document</span>
+              <span className="block text-xs font-medium text-blue-200 mt-1">Check a box to generate.</span>
+          </div>
+      );
+  } else if (!hasEnoughTokens) {
+      buttonContent = (
+          <div className="text-center">
+              <span className="block text-base font-bold">Insufficient Tokens</span>
+              <Link to="/subscription" className="block text-xs font-medium text-white underline mt-1">Purchase More</Link>
+          </div>
+      );
+  } else {
+      buttonContent = (
+          <div className="text-center">
+              <span className="block text-lg font-bold">Generate Document{generationCost > 1 ? 's' : ''}</span>
+              <span className="block text-sm font-medium text-blue-200 mt-1">{generationCost} Token{generationCost > 1 ? 's' : ''} Cost</span>
+          </div>
+      );
+  }
+
   const generateButton = (
-    <button onClick={handleGenerate} disabled={!jobDescription} className="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-primary py-3 px-8 text-base font-medium text-white shadow-sm hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105">
-      {'Generate Documents'}
+    <button 
+        onClick={handleGenerate} 
+        disabled={!canGenerate} 
+        className="w-full inline-flex justify-center items-center rounded-lg border border-transparent bg-primary py-4 px-6 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none transition-all transform hover:scale-105 disabled:hover:scale-100"
+    >
+      {buttonContent}
     </button>
   );
 
@@ -363,23 +403,28 @@ const GeneratePage: React.FC = () => {
                     <ContentAccordion title="Style & Tone" initiallyOpen={true}>
                          <div className="space-y-6">
                             <div>
-                              <TooltipLabel htmlFor="tone-slider" text="Controls the personality of the generated content, ranging from formal to personal. Formal is ideal for corporate roles, while personal suits creative fields or startups.">
-                                Application Tone
+                              <TooltipLabel htmlFor="tone-selector" text="Select the overall tone for your documents. 'Formal' is traditional and corporate. 'Friendly' is approachable and modern. 'Persuasive' is confident and action-oriented.">
+                                  Application Tone
                               </TooltipLabel>
-                              <div className="flex items-center space-x-4 mt-2">
-                                <span className="text-xs text-gray-500">Formal</span>
-                                <input id="tone-slider" type="range" min="0" max="100" value={options.tone} onChange={(e) => setOptions(o => ({...o, tone: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
-                                <span className="text-xs text-gray-500">Personal</span>
-                              </div>
+                              <select 
+                                  id="tone-selector" 
+                                  value={options.tone} 
+                                  onChange={(e) => setOptions(o => ({...o, tone: e.target.value as any}))} 
+                                  className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                              >
+                                  <option value="formal">Formal</option>
+                                  <option value="friendly">Friendly</option>
+                                  <option value="persuasive">Persuasive</option>
+                              </select>
                             </div>
                              <div>
-                              <TooltipLabel htmlFor="technicality-slider" text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'Technical' for expert audiences and 'General' for non-technical roles.">
+                              <TooltipLabel htmlFor="technicality-slider" text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'General' for non-technical roles and 'Technical' for expert audiences.">
                                 Language Style
                               </TooltipLabel>
                               <div className="flex items-center space-x-4 mt-2">
-                                <span className="text-xs text-gray-500">Technical</span>
-                                <input id="technicality-slider" type="range" min="0" max="100" value={options.technicality} onChange={(e) => setOptions(o => ({...o, technicality: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
                                 <span className="text-xs text-gray-500">General</span>
+                                <input id="technicality-slider" type="range" min="0" max="100" value={options.technicality} onChange={(e) => setOptions(o => ({...o, technicality: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                                <span className="text-xs text-gray-500">Technical</span>
                               </div>
                             </div>
                         </div>
@@ -437,26 +482,24 @@ const GeneratePage: React.FC = () => {
                                 <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
                                 <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">Create Resume</label>
                             </div>
-                            {options.generateResume && (
-                                <div className="pl-7 mt-4 space-y-4">
-                                    <div className="relative flex items-start">
-                                        <div className="flex h-6 items-center">
-                                            <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                        </div>
-                                        <div className="ml-3 text-sm leading-6">
-                                            <label htmlFor="summary" className="font-medium text-gray-900">Include Professional Summary</label>
-                                            <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
-                                        </div>
+                            <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateResume ? 'opacity-50' : 'opacity-100'}`}>
+                                <div className="relative flex items-start">
+                                    <div className="flex h-6 items-center">
+                                        <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed" disabled={!options.generateResume} />
                                     </div>
-                                    <div>
-                                        <label htmlFor="resume-length" className="block text-sm font-medium text-gray-700 mb-2">Maximum Resume Length</label>
-                                        <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
-                                            <option value="1 page max">1 Page Max</option>
-                                            <option value="2 pages max">2 Pages Max</option>
-                                        </select>
+                                    <div className="ml-3 text-sm leading-6">
+                                        <label htmlFor="summary" className={`font-medium text-gray-900 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Include Professional Summary</label>
+                                        <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
                                     </div>
                                 </div>
-                            )}
+                                <div>
+                                    <label htmlFor="resume-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Maximum Resume Length</label>
+                                    <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateResume}>
+                                        <option value="1 page max">1 Page Max</option>
+                                        <option value="2 pages max">2 Pages Max</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Cover Letter Group */}
@@ -464,6 +507,16 @@ const GeneratePage: React.FC = () => {
                              <div className="flex items-center">
                                 <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
                                 <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">Create Cover Letter</label>
+                            </div>
+                            <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateCoverLetter ? 'opacity-50' : 'opacity-100'}`}>
+                                <div>
+                                    <label htmlFor="cover-letter-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateCoverLetter ? 'cursor-not-allowed' : ''}`}>Cover Letter Length</label>
+                                    <select id="cover-letter-length" value={options.coverLetterLength} onChange={(e) => setOptions(o => ({...o, coverLetterLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateCoverLetter}>
+                                        <option value="short">Short (~3 paragraphs)</option>
+                                        <option value="medium">Medium (4-5 paragraphs)</option>
+                                        <option value="long">Long (5+ paragraphs)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>

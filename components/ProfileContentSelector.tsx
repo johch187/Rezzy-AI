@@ -44,7 +44,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode; hasContent: 
 };
 
 const ProfileContentSelector: React.FC<ProfileContentSelectorProps> = ({ profile, selections, onSelectionChange }) => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleToggleSet = (key: keyof Omit<IncludedProfileSelections, 'summary' | 'additionalInformation' | 'customSectionItemIds' | 'customSectionIds'>, id: string) => {
     onSelectionChange(prev => {

@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import type { ProfileData, Experience, Education, Project, ParsedCoverLetter, Skill } from '../types';
-import { TrashIcon, XCircleIcon, DownloadIcon, EditIcon, SaveIcon, CheckIcon, GoogleDocsIcon } from './Icons';
+import { TrashIcon, XCircleIcon, DownloadIcon, EditIcon, SaveIcon, CheckIcon, GoogleDocsIcon, SubscriptionCheckIcon } from './Icons';
 
 // --- UTILITY & HELPER COMPONENTS ---
-
-const Spinner: React.FC<{ size?: string, color?: string }> = ({ size = 'h-5 w-5', color = 'text-primary' }) => (
-    <svg className={`animate-spin ${size} ${color}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
 
 // --- Type Guards ---
 function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
@@ -328,6 +322,8 @@ interface EditableDocumentProps {
   initialContent: string;
   onSave: (newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => void;
   structuredContent?: Partial<ProfileData> | ParsedCoverLetter | null;
+  tokens: number;
+  setTokens: React.Dispatch<React.SetStateAction<number>>;
 }
 
 interface HistoryState {
@@ -335,7 +331,7 @@ interface HistoryState {
   sectionOrder: string[];
 }
 
-const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initialContent, onSave, structuredContent }) => {
+const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initialContent, onSave, structuredContent, tokens, setTokens }) => {
   const [editedContent, setEditedContent] = useState(initialContent);
   const [formData, setFormData] = useState<Partial<ProfileData> | ParsedCoverLetter | null | undefined>(structuredContent);
   const [sectionOrder, setSectionOrder] = useState<string[]>([]);
@@ -343,6 +339,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   const [isEditing, setIsEditing] = useState(false);
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -404,6 +401,12 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   };
 
   const handleDownloadPdf = () => {
+    if (tokens < 1) {
+        console.warn("Attempted to download PDF with insufficient tokens.");
+        return;
+    }
+    setTokens(prev => prev - 1);
+
     const contentElement = document.getElementById(`document-content-display-${documentType}`);
     if (!contentElement) {
       console.error('Printable content not found.');
@@ -431,7 +434,32 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   };
   
   const handleOpenInGoogleDocs = () => {
-    window.open('https://docs.google.com/document/create', '_blank', 'noopener,noreferrer');
+    let contentToCopy = '';
+
+    if (isParsedCoverLetter(formData)) {
+        contentToCopy = coverLetterToMarkdown(formData);
+    } else if (isParsedResume(formData)) {
+        contentToCopy = profileToMarkdown(formData, sectionOrder);
+    } else {
+        contentToCopy = editedContent;
+    }
+
+    // Convert basic markdown to plain text for better pasting in GDocs
+    const plainTextContent = contentToCopy
+        .replace(/^# (.*$)/gm, '$1')       // H1
+        .replace(/^## (.*$)/gm, '$1')      // H2
+        .replace(/\*\*(.*?)\*\*/g, '$1')  // Bold
+        .replace(/^- /gm, '\u2022 ')      // Bullets
+        .replace(/ \| /g, '\t')            // Separators to tabs
+        .replace(/\n{3,}/g, '\n\n');      // Reduce multiple newlines
+
+    navigator.clipboard.writeText(plainTextContent).then(() => {
+        setIsCopied(true);
+        window.open('https://docs.google.com/document/create', '_blank', 'noopener,noreferrer');
+        setTimeout(() => setIsCopied(false), 3000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
   };
 
   const handleCancel = () => {
@@ -642,6 +670,8 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     );
 };
   
+  const hasEnoughTokensForDownload = tokens >= 1;
+  
   return (
     <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-lg animate-slide-in-up">
       <div id={`document-content-display-${documentType}`}>
@@ -688,13 +718,37 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                     </>
                   ) : (
                     <>
-                      <button onClick={handleDownloadPdf} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <DownloadIcon className="h-5 w-5 mr-2" />
-                        Download PDF
+                      <button 
+                        onClick={handleDownloadPdf} 
+                        disabled={!hasEnoughTokensForDownload}
+                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        {hasEnoughTokensForDownload ? (
+                            <>
+                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                <span>Download PDF (1 Token)</span>
+                            </>
+                        ) : (
+                            <div className="text-center text-xs px-1">
+                                <span className="font-bold text-red-600 block">Insufficient Tokens</span>
+                                <Link to="/subscription" className="text-primary underline hover:text-blue-700">Get More</Link>
+                            </div>
+                        )}
                       </button>
-                      <button onClick={handleOpenInGoogleDocs} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <GoogleDocsIcon className="h-5 w-5 mr-2" />
-                        Open in Google Docs
+                      <button
+                        onClick={handleOpenInGoogleDocs}
+                        className={`inline-flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200 ${
+                            isCopied
+                            ? 'bg-green-50 border-green-300 text-green-800'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {isCopied ? (
+                            <SubscriptionCheckIcon className="h-5 w-5 text-green-600" />
+                        ) : (
+                            <GoogleDocsIcon className="h-5 w-5" />
+                        )}
+                        <span className="ml-2">{isCopied ? 'Copied! Now Paste.' : 'Open in Google Docs'}</span>
                       </button>
                       <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <EditIcon className="h-5 w-5 mr-2" />

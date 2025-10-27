@@ -214,10 +214,11 @@ export const generateTailoredDocuments = async (
     - **Content Rules:**
       - **Resume Summary:** ${options.includeSummary ? 'The resume MUST include a professional summary section at the top. Use the user-provided summary as a strong base, but refine it to perfectly match the job description.' : 'The resume MUST NOT include a professional summary section.'}
       - **Cover Letter Skills:** The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate "Key Skills" section.
+      - **Cover Letter Length:** The cover letter's length should be: ${options.coverLetterLength}. 'short' is approximately 3 paragraphs, 'medium' is 4-5 paragraphs, and 'long' is 5+ paragraphs.
 
     - **Style & Tone:**
-      - **Tone Scale:** On a scale of 0 (extremely formal) to 100 (very personal), the user selected: ${options.tone}. Adjust your writing accordingly.
-      - **Language Style Scale:** On a scale of 0 (highly technical/jargon) to 100 (general audience), the user selected: ${options.technicality}.
+      - **Writing Tone:** The overall tone for all documents MUST be "${options.tone}". 'Formal' is traditional and corporate. 'Friendly' is modern and approachable. 'Persuasive' is confident and action-oriented.
+      - **Language Style Scale:** On a scale of 0 (general audience) to 100 (highly technical/jargon), the user selected: ${options.technicality}.
 
     - **Documents to Generate:**
       - **Create Resume:** ${options.generateResume}

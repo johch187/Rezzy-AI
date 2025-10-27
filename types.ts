@@ -116,8 +116,9 @@ export interface GenerationOptions {
   generateResume: boolean;
   generateCoverLetter: boolean;
   resumeLength: '1 page max' | '2 pages max';
+  coverLetterLength: 'short' | 'medium' | 'long';
   includeSummary: boolean;
-  tone: number;
+  tone: 'formal' | 'friendly' | 'persuasive';
   technicality: number;
   thinkingMode: boolean;
   uploadedResume: string | null;

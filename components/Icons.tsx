@@ -53,8 +53,8 @@ export const PendingIcon: React.FC = () => (
 );
 
 // Icon for Subscription Page
-export const SubscriptionCheckIcon: React.FC = () => (
-  <svg className="flex-shrink-0 h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+export const SubscriptionCheckIcon: React.FC<{ className?: string }> = ({ className = "flex-shrink-0 h-6 w-6 text-primary" }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
@@ -91,27 +91,27 @@ export const UserIcon: React.FC = () => (
 );
 
 export const DownloadIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
 );
 
 export const EditIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" />
+    </svg>
 );
 
 export const SaveIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+    </svg>
 );
 
-export const GoogleDocsIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5 mr-2" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#4285F4"/>
-    <path d="M13 9V3.5L18.5 9H13Z" fill="#1A73E8"/>
-    <path d="M16 18H8V16H16V18ZM16 14H8V12H16V14Z" fill="white"/>
-  </svg>
+export const GoogleDocsIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
+    <svg className={className} viewBox="0 0 32 41" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21.3333 0H5.33333C2.38667 0 0 2.42187 0 5.41667V35.5833C0 38.5781 2.38667 41 5.33333 41H26.6667C29.6133 41 32 38.5781 32 35.5833V13.6667L21.3333 0Z" fill="#4285F4"/>
+        <path d="M21.3333 0V10.8333C21.3333 13.8281 23.72 16.25 26.6667 16.25H31.8L21.3333 0Z" fill="#0053B5"/>
+        <path d="M24 29.8958H8V27.0417H24V29.8958ZM24 24.1875H8V21.3333H24V24.1875ZM17.3333 18.4792H8V15.625H17.3333V18.4792Z" fill="white"/>
+    </svg>
 );
