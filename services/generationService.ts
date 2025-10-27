@@ -78,25 +78,42 @@ export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> =
                 }
             
                 const prompt = `
-                    You are an expert web-scraping assistant. Your task is to visit the provided URL, extract the core job description, and clean it for presentation.
+                    You are a highly advanced web content extraction engine. Your sole purpose is to visit a URL, pinpoint the main job description content, and return it as clean, readable text.
 
-                    URL: ${urlObject.href}
+                    URL to process: ${urlObject.href}
 
-                    **Success Path:**
-                    1.  **Extract Core Content:** Visit the URL and meticulously extract the primary text of the job description.
-                    2.  **Clean and Sanitize:** Aggressively remove all non-essential content (headers, footers, ads, etc.).
-                    3.  **Format for Readability:** Structure the extracted text logically using simple markdown.
-                    4.  **Final Output:** Return ONLY the cleaned and formatted plain text of the job description.
+                    **Primary Extraction Protocol:**
 
-                    **Failure Path:**
-                    - If you are unable to extract the job description, you MUST return a single line with a specific error code, prefixed with "FETCH_ERROR:".
-                    - Use one of the following error codes:
-                      - "NOT_FOUND": If the URL leads to a "404 Not Found" page.
-                      - "ACCESS_DENIED": If you encounter a login wall, CAPTCHA, or access-denied message (403 Forbidden).
-                      - "SERVER_ERROR": If the website's server returns an error (e.g., 500, 502, 503).
-                      - "NO_CONTENT": If the page loads but does not contain a job description.
-                    
-                    - For example, if the page returns a 500 error, your response must be exactly: "FETCH_ERROR: SERVER_ERROR"
+                    1.  **Initial Scan & Content Identification:**
+                        -   Access the URL and perform an initial scan of the HTML structure.
+                        -   Identify the primary content container. Look for semantic tags like \`<main>\`, \`<article>\`, or elements with IDs/classes like \`job-description\`, \`job-details\`, \`job-content\`. Prioritize these over generic \`<div>\`s.
+                        -   Be aware of common website layouts. Intelligently ignore headers, footers, navigation bars, sidebars, "related jobs" widgets, and cookie consent banners.
+
+                    2.  **Deep Content Extraction & Cleaning:**
+                        -   Once the main content block is identified, extract all relevant text.
+                        -   Look for standard job description sections with headings like "Responsibilities", "Qualifications", "Requirements", "What you'll do", "Who you are", "Skills".
+                        -   Aggressively remove any remaining non-essential text, such as social media links, application form fields, or boilerplate company info that isn't part of the core description.
+                        -   Preserve line breaks and paragraph structure for readability. Use simple markdown for headings (e.g., \`## Responsibilities\`) if it enhances clarity.
+
+                    3.  **Handling Complex Scenarios:**
+                        -   **Dynamic Content (JavaScript):** If you detect that the main content is loaded via JavaScript and is not present in the initial HTML, look for embedded JSON data, especially \`application/ld+json\` scripts which often contain structured \`JobPosting\` schema. Extract the 'description' field from this JSON if available. If you cannot execute JS or find this data, and the page is mostly empty, you must fail with the \`NO_CONTENT\` error code.
+                        -   **iFrames:** If the job description appears to be within an \`<iframe>\`, analyze its \`src\` attribute. If it's a direct link to a job board (e.g., Greenhouse, Lever), attempt to fetch and process that \`src\` URL instead.
+
+                    4.  **Final Output:**
+                        -   Return ONLY the cleaned and formatted plain text of the job description. Your output should begin directly with the job title or the first line of the description. Do not add any introductory phrases like "Here is the job description:".
+
+                    **Strict Error Reporting Protocol:**
+
+                    - If you cannot successfully extract a valid job description for ANY reason, you MUST return a single line containing ONLY a specific error code, prefixed with "FETCH_ERROR:".
+                    - Do not provide any explanation, just the code.
+                    - Use one of the following codes:
+                        - \`FETCH_ERROR: NOT_FOUND\`: The URL results in a 404 Not Found error.
+                        - \`FETCH_ERROR: ACCESS_DENIED\`: You are blocked by a login wall, CAPTCHA, or a 403 Forbidden error.
+                        - \`FETCH_ERROR: SERVER_ERROR\`: The website's server returns an error (e.g., 500, 502, 503, 504).
+                        - \`FETCH_ERROR: NO_CONTENT\`: The page loads successfully, but after applying all extraction rules, you cannot find a discernible job description (e.g., the page is blank, it's a list of jobs, or an expired posting).
+                        - \`FETCH_ERROR: TIMEOUT\`: The connection to the server timed out.
+
+                    - Example of a failure response: \`FETCH_ERROR: ACCESS_DENIED\`
                 `;
 
                 const response = await ai.models.generateContent({

@@ -33,7 +33,7 @@ const VibeFocusSelector: React.FC = () => {
                             value={profile.targetJobTitle}
                             onChange={handleInputChange}
                             className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="e.g., Senior Product Manager"
+                            placeholder="Financial Analyst, Executive Assistant"
                         />
                     </div>
                     <div>
@@ -47,7 +47,7 @@ const VibeFocusSelector: React.FC = () => {
                             value={profile.industry}
                             onChange={handleInputChange}
                             className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="e.g., Tech, Finance, Healthcare"
+                            placeholder="Technology, Finance, Healthcare"
                         />
                     </div>
                     <div>
@@ -79,7 +79,7 @@ const VibeFocusSelector: React.FC = () => {
                             value={profile.companyKeywords}
                             onChange={handleInputChange}
                             className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="e.g., 'SaaS', 'FinTech', 'B2B', 'Remote-first'"
+                            placeholder="'Client-focused', 'Risk-averse'"
                         />
                          <p className="mt-2 text-xs text-gray-500">Keywords about the company, its products, or culture.</p>
                     </div>
@@ -94,7 +94,7 @@ const VibeFocusSelector: React.FC = () => {
                             value={profile.keySkillsToHighlight}
                             onChange={handleInputChange}
                             className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="e.g., 'React, TypeScript, Node.js, AWS'"
+                            placeholder="'Financial Modeling, Excel, SQL', 'Scheduling, Event Planning, MS Office'"
                         />
                          <p className="mt-2 text-xs text-gray-500">List the most important skills for this role.</p>
                     </div>
@@ -109,7 +109,7 @@ const VibeFocusSelector: React.FC = () => {
                             value={profile.vibe}
                             onChange={handleInputChange}
                             className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                            placeholder="e.g., 'Full-stack development with a focus on user experience' or 'Corporate finance and M&A'"
+                            placeholder="'Analytical with a focus on accuracy', 'Personable, organized, and proactive.'"
                         />
                          <p className="mt-2 text-xs text-gray-500">Describe the tone and key specializations you want the AI to write with. This is your guide for the AI's voice.</p>
                     </div>

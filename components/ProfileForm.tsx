@@ -9,8 +9,10 @@ import { TrashIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon, Upl
 type AccordionSection = 'personal' | 'summary' | 'education' | 'experience' | 'projects' | 'technicalSkills' | 'softSkills' | 'tools' | 'languages' | 'certifications' | 'interests' | 'custom' | 'additional' | null;
 
 type ProfileFormErrors = {
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
+  phone?: string;
   website?: string;
   linkedin?: string;
   github?: string;
@@ -18,7 +20,14 @@ type ProfileFormErrors = {
 
 const validateProfile = (profile: ProfileData): ProfileFormErrors => {
   const errors: ProfileFormErrors = {};
-  if (!profile.fullName.trim()) errors.fullName = "Full name is required.";
+  
+  const nameParts = profile.fullName.trim().split(/\s+/);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ');
+  
+  if (!firstName) errors.firstName = "First name is required.";
+  if (!lastName) errors.lastName = "Last name is required.";
+  if (!profile.phone.trim()) errors.phone = "Phone is required.";
   
   // Stricter email validation regex
   const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -55,7 +64,7 @@ const ErrorMessage: React.FC<{ message?: string; id: string }> = ({ message, id 
     return <p id={id} className="text-red-500 text-xs mt-1">{message}</p>;
 };
 
-const baseInputStyles = "block w-full text-sm p-2.5 border rounded-md focus:ring-1 transition-colors duration-200 shadow-sm";
+const baseInputStyles = "block w-full text-sm p-2.5 border rounded-md focus:ring-1 transition-colors duration-200 shadow-sm placeholder-gray-400";
 const errorInputStyles = "border-red-400 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500";
 const validInputStyles = "border-gray-300 bg-gray-50 text-gray-900 focus:border-primary focus:ring-primary";
 
@@ -88,7 +97,7 @@ const PersonalInfoSection = React.memo(() => {
     
     useEffect(() => {
         setErrors(validateProfile(profile));
-    }, [profile.fullName, profile.email, profile.website, profile.linkedin, profile.github]);
+    }, [profile.fullName, profile.email, profile.phone, profile.website, profile.linkedin, profile.github]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -99,39 +108,41 @@ const PersonalInfoSection = React.memo(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input name="firstName" value={firstName} onChange={(e) => handleNameChange(e.target.value, lastName)} className={`${baseInputStyles} ${errors.fullName ? errorInputStyles : validInputStyles}`} />
-                <ErrorMessage message={errors.fullName} id="fullName-error" />
+                <input name="firstName" value={firstName} onChange={(e) => handleNameChange(e.target.value, lastName)} className={`${baseInputStyles} ${errors.firstName ? errorInputStyles : validInputStyles}`} placeholder="Jordan" />
+                <ErrorMessage message={errors.firstName} id="firstName-error" />
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input name="lastName" value={lastName} onChange={(e) => handleNameChange(firstName, e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} />
+                <input name="lastName" value={lastName} onChange={(e) => handleNameChange(firstName, e.target.value)} className={`${baseInputStyles} ${errors.lastName ? errorInputStyles : validInputStyles}`} placeholder="Lee" />
+                <ErrorMessage message={errors.lastName} id="lastName-error" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input name="email" value={profile.email} onChange={handleChange} className={`${baseInputStyles} ${errors.email ? errorInputStyles : validInputStyles}`} />
+                <input name="email" value={profile.email} onChange={handleChange} className={`${baseInputStyles} ${errors.email ? errorInputStyles : validInputStyles}`} placeholder="jordan.lee@example.com" />
                 <ErrorMessage message={errors.email} id="email-error" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="Link to your personal website or online portfolio. e.g., 'yourname.dev'">Website/Portfolio</TooltipLabel></label>
-                <input name="website" value={profile.website} onChange={handleChange} className={`${baseInputStyles} ${errors.website ? errorInputStyles : validInputStyles}`} />
+                <input name="website" value={profile.website} onChange={handleChange} className={`${baseInputStyles} ${errors.website ? errorInputStyles : validInputStyles}`} placeholder="yourportfolio.com" />
                 <ErrorMessage message={errors.website} id="website-error" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="Your professional contact number. e.g., (555) 123-4567">Phone</TooltipLabel></label>
-                <input name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} />
+                <input name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${errors.phone ? errorInputStyles : validInputStyles}`} placeholder="(555) 123-4567" />
+                <ErrorMessage message={errors.phone} id="phone-error" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="Full URL to your LinkedIn profile. e.g., 'linkedin.com/in/yourname'">LinkedIn</TooltipLabel></label>
-                <input name="linkedin" value={profile.linkedin} onChange={handleChange} className={`${baseInputStyles} ${errors.linkedin ? errorInputStyles : validInputStyles}`} />
+                <input name="linkedin" value={profile.linkedin} onChange={handleChange} className={`${baseInputStyles} ${errors.linkedin ? errorInputStyles : validInputStyles}`} placeholder="linkedin.com/in/yourprofile" />
                 <ErrorMessage message={errors.linkedin} id="linkedin-error" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="Your city and state. e.g., 'San Francisco, CA'">Location</TooltipLabel></label>
-                <input name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="e.g., San Francisco, CA" />
+                <input name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="New York, NY" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="Full URL to your GitHub profile. e.g., 'github.com/yourusername'">GitHub</TooltipLabel></label>
-                <input name="github" value={profile.github} onChange={handleChange} className={`${baseInputStyles} ${errors.github ? errorInputStyles : validInputStyles}`} />
+                <input name="github" value={profile.github} onChange={handleChange} className={`${baseInputStyles} ${errors.github ? errorInputStyles : validInputStyles}`} placeholder="github.com/yourusername" />
                 <ErrorMessage message={errors.github} id="github-error" />
             </div>
         </div>
@@ -144,7 +155,7 @@ const SummarySection = React.memo(() => {
         setProfile(prev => ({ ...prev, summary: e.target.value }));
     };
     return (
-        <textarea name="summary" value={profile.summary} onChange={handleChange} rows={4} className={`${baseInputStyles} ${validInputStyles}`} placeholder="A brief, powerful summary of your career, skills, and goals." />
+        <textarea name="summary" value={profile.summary} onChange={handleChange} rows={4} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Results-driven Financial Analyst with 5+ years of experience in data analysis and financial modeling. Or: Organized Administrative Assistant skilled in office management and executive support." />
     );
 });
 
@@ -184,14 +195,14 @@ const EducationSection = React.memo(() => {
                         <TrashIcon />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Name of the university, college, or bootcamp.">Institution</TooltipLabel></label><input value={edu.institution} onChange={e => handleChange(edu.id, 'institution', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Bachelor of Science', 'M.S.', 'Ph.D.'">Degree</TooltipLabel></label><input value={edu.degree} onChange={e => handleChange(edu.id, 'degree', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Computer Science', 'Business Administration'">Field of Study</TooltipLabel></label><input value={edu.fieldOfStudy} onChange={e => handleChange(edu.id, 'fieldOfStudy', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Enter your Grade Point Average. e.g., '3.8/4.0'">GPA</TooltipLabel></label><input value={edu.gpa} onChange={e => handleChange(edu.id, 'gpa', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Name of the university, college, or bootcamp.">Institution</TooltipLabel></label><input value={edu.institution} onChange={e => handleChange(edu.id, 'institution', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="State University" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Bachelor of Science', 'M.S.', 'Ph.D.'">Degree</TooltipLabel></label><input value={edu.degree} onChange={e => handleChange(edu.id, 'degree', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="B.S. or Bachelor of Arts" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Computer Science', 'Business Administration'">Field of Study</TooltipLabel></label><input value={edu.fieldOfStudy} onChange={e => handleChange(edu.id, 'fieldOfStudy', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Computer Science, Finance" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Enter your Grade Point Average. e.g., '3.8/4.0'">GPA</TooltipLabel></label><input value={edu.gpa} onChange={e => handleChange(edu.id, 'gpa', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="3.8/4.0" /></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year you started. e.g., '2018'">Start Date</TooltipLabel></label><input value={edu.startDate} onChange={e => handleChange(edu.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year you graduated or 'Present'. e.g., '2022'">End Date</TooltipLabel></label><input value={edu.endDate} onChange={e => handleChange(edu.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="List key courses relevant to your target roles.">Relevant Coursework</TooltipLabel></label><textarea value={edu.relevantCoursework} onChange={e => handleChange(edu.id, 'relevantCoursework', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="List any academic awards, scholarships, or honors.">Awards & Honors</TooltipLabel></label><textarea value={edu.awardsHonors} onChange={e => handleChange(edu.id, 'awardsHonors', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="List key courses relevant to your target roles.">Relevant Coursework</TooltipLabel></label><textarea value={edu.relevantCoursework} onChange={e => handleChange(edu.id, 'relevantCoursework', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Data Structures, Corporate Finance, Project Management" /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="List any academic awards, scholarships, or honors.">Awards & Honors</TooltipLabel></label><textarea value={edu.awardsHonors} onChange={e => handleChange(edu.id, 'awardsHonors', e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Dean's List (2020-2022)" /></div>
                     </div>
                 </div>
             ))}
@@ -261,9 +272,9 @@ const ExperienceSection = React.memo(() => {
                         <TrashIcon />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The name of the company.">Company</TooltipLabel></label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Your job title for this role.">Title</TooltipLabel></label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Remote' or 'City, CA'">Location</TooltipLabel></label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The name of the company.">Company</TooltipLabel></label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Innovate Inc. or Sterling Bank" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Your job title for this role.">Title</TooltipLabel></label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Software Engineer or Office Manager" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Remote' or 'City, CA'">Location</TooltipLabel></label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Remote" /></div>
                         <div></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Start date of employment. e.g., 'MM/YYYY' or 'YYYY'">Start Date</TooltipLabel></label><input value={exp.startDate} onChange={e => handleChange(exp.id, 'startDate', e.target.value)} placeholder="YYYY or MM/YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="End date of employment. e.g., 'MM/YYYY' or 'Present'">End Date</TooltipLabel></label><input value={exp.endDate} onChange={e => handleChange(exp.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
@@ -273,7 +284,7 @@ const ExperienceSection = React.memo(() => {
                         <div className="space-y-2 mt-1">
                             {exp.achievements.map(ach => (
                                 <div key={ach.id} className="flex items-center space-x-2">
-                                    <textarea value={ach.text} onChange={e => handleAchievementChange(exp.id, ach.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="e.g., Increased sales by 20% in Q3" />
+                                    <textarea value={ach.text} onChange={e => handleAchievementChange(exp.id, ach.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Managed client accounts, increasing retention by 15%. Or: Spearheaded a new feature launch." />
                                     <button onClick={() => removeAchievement(exp.id, ach.id)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0" aria-label="Remove achievement">
                                         <XCircleIcon />
                                     </button>
@@ -325,12 +336,12 @@ const ProjectSection = React.memo(() => {
                         <TrashIcon />
                     </button>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The official name of your project.">Project Name</TooltipLabel></label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Link to the live project or its repository (e.g., GitHub).">Project URL</TooltipLabel></label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The official name of your project.">Project Name</TooltipLabel></label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Q3 Budget Forecast or Portfolio Website" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Link to the live project or its repository (e.g., GitHub).">Project URL</TooltipLabel></label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="yourprojectlink.com" /></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year the project started. e.g., '2023'">Start Date</TooltipLabel></label><input value={proj.startDate} onChange={e => handleChange(proj.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
                         <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year the project ended or 'Present'.">End Date</TooltipLabel></label><input value={proj.endDate} onChange={e => handleChange(proj.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Comma-separated list of key technologies. e.g., 'React, Node.js, PostgreSQL'">Technologies Used</TooltipLabel></label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="e.g., React, Node.js, PostgreSQL" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Briefly describe the project's purpose and your role.">Description</TooltipLabel></label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Comma-separated list of key technologies. e.g., 'React, Node.js, PostgreSQL'">Technologies Used</TooltipLabel></label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="Python, Pandas, Excel, React, MS Office Suite" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Briefly describe the project's purpose and your role.">Description</TooltipLabel></label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Coordinated a 50-person company offsite event." /></div>
                     </div>
                 </div>
             ))}
@@ -349,7 +360,7 @@ const AdditionalInfoSection = React.memo(() => {
         setProfile(prev => ({ ...prev, [name]: value }));
     };
     return (
-        <textarea name="additionalInformation" value={profile.additionalInformation} onChange={handleChange} rows={3} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Is there anything else the AI should know? Mention any publications, volunteer work, or other relevant details here." />
+        <textarea name="additionalInformation" value={profile.additionalInformation} onChange={handleChange} rows={3} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Certified Financial Planner (CFP). Or: Proficient in QuickBooks and Salesforce." />
     );
 });
 
@@ -442,7 +453,7 @@ const LanguagesSection = React.memo(() => {
                     <input
                         value={lang.name}
                         onChange={e => handleChange(lang.id, 'name', e.target.value)}
-                        placeholder="e.g., Spanish"
+                        placeholder="English"
                         className={`${baseInputStyles} ${validInputStyles}`}
                     />
                     <select
@@ -526,12 +537,12 @@ const CustomSections = React.memo(() => {
                     </button>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Section Title</label>
-                        <input value={cs.title} onChange={e => handleSectionTitleChange(cs.id, e.target.value)} className={`${baseInputStyles} ${validInputStyles} font-semibold`} placeholder="e.g., Publications, Volunteer Work" />
+                        <input value={cs.title} onChange={e => handleSectionTitleChange(cs.id, e.target.value)} className={`${baseInputStyles} ${validInputStyles} font-semibold`} placeholder="Publications, Volunteer Work" />
                     </div>
                     <div className="mt-4 space-y-2">
                         {cs.items.map(item => (
                             <div key={item.id} className="flex items-center space-x-2">
-                                <textarea value={item.text} onChange={e => handleItemChange(cs.id, item.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} />
+                                <textarea value={item.text} onChange={e => handleItemChange(cs.id, item.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="'Contributed to open-source project X by implementing feature Y.'" />
                                 <button onClick={() => removeItem(cs.id, item.id)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0" aria-label="Remove item"><XCircleIcon /></button>
                             </div>
                         ))}
@@ -737,7 +748,7 @@ const ProfileForm: React.FC = () => {
               <SimpleListItemForm 
                 section="technicalSkills" 
                 title="Technical Skill" 
-                placeholder="e.g., Python, JavaScript, SQL" 
+                placeholder="Python, SQL, Financial Modeling" 
               />
             </AccordionItem>
 
@@ -745,7 +756,7 @@ const ProfileForm: React.FC = () => {
               <SimpleListItemForm 
                 section="softSkills" 
                 title="Soft Skill" 
-                placeholder="e.g., Communication, Leadership" 
+                placeholder="Team Collaboration" 
               />
             </AccordionItem>
 
@@ -753,7 +764,7 @@ const ProfileForm: React.FC = () => {
               <SimpleListItemForm 
                 section="tools" 
                 title="Tool/Technology" 
-                placeholder="e.g., Git, Docker, JIRA" 
+                placeholder="Git, Bloomberg Terminal, Salesforce" 
               />
             </AccordionItem>
 
@@ -765,7 +776,7 @@ const ProfileForm: React.FC = () => {
               <SimpleListItemForm 
                 section="certifications" 
                 title="Certification" 
-                placeholder="e.g., AWS Certified Cloud Practitioner" 
+                placeholder="CFA Level II, AWS Certified" 
               />
             </AccordionItem>
             
@@ -773,7 +784,7 @@ const ProfileForm: React.FC = () => {
               <SimpleListItemForm 
                 section="interests" 
                 title="Interest" 
-                placeholder="e.g., Open Source Contribution" 
+                placeholder="Market Analysis, Volunteer Tutoring" 
               />
             </AccordionItem>
 
