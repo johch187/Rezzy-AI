@@ -6,7 +6,7 @@ const LandingPage: React.FC = () => {
         <div className="animate-fade-in">
             {/* Hero Section */}
             <section className="bg-white">
-                <div className="container mx-auto px-6 py-24 text-center">
+                <div className="mx-auto px-6 py-24 text-center">
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-neutral tracking-tight">
                         AI-Powered Resume & Cover Letter Builder
                     </h1>
@@ -27,7 +27,7 @@ const LandingPage: React.FC = () => {
 
             {/* Features Section */}
             <section id="how-it-works" className="py-20 bg-base-200">
-                <div className="container mx-auto px-6">
+                <div className="mx-auto px-6">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-neutral">Why Choose Our AI Builder?</h2>
                         <p className="mt-3 text-gray-500">Everything you need to stand out and get hired in today's competitive job market.</p>

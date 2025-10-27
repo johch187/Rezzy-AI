@@ -179,55 +179,58 @@ export const generateTailoredDocuments = async (
 
   const modelName = options.thinkingMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
+  const inspirationDocsText = `
+    ${options.uploadedResume ? `--- EXISTING RESUME (FOR STYLE REFERENCE ONLY) ---\n${options.uploadedResume}\n--- END EXISTING RESUME ---` : ''}
+    ${options.uploadedCoverLetter ? `--- EXISTING COVER LETTER (FOR STYLE REFERENCE ONLY) ---\n${options.uploadedCoverLetter}\n--- END EXISTING COVER LETTER ---` : 'No inspiration documents were provided.'}
+    `;
+
   const prompt = `
-    You are a world-class professional resume and cover letter writer. Your task is to create tailored application documents for a job application by synthesizing all of the following information.
+    You are an expert career consultant and writer, tasked with creating tailored application documents. Your goal is to synthesize the provided information to generate the best possible resume and/or cover letter.
 
-    **1. Candidate's Profile Data:**
-    This is a detailed JSON object of the candidate's professional profile. It includes their experience, skills, education, career goals, and more. Use this granular information to create highly specific and compelling content that accurately reflects the candidate.
-    ${JSON.stringify(profile)}
+    ### Primary Inputs
 
-    **2. Target Job Description:**
-    This is the job the candidate is applying for. Analyze it meticulously to understand the required skills, responsibilities, and company culture.
+    **1. Candidate Profile (JSON):**
+    This contains the candidate's complete professional background.
+    \`\`\`json
+    ${JSON.stringify(profile, null, 2)}
+    \`\`\`
+
+    **2. Target Job Description (Text):**
+    This is the job the candidate is applying for.
+    \`\`\`text
     ${options.jobDescription}
+    \`\`\`
 
-    **3. Inspiration Documents (Style Guide):**
-    The user has provided the following documents for stylistic inspiration. Analyze their structure, tone, and key phrases. Use them as a guide to match the candidate's personal style, but create entirely new, tailored content for the target job. Do not simply copy the old documents.
-    ${options.uploadedResume ? `--- OLD RESUME FOR INSPIRATION ---\n${options.uploadedResume}\n--- END OLD RESUME ---` : ''}
-    ${options.uploadedCoverLetter ? `--- OLD COVER LETTER FOR INSPIRATION ---\n${options.uploadedCoverLetter}\n--- END OLD COVER LETTER ---` : ''}
+    **3. Stylistic Inspiration Documents (Text):**
+    Use these ONLY to understand the candidate's personal writing style, tone, and formatting preferences. DO NOT copy content directly. Create new, tailored content based on the Candidate Profile and Job Description.
+    ${inspirationDocsText}
 
-    **4. Detailed Generation Instructions & Constraints:**
-    You MUST follow every instruction below to meet the user's requirements.
+    ### Generation Directives & Constraints
 
-    - **Career Goals & Role Definition:**
-      - **Target Job Title:** The candidate is applying for the role of "${profile.targetJobTitle}".
-      - **Industry:** The candidate is targeting the "${profile.industry}" industry.
-      - **Experience Level:** The role is at the "${profile.experienceLevel}" level.
-      - **Company Keywords:** Pay attention to these keywords about the company's culture, products, or values: "${profile.companyKeywords}".
-      - **Key Skills to Highlight:** The candidate wants to emphasize these specific skills: "${profile.keySkillsToHighlight}". Ensure these are prominent.
-      - **Writing Style & Focus:** The documents must convey a professional vibe that is: "${profile.vibe}".
+    You MUST adhere to every instruction below.
 
-    - **Template & Formatting:**
-      - **Resume Template:** The user chose the "${profile.selectedResumeTemplate}" template style. The resume's structure and feel should reflect this choice (e.g., 'classic' is traditional, 'tech' is modern and skill-focused).
-      - **Cover Letter Template:** The user chose the "${profile.selectedCoverLetterTemplate}" template style. The cover letter must also align with this choice.
-      - **Resume Length:** The resume's final length MUST NOT exceed ${options.resumeLength}.
-
-    - **Content Rules:**
-      - **Resume Summary:** ${options.includeSummary ? 'The resume MUST include a professional summary section at the top. Use the user-provided summary as a strong base, but refine it to perfectly match the job description.' : 'The resume MUST NOT include a professional summary section.'}
-      - **Cover Letter Skills:** The cover letter should integrate skills naturally into the narrative and MUST NOT have a separate "Key Skills" section.
-      - **Cover Letter Length:** The cover letter's length should be: ${options.coverLetterLength}. 'short' is approximately 3 paragraphs, 'medium' is 4-5 paragraphs, and 'long' is 5+ paragraphs.
-
+    - **Core Task:** Analyze the **Job Description** to identify key requirements. Then, use the **Candidate Profile** to find matching experiences and skills. Weave these into the documents, prioritizing what the job description asks for.
+    - **Document(s) to Generate:**
+      - Generate a resume: \`${options.generateResume}\`
+      - Generate a cover letter: \`${options.generateCoverLetter}\`
     - **Style & Tone:**
-      - **Writing Tone:** The overall tone for all documents MUST be "${options.tone}". 'Formal' is traditional and corporate. 'Friendly' is modern and approachable. 'Persuasive' is confident and action-oriented.
-      - **Language Style Scale:** On a scale of 0 (general audience) to 100 (highly technical/jargon), the user selected: ${options.technicality}.
+      - Overall Tone: \`${options.tone}\`.
+      - Language Technicality (0=General, 100=Expert): \`${options.technicality}\`.
+      - Candidate's Desired Vibe: "${profile.vibe}". Embody this.
+    - **Resume-Specific Rules:**
+      - Template Style: \`${profile.selectedResumeTemplate}\`. Structure and tone should reflect this.
+      - Length: MUST NOT exceed \`${options.resumeLength}\`. Be concise.
+      - Professional Summary: A summary section is \`${options.includeSummary ? 'REQUIRED' : 'FORBIDDEN'}\`. If required, use the candidate's summary as a base but heavily tailor it to the job.
+    - **Cover Letter-Specific Rules:**
+      - Template Style: \`${profile.selectedCoverLetterTemplate}\`.
+      - Length: Keep it \`${options.coverLetterLength}\`.
+      - Skills: Integrate skills into the narrative. DO NOT use a separate bulleted list of skills.
 
-    - **Documents to Generate:**
-      - **Create Resume:** ${options.generateResume}
-      - **Create Cover Letter:** ${options.generateCoverLetter}
-    
-    **Final Task:**
-    Synthesize ALL the information provided above (Profile, Job Description, Inspiration Docs, and all Instructions). Create a resume and/or cover letter that strategically highlights the most relevant skills and experiences. Transform achievement bullet points into powerful, quantified statements. Write a compelling cover letter that tells a story and directly connects the candidate's experience to the company's needs.
+    ### Final Output
 
-    Structure your final output as a single JSON object with two keys: "resume" and "coverLetter". The value for each key should be the full document content in Markdown format. If a document was not requested, its value MUST be null.
+    Your final output MUST be a single, valid JSON object with two keys: "resume" and "coverLetter".
+    - The value for each key must be the full document content as a single Markdown string.
+    - If a document was not requested (e.g., "Generate a resume: \`false\`"), its value in the JSON MUST be \`null\`.
   `;
   
   const MAX_RETRIES = 3;
@@ -260,7 +263,15 @@ export const generateTailoredDocuments = async (
       });
   
       const jsonText = response.text.trim();
-      const generatedContent = JSON.parse(jsonText);
+      let generatedContent;
+
+      try {
+        generatedContent = JSON.parse(jsonText);
+      } catch (jsonError) {
+          console.error("Failed to parse JSON response from Gemini:", jsonText);
+          // Re-throw to trigger the retry mechanism with a more informative error.
+          throw new Error("Model returned a malformed, non-JSON response.");
+      }
       
       return {
         resume: generatedContent.resume || null,
@@ -283,6 +294,133 @@ export const generateTailoredDocuments = async (
   }
 
   // If the loop finished without returning, it means all retries failed.
+  const finalError = parseError(lastError).message || "The model is currently busy. We tried several times without success. Please try again in a few moments.";
+  throw new Error(finalError);
+};
+
+export const generateCoffeeChatBrief = async (
+  profile: ProfileData,
+  counterpartInfo: string
+): Promise<string> => {
+  if (!process.env.API_KEY) {
+    // Return a mock response for development without an API key.
+    return Promise.resolve(`
+## Quick Overview
+You're meeting with Sarah Chen, a Senior Product Manager at Innovate Inc., who previously worked at your alma mater's rival, a fun point of connection. The most interesting angle here is her transition from engineering to product, which mirrors your own career aspirations.
+
+- - -
+
+### Shared Touchpoints
+*   **Shared Industry:** You both have a deep background in the SaaS technology space.
+*   **Company Overlap:** Her previous role was at a company that is a key partner of your current employer.
+*   **Geographic Connection:** You both lived in the Bay Area during the same time period.
+*   **Skillset Synergy:** You've both highlighted "user-centric design" and "data-driven decisions" in your public profiles.
+
+- - -
+
+### Smart Conversation Starters
+*   "I was really intrigued by your career path from software engineering into product management at Innovate. What was the most surprising part of that transition for you?"
+*   "Given your experience with both large-scale enterprise products and nimble startups, what are some of the key differences you've noticed in how product decisions get made?"
+*   "I saw that you volunteered with 'Code for Kids.' As someone passionate about mentorship, I'd love to hear what you learned from that experience."
+
+- - -
+
+### Industry or Context Insights
+*   **Recent Launch:** Innovate Inc. just launched their new AI-powered analytics tool last month. It's a great opportunity to ask about the challenges and successes of that launch.
+*   **Market Trend:** The conversational AI space is rapidly evolving. Mentioning a recent development or asking her opinion on it could show you're up-to-date.
+
+- - -
+
+### Closing or Follow-Up Ideas
+A great way to close would be to ask, "Based on our chat, is there anyone else in your network you think would be insightful for me to connect with as I explore this path?" For follow-up, you could send a relevant article about a topic you discussed.
+    `);
+  }
+
+  const prompt = `
+    **Role:** You are a friendly and insightful coffee chat coach. Your job is to help people feel confident and prepared before networking conversations by creating a personalized "Coffee Chat Brief".
+    
+    **Tone:** Your tone should be warm, curious, and professional — like a smart, encouraging friend helping someone prep for an important chat. Avoid clichés, overly formal language, or generic advice. Be insightful and specific.
+
+    ---
+
+    **INPUT DATA:**
+
+    **1. The User's Professional Profile:**
+    This is the person you are coaching.
+    \`\`\`json
+    ${JSON.stringify(profile, null, 2)}
+    \`\`\`
+
+    **2. Information About the Counterpart:**
+    This is the person the user is meeting with. It's a collection of notes, links, or a bio.
+    \`\`\`text
+    ${counterpartInfo}
+    \`\`\`
+
+    ---
+
+    **YOUR TASK:**
+
+    Analyze both inputs and create a "Coffee Chat Brief" with the following sections. Make it sound authentic, confident, and tailored. Use markdown for formatting (e.g., bolding, bullet points, and headers).
+
+    **1. Quick Overview (2–3 sentences):**
+    Summarize who the other person is, what connects them to the user, and what the most interesting conversation angle could be.
+
+    **2. Shared Touchpoints (3-5 bullet points):**
+    Highlight commonalities or points of connection between the user and the counterpart (e.g., shared university, past employers, skills, values, goals, location).
+
+    **3. Smart Conversation Starters (3–4 bullet points):**
+    Suggest open-ended, specific questions that will spark engaging discussion. These should be based on the user’s goals and the counterpart’s background. Go deeper than surface-level questions.
+
+    **4. Industry or Context Insights (2–3 bullet points):**
+    Add a few short, timely insights or fun facts about the counterpart’s industry or recent company news that could make the user sound well-prepared and genuinely interested.
+
+    **5. Closing or Follow-Up Ideas (1–2 sentences):**
+    Suggest a natural way the user could wrap up the conversation or continue the connection afterward.
+
+    ---
+
+    **FINAL OUTPUT:**
+    Produce only the formatted "Coffee Chat Brief". Do not include any introductory text like "Here is your brief:".
+  `;
+
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF_MS = 1000;
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro', // Use the more powerful model for this task
+        contents: prompt,
+        config: {
+          temperature: 0.6, // A bit of creativity but still grounded
+          topP: 0.9,
+          thinkingConfig: { thinkingBudget: 32768 }
+        }
+      });
+
+      const brief = response.text.trim();
+      if (!brief) {
+          throw new Error("The AI returned an empty response. Please try again with more detailed information.");
+      }
+      return brief;
+
+    } catch (error: any) {
+      lastError = error;
+      const { message, isRetryable } = parseError(error);
+
+      if (isRetryable && i < MAX_RETRIES - 1) {
+          const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
+          console.warn(`Coffee Chat generation failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+          console.error("Non-retryable or final error during Coffee Chat generation:", error);
+          throw new Error(message);
+      }
+    }
+  }
+  
   const finalError = parseError(lastError).message || "The model is currently busy. We tried several times without success. Please try again in a few moments.";
   throw new Error(finalError);
 };

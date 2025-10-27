@@ -801,7 +801,7 @@ const ProfileForm: React.FC = () => {
 
     {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm p-4 border-t border-gray-200 shadow-lg z-40 animate-slide-in-up">
-            <div className="container mx-auto flex justify-end items-center px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex justify-end items-center px-4 sm:px-6 lg:px-8">
                 <p className="text-gray-600 mr-4 hidden sm:block">You have unsaved changes.</p>
                 <button
                     onClick={handleSave}

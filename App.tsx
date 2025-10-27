@@ -9,10 +9,12 @@ import GDPRPage from './pages/GDPRPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
-import type { ProfileData } from './types';
+import type { ProfileData, DocumentHistoryItem } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
+import Sidebar from './components/Sidebar';
+import CoffeeChatPrepperPage from './pages/CoffeeChatPrepperPage';
 
 const initialProfile: ProfileData = {
   fullName: '',
@@ -54,6 +56,10 @@ export const ProfileContext = createContext<{
   setTokens: React.Dispatch<React.SetStateAction<number>>;
   isFetchingUrl: boolean;
   setIsFetchingUrl: React.Dispatch<React.SetStateAction<boolean>>;
+  documentHistory: DocumentHistoryItem[];
+  addDocumentToHistory: (doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
@@ -72,6 +78,16 @@ const App: React.FC = () => {
   const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData>(profile);
   const [tokens, setTokens] = useState(65);
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [documentHistory, setDocumentHistory] = useState<DocumentHistoryItem[]>(() => {
+    try {
+      const savedHistory = localStorage.getItem('documentHistory');
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch (error) {
+      console.error("Failed to parse document history from localStorage", error);
+      return [];
+    }
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Function to explicitly save profile (and update lastSavedProfile)
   const saveProfile = useCallback((profileToSave: ProfileData) => {
@@ -84,6 +100,24 @@ const App: React.FC = () => {
         console.error("Failed to save profile to localStorage", error);
         return false; // Indicate failure
     }
+  }, []);
+
+  const addDocumentToHistory = useCallback((doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => {
+    setDocumentHistory(prevHistory => {
+        const newDoc: DocumentHistoryItem = {
+            ...doc,
+            id: crypto.randomUUID(),
+            generatedAt: new Date().toISOString(),
+        };
+        // Add to the beginning of the array and keep the last 20 items
+        const updatedHistory = [newDoc, ...prevHistory].slice(0, 20);
+        try {
+            localStorage.setItem('documentHistory', JSON.stringify(updatedHistory));
+        } catch (error) {
+            console.error("Failed to save document history to localStorage", error);
+        }
+        return updatedHistory;
+    });
   }, []);
 
   // Autosave effect (debounced)
@@ -100,11 +134,12 @@ const App: React.FC = () => {
     };
   }, [profile, lastSavedProfile, saveProfile]); // Dependencies on profile and lastSavedProfile
 
-  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl]);
+  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory]);
 
   return (
     <ProfileContext.Provider value={contextValue}>
       <HashRouter>
+        <Sidebar />
         <div className="min-h-screen bg-base-200 flex flex-col">
           <Header />
           <main className="flex-grow">
@@ -119,6 +154,7 @@ const App: React.FC = () => {
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/gdpr" element={<GDPRPage />} />
+              <Route path="/coffee-chat-prepper" element={<CoffeeChatPrepperPage />} />
             </Routes>
           </main>
           <Footer />

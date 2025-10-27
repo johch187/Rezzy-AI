@@ -130,6 +130,14 @@ export interface GeneratedContent {
   coverLetter: string | null;
 }
 
+export interface DocumentHistoryItem {
+  id: string;
+  name: string;
+  type: 'resume' | 'coverLetter';
+  generatedAt: string; // ISO Date string
+  content: string; // The markdown content
+}
+
 // Fix: Add missing IncludedProfileSelections interface.
 export interface IncludedProfileSelections {
   summary: boolean;

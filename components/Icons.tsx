@@ -115,3 +115,9 @@ export const GoogleDocsIcon: React.FC<{ className?: string }> = ({ className = "
         <path d="M24 29.8958H8V27.0417H24V29.8958ZM24 24.1875H8V21.3333H24V24.1875ZM17.3333 18.4792H8V15.625H17.3333V18.4792Z" fill="white"/>
     </svg>
 );
+
+export const HamburgerIcon: React.FC<{ className?: string }> = ({ className = "h-6 w-6" }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+);

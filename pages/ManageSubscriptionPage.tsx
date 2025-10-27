@@ -50,7 +50,7 @@ const ManageSubscriptionPage: React.FC = () => {
 
   return (
     <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Account Settings</h1>

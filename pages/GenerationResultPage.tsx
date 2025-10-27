@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { generateTailoredDocuments } from '../services/generationService';
 import { parseGeneratedCoverLetter } from '../services/geminiService';
 import { parseGeneratedResume } from '../services/resumeParserService';
-import type { ProfileData, GenerationOptions, GeneratedContent, ParsedCoverLetter } from '../types';
+import type { ProfileData, GenerationOptions, GeneratedContent, ParsedCoverLetter, DocumentHistoryItem } from '../types';
 import EditableDocument from '../components/EditableDocument';
 import { ThinkingIcon, XCircleIcon, CheckIcon, SpinnerIcon, PendingIcon } from '../components/Icons';
 
@@ -82,14 +82,37 @@ const GenerationProgressIndicator: React.FC<{ currentStep: number; thinkingMode:
 
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const profileContext = useContext(ProfileContext);
-    const { tokens, setTokens } = profileContext!;
+
+    // CRITICAL FIX: Handle cases where location.state is missing (e.g., page refresh)
+    if (!location.state) {
+        return (
+            <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in text-center">
+                <div className="bg-white p-8 rounded-2xl shadow-lg max-w-lg mx-auto">
+                    <h1 className="text-2xl font-bold text-neutral">Oops! Something went wrong.</h1>
+                    <p className="mt-4 text-gray-600">
+                        The generation data was not found. This can happen if you refresh the page or navigate here directly.
+                        Please start a new generation from the builder page.
+                    </p>
+                    <button
+                        onClick={() => navigate('/generate')}
+                        className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    >
+                        Start New Generation
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const { profile, options, jobDescription } = location.state as {
         profile: ProfileData;
         options: GenerationOptions;
         jobDescription: string;
     };
+
+    const { tokens, setTokens, addDocumentToHistory } = profileContext!;
 
     const [isLoading, setIsLoading] = useState(true);
     const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
@@ -99,55 +122,6 @@ const GenerationResultPage: React.FC = () => {
     const [currentProgressStep, setCurrentProgressStep] = useState(0);
 
     const progressTimeoutRef = useRef<number | null>(null);
-
-    useEffect(() => {
-        if (!profileContext || !profile || !options || !jobDescription) {
-            setGenerationError("Missing data for generation. Please go back and try again.");
-            setIsLoading(false);
-            return;
-        }
-
-        const fetchAndParse = async () => {
-            setIsLoading(true);
-            setGenerationError(null);
-            setGeneratedContent(null);
-            setParsedResume(null);
-            setParsedCoverLetter(null);
-
-            try {
-                // Step 1: Generate documents
-                const result = await generateTailoredDocuments(profile, options);
-                setGeneratedContent(result);
-
-                // Step 2: Parse resume if it exists
-                if (result.resume) {
-                    try {
-                        const parsed = await parseGeneratedResume(result.resume);
-                        setParsedResume(parsed);
-                    } catch (parsingError: any) {
-                        console.warn("Could not parse the generated resume into a form. Displaying as raw text.", parsingError);
-                    }
-                }
-
-                // Step 3: Parse cover letter if it exists
-                if (result.coverLetter) {
-                    try {
-                        const parsedCL = await parseGeneratedCoverLetter(result.coverLetter);
-                        setParsedCoverLetter(parsedCL);
-                    } catch (parsingError: any) {
-                        console.warn("Could not parse the generated cover letter into a form. Displaying as raw text.", parsingError);
-                    }
-                }
-
-            } catch (e: any) {
-                setGenerationError(e.message || 'An unexpected error occurred. Please try again.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchAndParse();
-    }, [profileContext, profile, options, jobDescription]);
 
     useEffect(() => {
         // This effect manages the progress bar animation based on the `isLoading` state.
@@ -193,6 +167,71 @@ const GenerationResultPage: React.FC = () => {
     }, [isLoading, options.thinkingMode]);
 
 
+    useEffect(() => {
+        const fetchAndParse = async () => {
+            setIsLoading(true);
+            setGenerationError(null);
+            setGeneratedContent(null);
+            setParsedResume(null);
+            setParsedCoverLetter(null);
+
+            try {
+                // Step 1: Generate documents
+                const result = await generateTailoredDocuments(profile, options);
+                setGeneratedContent(result);
+
+                // If the AI returns nothing, it's an error state for the user.
+                if (!result.resume && !result.coverLetter) {
+                    throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");
+                }
+                
+                // Add to history
+                if (result.resume) {
+                    addDocumentToHistory({
+                        name: `Resume for ${profile.targetJobTitle || 'Untitled Role'}`,
+                        type: 'resume',
+                        content: result.resume,
+                    });
+                }
+                if (result.coverLetter) {
+                    addDocumentToHistory({
+                        name: `Cover Letter for ${profile.targetJobTitle || 'Untitled Role'}`,
+                        type: 'coverLetter',
+                        content: result.coverLetter,
+                    });
+                }
+
+                // Step 2: Parse resume if it exists
+                if (result.resume) {
+                    try {
+                        const parsed = await parseGeneratedResume(result.resume);
+                        setParsedResume(parsed);
+                    } catch (parsingError: any) {
+                        console.warn("Could not parse the generated resume into a form. Displaying as raw text.", parsingError);
+                    }
+                }
+
+                // Step 3: Parse cover letter if it exists
+                if (result.coverLetter) {
+                    try {
+                        const parsedCL = await parseGeneratedCoverLetter(result.coverLetter);
+                        setParsedCoverLetter(parsedCL);
+                    } catch (parsingError: any) {
+                        console.warn("Could not parse the generated cover letter into a form. Displaying as raw text.", parsingError);
+                    }
+                }
+
+            } catch (e: any) {
+                setGenerationError(e.message || 'An unexpected error occurred. Please try again.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchAndParse();
+    }, [profile, options, jobDescription, addDocumentToHistory]);
+
+
     const handleSaveResume = useCallback((newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => {
         setGeneratedContent(prev => prev ? { ...prev, resume: newContent } : null);
         if (newStructuredData && isParsedResume(newStructuredData)) {
@@ -208,8 +247,8 @@ const GenerationResultPage: React.FC = () => {
     }, []);
     
     // Determine layout based on the number of generated documents
-    const hasResume = !isLoading && generatedContent?.resume && generatedContent.resume !== 'null';
-    const hasCoverLetter = !isLoading && generatedContent?.coverLetter && generatedContent.coverLetter !== 'null';
+    const hasResume = !isLoading && !!generatedContent?.resume;
+    const hasCoverLetter = !isLoading && !!generatedContent?.coverLetter;
     const documentCount = (hasResume ? 1 : 0) + (hasCoverLetter ? 1 : 0);
 
     const containerClasses = documentCount === 1
@@ -220,7 +259,7 @@ const GenerationResultPage: React.FC = () => {
     const itemWrapperClasses = documentCount === 1 ? "w-full max-w-3xl" : "";
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
             {generationError && (
                 <div className="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
                     <div>

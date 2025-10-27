@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 const GDPRPage: React.FC = () => {
   return (
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="prose prose-lg max-w-none prose-h1:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
             <h1 className="text-center">GDPR Disclaimer</h1>

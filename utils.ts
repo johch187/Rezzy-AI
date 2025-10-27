@@ -315,3 +315,28 @@ export const readFileContent = (file: File): Promise<string> => {
         }
     });
 };
+
+/**
+ * Triggers a browser download for a given string content.
+ * @param content The string content to be downloaded.
+ * @param filename The name of the file to be saved.
+ * @param mimeType The MIME type of the file, defaults to 'text/plain'.
+ */
+export const downloadFile = (content: string, filename: string, mimeType: string = 'text/plain') => {
+  // Create a Blob from the content
+  const blob = new Blob([content], { type: mimeType });
+
+  // Create an object URL for the Blob
+  const url = URL.createObjectURL(blob);
+
+  // Create a temporary anchor element and trigger the download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a); // Append to the body to be clickable
+  a.click();
+
+  // Clean up by removing the element and revoking the object URL
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
