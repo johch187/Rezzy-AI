@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { parseGeneratedCoverLetter } from '../services/geminiService';
-import { parseGeneratedResume } from '../services/resumeParserService';
 import type { ProfileData, GeneratedContent, ParsedCoverLetter } from '../types';
 import EditableDocument from '../components/EditableDocument';
 import { XCircleIcon } from '../components/Icons';
 
-// --- Type Guards ---
 function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
   return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
 }
@@ -22,7 +19,6 @@ const GenerationResultPage: React.FC = () => {
     const navigate = useNavigate();
     const profileContext = useContext(ProfileContext);
 
-    // CRITICAL FIX: Handle cases where location.state is missing (e.g., page refresh)
     if (!location.state?.generatedContent) {
         return (
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24 animate-fade-in text-center">
@@ -43,44 +39,31 @@ const GenerationResultPage: React.FC = () => {
         );
     }
 
-    const { generatedContent } = location.state as { generatedContent: GeneratedContent };
+    const { generatedContent, parsedResume: initialParsedResume, parsedCoverLetter: initialParsedCoverLetter } = location.state as {
+        generatedContent: GeneratedContent;
+        parsedResume: Partial<ProfileData> | null;
+        parsedCoverLetter: ParsedCoverLetter | null;
+    };
 
     const { tokens, setTokens } = profileContext!;
 
     const [editableDocs, setEditableDocs] = useState<GeneratedContent>(generatedContent);
-    const [parsedResume, setParsedResume] = useState<Partial<ProfileData> | null>(null);
-    const [parsedCoverLetter, setParsedCoverLetter] = useState<ParsedCoverLetter | null>(null);
+    const [parsedResume, setParsedResume] = useState<Partial<ProfileData> | null>(initialParsedResume);
+    const [parsedCoverLetter, setParsedCoverLetter] = useState<ParsedCoverLetter | null>(initialParsedCoverLetter);
     const [parsingError, setParsingError] = useState<string | null>(null);
     
     useEffect(() => {
-        const parseDocuments = async () => {
-            setParsingError(null);
-
-            // Step 1: Parse resume if it exists
-            if (generatedContent.resume) {
-                try {
-                    const parsed = await parseGeneratedResume(generatedContent.resume);
-                    setParsedResume(parsed);
-                } catch (parsingError: any) {
-                    console.warn("Could not parse the generated resume into a form. Displaying as raw text.", parsingError);
-                    setParsingError("We couldn't structure the generated resume for rich editing, but you can still edit the raw text and download it.");
-                }
-            }
-
-            // Step 2: Parse cover letter if it exists
-            if (generatedContent.coverLetter) {
-                try {
-                    const parsedCL = await parseGeneratedCoverLetter(generatedContent.coverLetter);
-                    setParsedCoverLetter(parsedCL);
-                } catch (parsingError: any) {
-                    console.warn("Could not parse the generated cover letter into a form. Displaying as raw text.", parsingError);
-                    setParsingError("We couldn't structure the generated cover letter for rich editing, but you can still edit the raw text and download it.");
-                }
-            }
-        };
-
-        parseDocuments();
-    }, [generatedContent]);
+        const errorMessages: string[] = [];
+        if (generatedContent.resume && !initialParsedResume) {
+            errorMessages.push("We couldn't structure the generated resume for rich editing, but you can still edit the raw text and download it.");
+        }
+        if (generatedContent.coverLetter && !initialParsedCoverLetter) {
+            errorMessages.push("We couldn't structure the generated cover letter for rich editing, but you can still edit the raw text and download it.");
+        }
+        if (errorMessages.length > 0) {
+            setParsingError(errorMessages.join(' '));
+        }
+    }, [generatedContent, initialParsedResume, initialParsedCoverLetter]);
 
     const handleSaveResume = useCallback((newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => {
         setEditableDocs(prev => ({ ...prev, resume: newContent }));
@@ -96,16 +79,14 @@ const GenerationResultPage: React.FC = () => {
         }
     }, []);
     
-    // Determine layout based on the number of generated documents
     const hasResume = !!editableDocs.resume;
     const hasCoverLetter = !!editableDocs.coverLetter;
     const documentCount = (hasResume ? 1 : 0) + (hasCoverLetter ? 1 : 0);
 
     const containerClasses = documentCount === 1
-      ? "flex justify-center" // Center when only one document
+      ? "flex justify-center"
       : "grid grid-cols-1 lg:grid-cols-2 gap-8";
 
-    // When there's only one document, we constrain its width to look good.
     const itemWrapperClasses = documentCount === 1 ? "w-full max-w-4xl" : "";
 
     return (

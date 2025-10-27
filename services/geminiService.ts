@@ -1,82 +1,51 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import type { ParsedCoverLetter } from '../types';
+import { GoogleGenAI, GenerateContentRequest } from "@google/genai";
 import { parseError } from '../utils';
 
 if (!process.env.API_KEY) {
-    console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
+    throw new Error("API_KEY environment variable not set. Gemini Service cannot be initialized.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const parseGeneratedCoverLetter = async (coverLetterMarkdown: string): Promise<ParsedCoverLetter> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY is not configured. Cannot parse cover letter.");
-    }
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 1000;
 
-    if (!coverLetterMarkdown || coverLetterMarkdown.trim().length < 20) {
-        throw new Error("The generated cover letter content is too short to parse.");
-    }
-    
-    const prompt = `
-        You are an expert data extraction system. Your task is to meticulously analyze the provided cover letter, which is in MARKDOWN format, and extract its components into a structured JSON object.
+/**
+ * A robust wrapper for the Gemini API's generateContent method.
+ * It includes automatic retries with exponential backoff for retryable errors.
+ * @param request The complete request object for the generateContent call.
+ * @returns A promise that resolves with the AI's response text.
+ * @throws An error with a user-friendly message if the request fails after all retries.
+ */
+export const generateContentWithRetry = async (request: GenerateContentRequest): Promise<string> => {
+    let lastError: Error | null = null;
 
-        **Cover Letter Markdown to Parse:**
-        ---
-        ${coverLetterMarkdown}
-        ---
-        
-        **Detailed Parsing Instructions:**
-
-        1.  **Sender Information**:
-            - \`senderName\`: The full name of the person sending the letter.
-            - \`senderAddress\`: The full street address, city, state, and zip code of the sender. Consolidate into a single string. If parts are on multiple lines, join them.
-            - \`senderContact\`: The sender's email and/or phone number. Consolidate into a single string.
-
-        2.  **Date**: Extract the date the letter was written.
-
-        3.  **Recipient Information**:
-            - \`recipientName\`: The full name of the hiring manager or recipient. If not specified, use "Hiring Manager".
-            - \`recipientTitle\`: The job title of the recipient.
-            - \`companyName\`: The name of the company.
-            - \`companyAddress\`: The full address of the company. Consolidate into a single string.
-
-        4.  **Letter Content**:
-            - \`salutation\`: The opening greeting (e.g., "Dear Ms. Jones,").
-            - \`body\`: The entire main content of the letter, from the first paragraph after the salutation to the last paragraph before the closing. Preserve paragraph breaks by using "\\n\\n".
-            - \`closing\`: The closing phrase (e.g., "Sincerely," or "Best regards,").
-            - \`signature\`: The sender's name as it appears at the very end.
-    `;
-    
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        senderName: { type: Type.STRING },
-                        senderAddress: { type: Type.STRING },
-                        senderContact: { type: Type.STRING },
-                        date: { type: Type.STRING },
-                        recipientName: { type: Type.STRING },
-                        recipientTitle: { type: Type.STRING },
-                        companyName: { type: Type.STRING },
-                        companyAddress: { type: Type.STRING },
-                        salutation: { type: Type.STRING },
-                        body: { type: Type.STRING },
-                        closing: { type: Type.STRING },
-                        signature: { type: Type.STRING },
-                    },
-                },
+    for (let i = 0; i < MAX_RETRIES; i++) {
+        try {
+            const response = await ai.models.generateContent(request);
+            const text = response.text.trim();
+            if (!text) {
+                // Throw an error that can be caught and potentially retried
+                throw new Error("The AI returned an empty response.");
             }
-        });
+            return text; // Success
+        } catch (error: any) {
+            lastError = error;
+            const { message, isRetryable } = parseError(error);
 
-        return JSON.parse(response.text.trim());
-    } catch (error: any) {
-        console.error("Error parsing generated cover letter:", error);
-        const { message } = parseError(error);
-        throw new Error(message);
+            if (isRetryable && i < MAX_RETRIES - 1) {
+                const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
+                console.warn(`Gemini API call failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`, { error: message });
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                console.error(`Non-retryable or final error calling Gemini API:`, error);
+                // Throw the parsed, user-friendly error message
+                throw new Error(message);
+            }
+        }
     }
+
+    // This path should not be reachable if the loop logic is correct, but as a fallback:
+    const finalError = parseError(lastError).message || `The model is currently busy. We tried several times without success. Please try again in a few moments.`;
+    throw new Error(finalError);
 };

@@ -1,8 +1,10 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateTailoredDocuments, fetchJobDescriptionFromUrl } from '../services/generationService';
-import type { GenerationOptions, ProfileData, IncludedProfileSelections } from '../types';
+import { generateTailoredDocuments } from '../services/generationService';
+import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
+import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
+import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
 import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
@@ -85,7 +87,6 @@ const GeneratePage: React.FC = () => {
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
   
-  // Effect to initialize selections when profile loads/changes
   useEffect(() => {
     if (!profile) return;
     const allSelections: IncludedProfileSelections = {
@@ -157,7 +158,6 @@ const GeneratePage: React.FC = () => {
     try {
         setTokens(prev => prev - generationCost);
 
-        // Filter the profile based on user selections
         const { profile } = profileContext;
         const filteredProfile: ProfileData = {
           ...profile,
@@ -183,12 +183,30 @@ const GeneratePage: React.FC = () => {
         const generationOptions = { ...options, jobDescription };
         const result = await generateTailoredDocuments(filteredProfile, generationOptions);
         
-        // If the AI returns nothing, it's an error state for the user.
         if (!result.resume && !result.coverLetter) {
             throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");
         }
         
-        // Add to history
+        // --- NEW: Parse documents immediately after generation ---
+        let parsedResume: Partial<ProfileData> | null = null;
+        let parsedCoverLetter: ParsedCoverLetter | null = null;
+
+        if (result.resume) {
+            try {
+                parsedResume = await parseGeneratedResume(result.resume);
+            } catch (e) {
+                console.warn("Failed to parse generated resume into form. Falling back to raw text.", e);
+            }
+        }
+        if (result.coverLetter) {
+            try {
+                parsedCoverLetter = await parseGeneratedCoverLetter(result.coverLetter);
+            } catch (e) {
+                console.warn("Failed to parse generated cover letter into form. Falling back to raw text.", e);
+            }
+        }
+        // --- End of new parsing logic ---
+
         if (result.resume) {
             addDocumentToHistory({
                 name: `Resume for ${profile.targetJobTitle || 'Untitled Role'}`,
@@ -207,12 +225,13 @@ const GeneratePage: React.FC = () => {
         navigate('/generate/results', { 
             state: { 
                 generatedContent: result,
+                parsedResume, // Pass parsed data to results page
+                parsedCoverLetter, // Pass parsed data to results page
             } 
         });
 
     } catch (e: any) {
         setError(e.message || 'An unexpected generation error occurred. Please try again.');
-        // Refund tokens on failure
         setTokens(prev => prev + generationCost);
     } finally {
         setIsGenerating(false);
