@@ -1,35 +1,14 @@
 import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { generateCoffeeChatBrief } from '../services/generationService';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 
-// A simple component to render the markdown-like response from the AI
-const BriefDisplay: React.FC<{ content: string }> = ({ content }) => {
-    // Replace markdown-style elements with styled HTML tags
-    const formattedContent = content
-        .replace(/^## (.*$)/gm, '<h3 class="text-xl font-bold text-neutral mt-6 mb-3">$1</h3>')
-        .replace(/^\*\s+(.*)$/gm, '<li class="flex items-start mb-2"><svg class="flex-shrink-0 h-5 w-5 text-primary mt-1 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>$1</span></li>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    return (
-        <div className="prose prose-lg max-w-none text-left">
-            {formattedContent.split('\n').map((line, index) => {
-                if (line.startsWith('<h3') || line.startsWith('<li')) {
-                    return <div key={index} dangerouslySetInnerHTML={{ __html: line }} />;
-                }
-                return <p key={index} className="mb-4">{line}</p>;
-            })}
-        </div>
-    );
-};
-
-
 const CoffeeChatPrepperPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
+    const navigate = useNavigate();
     const [counterpartInfo, setCounterpartInfo] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [brief, setBrief] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     if (!profileContext) return <div>Loading...</div>;
@@ -47,12 +26,16 @@ const CoffeeChatPrepperPage: React.FC = () => {
 
         setIsLoading(true);
         setError(null);
-        setBrief(null);
 
         try {
             const result = await generateCoffeeChatBrief(profile, counterpartInfo);
-            setBrief(result);
             setTokens(prev => prev - 1);
+            navigate('/coffee-chat-prepper/result', { 
+                state: { 
+                    brief: result,
+                    counterpartInfo: counterpartInfo,
+                } 
+            });
         } catch (e: any) {
             setError(e.message || "An unexpected error occurred. Please try again.");
         } finally {
@@ -120,13 +103,6 @@ const CoffeeChatPrepperPage: React.FC = () => {
                         <button onClick={() => setError(null)} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close">
                             <XCircleIcon className="h-6 w-6" />
                         </button>
-                    </div>
-                )}
-                
-                {brief && !isLoading && (
-                    <div className="mt-12 bg-white p-8 sm:p-10 rounded-2xl shadow-2xl border border-gray-200 animate-fade-in">
-                        <h2 className="text-3xl font-bold text-neutral mb-6 pb-4 border-b border-gray-200">Your Coffee Chat Brief</h2>
-                        <BriefDisplay content={brief} />
                     </div>
                 )}
             </div>

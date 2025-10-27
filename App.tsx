@@ -15,6 +15,7 @@ import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import Sidebar from './components/Sidebar';
 import CoffeeChatPrepperPage from './pages/CoffeeChatPrepperPage';
+import CoffeeChatResultPage from './pages/CoffeeChatResultPage';
 
 const initialProfile: ProfileData = {
   fullName: '',
@@ -155,6 +156,7 @@ const App: React.FC = () => {
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/gdpr" element={<GDPRPage />} />
               <Route path="/coffee-chat-prepper" element={<CoffeeChatPrepperPage />} />
+              <Route path="/coffee-chat-prepper/result" element={<CoffeeChatResultPage />} />
             </Routes>
           </main>
           <Footer />
