@@ -11,7 +11,7 @@ const BriefDisplay: React.FC<{ content: string }> = ({ content }) => {
       processedText = processedText
         .replace(/^### (.*$)/gm, '<h4>$1</h4>') // Use h4 for ###
         .replace(/^## (.*$)/gm, '<h3>$1</h3>')   // Use h3 for ##
-        .replace(/^-{3,}/gm, '<hr />');
+        .replace(/^-{3,}/gm, '<hr class="my-6" />');
 
       // 3. Process lists
       // First, convert markdown list items to <li> with custom styling
@@ -57,8 +57,8 @@ const CoffeeChatResultPage: React.FC = () => {
 
     if (!location.state) {
         return (
-            <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in text-center">
-                <div className="bg-white p-8 rounded-2xl shadow-lg max-w-lg mx-auto">
+            <div className="mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 animate-fade-in text-center">
+                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 max-w-lg mx-auto">
                     <h1 className="text-2xl font-bold text-neutral">Oops! Something went wrong.</h1>
                     <p className="mt-4 text-gray-600">
                         The brief data was not found. This can happen if you refresh the page or navigate here directly.
@@ -66,7 +66,7 @@ const CoffeeChatResultPage: React.FC = () => {
                     </p>
                     <button
                         onClick={() => navigate('/coffee-chat-prepper')}
-                        className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                        className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                     >
                         Prepare a New Brief
                     </button>
@@ -81,20 +81,20 @@ const CoffeeChatResultPage: React.FC = () => {
         <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
                  <div className="text-center mb-12 animate-slide-in-up">
-                    <h1 className="text-4xl font-extrabold text-neutral tracking-tight">Your Generated Brief</h1>
-                    <p className="mt-4 max-w-3xl mx-auto text-lg text-gray-600">
+                    <h1 className="text-4xl font-extrabold text-neutral tracking-tight sm:text-5xl">Your Generated Brief</h1>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-600">
                         Here is the personalized brief to help you prepare for your conversation. Good luck!
                     </p>
                 </div>
 
-                <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-2xl border border-gray-200 animate-fade-in">
+                <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
                     <BriefDisplay content={brief} />
                 </div>
 
                 <div className="mt-12 text-center">
                     <Link
                         to="/coffee-chat-prepper"
-                        className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+                        className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
                     >
                         Prepare Another Brief
                     </Link>

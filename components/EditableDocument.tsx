@@ -114,14 +114,14 @@ const formatContentForDisplay = (text: string) => {
 const FormInput: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string }> = 
 ({ value = '', onChange, isEditing, className = '', placeholder = '' }) => (
     isEditing ? 
-    <input value={value} onChange={e => onChange(e.target.value)} className={`w-full p-1 border rounded bg-blue-100 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
+    <input value={value} onChange={e => onChange(e.target.value)} className={`w-full p-1 border rounded bg-blue-50 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
     <span className={className}>{value}</span>
 );
 
 const FormTextarea: React.FC<{ value?: string; onChange: (v: string) => void; isEditing: boolean; className?: string; placeholder?: string, rows?: number }> = 
 ({ value = '', onChange, isEditing, className = '', placeholder = '', rows = 4 }) => (
     isEditing ? 
-    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={`w-full p-2 border rounded bg-blue-100 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
+    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={`w-full p-2 border rounded bg-blue-50 border-blue-300 shadow-inner focus:ring-1 focus:ring-primary transition-colors duration-200 ${className}`} placeholder={placeholder} /> :
     <p className={`whitespace-pre-wrap ${className}`}>{value}</p>
 );
 
@@ -673,7 +673,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   const hasEnoughTokensForDownload = tokens >= 1;
   
   return (
-    <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-lg animate-slide-in-up">
+    <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-xl border border-gray-200 animate-slide-in-up">
       <div id={`document-content-display-${documentType}`}>
           {isEditing ? (
               isParsedCoverLetter(formData) ? renderCoverLetterForm() :
@@ -706,12 +706,12 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
               <div className="flex flex-wrap justify-end items-center gap-3">
                   {isEditing ? (
                     <>
-                      <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                      <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
                         Undo
                       </button>
-                      <button onClick={handleCancel} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Cancel</button>
-                      <button onClick={handleSave} disabled={!isDirty} className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400">
+                      <button onClick={handleCancel} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Cancel</button>
+                      <button onClick={handleSave} disabled={!isDirty} className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400">
                         <SaveIcon className="h-5 w-5 mr-2" />
                         Save
                       </button>
@@ -721,7 +721,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                       <button 
                         onClick={handleDownloadPdf} 
                         disabled={!hasEnoughTokensForDownload}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
                         {hasEnoughTokensForDownload ? (
                             <>
@@ -737,7 +737,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                       </button>
                       <button
                         onClick={handleOpenInGoogleDocs}
-                        className={`inline-flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200 ${
+                        className={`inline-flex items-center justify-center px-4 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200 ${
                             isCopied
                             ? 'bg-green-50 border-green-300 text-green-800'
                             : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -750,7 +750,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                         )}
                         <span className="ml-2">{isCopied ? 'Copied! Now Paste.' : 'Open in Google Docs'}</span>
                       </button>
-                      <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary">
                         <EditIcon className="h-5 w-5 mr-2" />
                         Edit
                       </button>

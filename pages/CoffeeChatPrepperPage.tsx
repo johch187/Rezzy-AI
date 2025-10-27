@@ -48,12 +48,14 @@ const CoffeeChatPrepperPage: React.FC = () => {
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
                 <div className="text-center mb-12">
                     <div className="flex justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h4M5 8h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H21" />
-                        </svg>
+                        <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h4M5 8h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H21" />
+                            </svg>
+                        </div>
                     </div>
                     <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Coffee Chat Prepper</h1>
-                    <p className="mt-6 text-lg text-gray-600">
+                    <p className="mt-6 text-xl text-gray-600">
                         Nail your next networking chat. Paste in notes, a bio, or a LinkedIn URL, and our AI coach will create a personalized brief to help you shine.
                     </p>
                 </div>
@@ -68,7 +70,7 @@ const CoffeeChatPrepperPage: React.FC = () => {
                     <textarea
                         id="counterpart-info"
                         rows={12}
-                        className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition"
+                        className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-1 focus:ring-primary focus:border-primary transition bg-gray-50"
                         placeholder="e.g., Sarah Chen - Product Manager at Innovate Inc. Previously at Acme Corp. Studied Computer Science at State University. Passionate about user-centric design and mentoring..."
                         value={counterpartInfo}
                         onChange={(e) => setCounterpartInfo(e.target.value)}
@@ -79,7 +81,7 @@ const CoffeeChatPrepperPage: React.FC = () => {
                         <button
                             onClick={handleGenerate}
                             disabled={isLoading || !counterpartInfo.trim()}
-                            className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             {isLoading ? (
                                 <>

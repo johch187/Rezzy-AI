@@ -64,9 +64,9 @@ const ErrorMessage: React.FC<{ message?: string; id: string }> = ({ message, id 
     return <p id={id} className="text-red-500 text-xs mt-1">{message}</p>;
 };
 
-const baseInputStyles = "block w-full text-sm p-2.5 border rounded-md focus:ring-1 transition-colors duration-200 shadow-sm placeholder-gray-400";
+const baseInputStyles = "block w-full text-sm p-2.5 border rounded-md focus:ring-1 focus:ring-primary transition-colors duration-200 shadow-sm placeholder-gray-400";
 const errorInputStyles = "border-red-400 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500";
-const validInputStyles = "border-gray-300 bg-gray-50 text-gray-900 focus:border-primary focus:ring-primary";
+const validInputStyles = "border-gray-300 bg-gray-50 text-gray-900 focus:border-primary";
 
 // --- Memoized Section Components for Performance ---
 
@@ -190,7 +190,7 @@ const EducationSection = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.education.map((edu) => (
-                <div key={edu.id} className="p-4 border rounded-lg relative group/item bg-white">
+                <div key={edu.id} className="p-4 border border-gray-200 rounded-lg relative group/item bg-white">
                     <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
                         <TrashIcon />
                     </button>
@@ -267,7 +267,7 @@ const ExperienceSection = React.memo(() => {
     return (
          <div className="space-y-6">
             {profile.experience.map((exp) => (
-                <div key={exp.id} className="p-4 border rounded-lg relative group/item bg-white">
+                <div key={exp.id} className="p-4 border border-gray-200 rounded-lg relative group/item bg-white">
                     <button onClick={() => removeExperience(exp.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
                         <TrashIcon />
                     </button>
@@ -331,7 +331,7 @@ const ProjectSection = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.projects.map(proj => (
-                <div key={proj.id} className="p-4 border rounded-lg relative group/item bg-white">
+                <div key={proj.id} className="p-4 border border-gray-200 rounded-lg relative group/item bg-white">
                     <button onClick={() => removeProject(proj.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
                         <TrashIcon />
                     </button>
@@ -531,7 +531,7 @@ const CustomSections = React.memo(() => {
     return (
         <div className="space-y-6">
             {profile.customSections.map(cs => (
-                <div key={cs.id} className="p-4 border rounded-lg relative group/item bg-white">
+                <div key={cs.id} className="p-4 border border-gray-200 rounded-lg relative group/item bg-white">
                     <button onClick={() => removeSection(cs.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove custom section ${cs.title}`}>
                         <TrashIcon />
                     </button>
@@ -673,7 +673,7 @@ const ProfileForm: React.FC = () => {
 
   return (
     <>
-    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-200">
       <div className="border-b border-gray-200 pb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
@@ -691,7 +691,7 @@ const ProfileForm: React.FC = () => {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isAutofilling}
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isAutofilling ? (
                 <>
@@ -805,7 +805,7 @@ const ProfileForm: React.FC = () => {
                 <p className="text-gray-600 mr-4 hidden sm:block">You have unsaved changes.</p>
                 <button
                     onClick={handleSave}
-                    className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                     Save Changes
                 </button>

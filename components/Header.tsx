@@ -25,9 +25,9 @@ const Header: React.FC = () => {
     };
   }, []);
   
-  const buttonClasses = "inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors";
-  const enabledClasses = "bg-primary hover:bg-blue-700";
-  const disabledClasses = "bg-primary/70 cursor-not-allowed";
+  const buttonClasses = "inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all";
+  const enabledClasses = "bg-primary hover:bg-blue-700 hover:shadow-lg";
+  const disabledClasses = "bg-primary/60 cursor-not-allowed";
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -123,11 +123,11 @@ const Header: React.FC = () => {
                 
                 <div className="flex items-center space-x-2">
                     {profileContext && (
-                        <div className="flex items-stretch rounded-full bg-gray-100 border border-gray-200 text-sm font-medium">
+                        <div className="flex items-stretch rounded-full bg-gray-100 border border-gray-200 text-sm font-medium shadow-sm">
                             <div className="flex items-center space-x-2 px-3 py-1.5 text-gray-700" aria-live="polite">
                                 <TokenIcon />
                                 <span className="font-bold text-gray-900">{profileContext.tokens}</span>
-                                <span>Tokens</span>
+                                <span className="hidden sm:inline">Tokens</span>
                             </div>
                             <Link
                                 to="/subscription"

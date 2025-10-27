@@ -3,10 +3,13 @@ import React from 'react';
 const PrivacyPolicyPage: React.FC = () => {
   return (
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Privacy Policy</h1>
+            <p className="mt-4 text-xl text-gray-500">Last updated: October 26, 2025</p>
+        </div>
         <div className="max-w-3xl mx-auto">
-          <div className="prose prose-lg max-w-none prose-h1:text-neutral prose-h2:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
-            <h1 className="text-center">Privacy Policy</h1>
+          <div className="prose prose-lg max-w-none prose-h2:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
             <p>
               Johanchen AB (“we” or “us”) respects your privacy and collects minimal
               information. This privacy policy applies to our AI-powered
