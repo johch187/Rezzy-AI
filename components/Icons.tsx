@@ -107,3 +107,11 @@ export const SaveIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
   </svg>
 );
+
+export const GoogleDocsIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5 mr-2" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#4285F4"/>
+    <path d="M13 9V3.5L18.5 9H13Z" fill="#1A73E8"/>
+    <path d="M16 18H8V16H16V18ZM16 14H8V12H16V14Z" fill="white"/>
+  </svg>
+);

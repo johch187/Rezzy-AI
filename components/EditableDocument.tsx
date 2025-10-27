@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import type { ProfileData, Experience, Education, Project, ParsedCoverLetter, Skill } from '../types';
-import { TrashIcon, XCircleIcon, DownloadIcon, EditIcon, SaveIcon, CheckIcon } from './Icons';
+import { TrashIcon, XCircleIcon, DownloadIcon, EditIcon, SaveIcon, CheckIcon, GoogleDocsIcon } from './Icons';
 
 // --- UTILITY & HELPER COMPONENTS ---
 
@@ -403,18 +403,35 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     setTimeout(() => setShowSaveConfirmation(false), 3000);
   };
 
-  const handleDownload = () => {
-    const filename = documentType === 'resume' ? 'resume.md' : 'cover-letter.md';
-    const blob = new Blob([editedContent], { type: 'text/markdown;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleDownloadPdf = () => {
+    const contentElement = document.getElementById(`document-content-display-${documentType}`);
+    if (!contentElement) {
+      console.error('Printable content not found.');
+      return;
+    }
+  
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-container';
+    printContainer.innerHTML = contentElement.innerHTML;
+    document.body.appendChild(printContainer);
+    
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media print {
+        body > *:not(#print-container) { display: none !important; }
+        #print-container { display: block !important; margin: 2rem; }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    window.print();
+    
+    document.body.removeChild(printContainer);
+    document.head.removeChild(style);
+  };
+  
+  const handleOpenInGoogleDocs = () => {
+    window.open('https://docs.google.com/document/create', '_blank', 'noopener,noreferrer');
   };
 
   const handleCancel = () => {
@@ -627,25 +644,27 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   
   return (
     <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-lg animate-slide-in-up">
-      {isEditing ? (
-          isParsedCoverLetter(formData) ? renderCoverLetterForm() :
-          isParsedResume(formData) ? renderResumeForm() : (
-              <textarea
-                  className="w-full h-96 p-4 border border-gray-300 rounded-md focus:ring-primary focus:border-primary font-mono text-sm resize-y"
-                  value={editedContent}
-                  onChange={(e) => { recordUndoState(); setEditedContent(e.target.value); }}
-                  aria-label={`Edit document content`}
-              />
-          )
-      ) : (
-          isParsedCoverLetter(formData) ? renderCoverLetterForm() :
-          isParsedResume(formData) ? renderResumeForm() : (
-              <div
-                  className="prose max-w-none prose-p:mb-4"
-                  dangerouslySetInnerHTML={{ __html: formatContentForDisplay(initialContent) }}
-              />
-          )
-      )}
+      <div id={`document-content-display-${documentType}`}>
+          {isEditing ? (
+              isParsedCoverLetter(formData) ? renderCoverLetterForm() :
+              isParsedResume(formData) ? renderResumeForm() : (
+                  <textarea
+                      className="w-full h-96 p-4 border border-gray-300 rounded-md focus:ring-primary focus:border-primary font-mono text-sm resize-y"
+                      value={editedContent}
+                      onChange={(e) => { recordUndoState(); setEditedContent(e.target.value); }}
+                      aria-label={`Edit document content`}
+                  />
+              )
+          ) : (
+              isParsedCoverLetter(formData) ? renderCoverLetterForm() :
+              isParsedResume(formData) ? renderResumeForm() : (
+                  <div
+                      className="prose max-w-none prose-p:mb-4"
+                      dangerouslySetInnerHTML={{ __html: formatContentForDisplay(initialContent) }}
+                  />
+              )
+          )}
+      </div>
           
       <div className="mt-8 pt-6 border-t border-gray-200">
           <div className="flex flex-col sm:flex-row justify-end items-center gap-4">
@@ -669,11 +688,15 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                     </>
                   ) : (
                     <>
-                      <button onClick={handleDownload} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      <button onClick={handleDownloadPdf} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <DownloadIcon className="h-5 w-5 mr-2" />
-                        Download
+                        Download PDF
                       </button>
-                      <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      <button onClick={handleOpenInGoogleDocs} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <GoogleDocsIcon className="h-5 w-5 mr-2" />
+                        Open in Google Docs
+                      </button>
+                      <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <EditIcon className="h-5 w-5 mr-2" />
                         Edit
                       </button>

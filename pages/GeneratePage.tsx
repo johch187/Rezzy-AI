@@ -2,12 +2,13 @@ import React, { useState, useContext, useCallback, useRef, useEffect } from 'rea
 import { Link, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { fetchJobDescriptionFromUrl } from '../services/generationService';
-import type { GenerationOptions, ProfileData } from '../types';
+import type { GenerationOptions, ProfileData, IncludedProfileSelections } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
 import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
 import ContentAccordion from '../components/ContentAccordion';
 import TemplateSelector from '../components/TemplateSelector';
+import ProfileContentSelector from '../components/ProfileContentSelector';
 
 const TooltipLabel: React.FC<{ htmlFor: string; text: string; children: React.ReactNode }> = ({ htmlFor, text, children }) => (
   <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
@@ -62,9 +63,50 @@ const GeneratePage: React.FC = () => {
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
   const [isGenerationOptionsCollapsed, setIsGenerationOptionsCollapsed] = useState(false);
 
+  const [includedProfileSelections, setIncludedProfileSelections] = useState<IncludedProfileSelections>({
+    summary: true,
+    additionalInformation: true,
+    educationIds: new Set(),
+    experienceIds: new Set(),
+    projectIds: new Set(),
+    technicalSkillIds: new Set(),
+    softSkillIds: new Set(),
+    toolIds: new Set(),
+    languageIds: new Set(),
+    certificationIds: new Set(),
+    interestIds: new Set(),
+    customSectionIds: new Set(),
+    customSectionItemIds: {},
+  });
+
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
   
+  // Effect to initialize selections when profile loads/changes
+  useEffect(() => {
+    if (!profile) return;
+    const allSelections: IncludedProfileSelections = {
+      summary: !!profile.summary,
+      additionalInformation: !!profile.additionalInformation,
+      educationIds: new Set(profile.education.map(e => e.id)),
+      experienceIds: new Set(profile.experience.map(e => e.id)),
+      projectIds: new Set(profile.projects.map(p => p.id)),
+      technicalSkillIds: new Set(profile.technicalSkills.map(s => s.id)),
+      softSkillIds: new Set(profile.softSkills.map(s => s.id)),
+      toolIds: new Set(profile.tools.map(t => t.id)),
+      languageIds: new Set(profile.languages.map(l => l.id)),
+      certificationIds: new Set(profile.certifications.map(c => c.id)),
+      interestIds: new Set(profile.interests.map(i => i.id)),
+      customSectionIds: new Set(profile.customSections.map(cs => cs.id)),
+      customSectionItemIds: profile.customSections.reduce((acc, section) => {
+        acc[section.id] = new Set(section.items.map(item => item.id));
+        return acc;
+      }, {} as { [sectionId: string]: Set<string> }),
+    };
+    setIncludedProfileSelections(allSelections);
+  }, [profile]);
+
+
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(null), 20000);
@@ -100,15 +142,38 @@ const GeneratePage: React.FC = () => {
       return;
     }
     setError(null);
+
+    // Filter the profile based on user selections
+    const { profile } = profileContext;
+    const filteredProfile: ProfileData = {
+      ...profile,
+      summary: includedProfileSelections.summary ? profile.summary : '',
+      additionalInformation: includedProfileSelections.additionalInformation ? profile.additionalInformation : '',
+      education: profile.education.filter(e => includedProfileSelections.educationIds.has(e.id)),
+      experience: profile.experience.filter(e => includedProfileSelections.experienceIds.has(e.id)),
+      projects: profile.projects.filter(p => includedProfileSelections.projectIds.has(p.id)),
+      technicalSkills: profile.technicalSkills.filter(s => includedProfileSelections.technicalSkillIds.has(s.id)),
+      softSkills: profile.softSkills.filter(s => includedProfileSelections.softSkillIds.has(s.id)),
+      tools: profile.tools.filter(t => includedProfileSelections.toolIds.has(t.id)),
+      languages: profile.languages.filter(l => includedProfileSelections.languageIds.has(l.id)),
+      certifications: profile.certifications.filter(c => includedProfileSelections.certificationIds.has(c.id)),
+      interests: profile.interests.filter(i => includedProfileSelections.interestIds.has(i.id)),
+      customSections: profile.customSections
+        .map(cs => ({
+          ...cs,
+          items: cs.items.filter(item => includedProfileSelections.customSectionItemIds[cs.id]?.has(item.id)),
+        }))
+        .filter(cs => cs.items.length > 0),
+    };
     
     navigate('/generate/results', { 
         state: { 
-            profile: profileContext.profile, 
+            profile: filteredProfile, 
             options: { ...options, jobDescription }, 
             jobDescription 
         } 
     });
-  }, [profileContext, jobDescription, options, navigate]);
+  }, [profileContext, jobDescription, options, navigate, includedProfileSelections]);
 
   const clearFile = (type: 'resume' | 'coverLetter') => {
     if (type === 'resume') {
@@ -404,6 +469,11 @@ const GeneratePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+            <ProfileContentSelector
+              profile={profile}
+              selections={includedProfileSelections}
+              onSelectionChange={setIncludedProfileSelections}
+            />
           </aside>
         </div>
     </div>
