@@ -3,17 +3,16 @@ import { SubscriptionCheckIcon } from '../components/Icons';
 
 const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
-  const [selectedPack, setSelectedPack] = useState('20');
 
   const plans = {
     premium: {
-      monthly: 8,
-      annually: 74.88, // 8 * 12 * (1 - 0.22)
+      monthly: 9,
+      annually: 9 * 12 * (1 - 0.10), // 10% discount
     },
-    crew: {
-      monthly: 32,
-      annually: 299.52, // 32 * 12 * (1 - 0.22)
-    }
+    pro: {
+      monthly: 30,
+      annually: 30 * 12 * (1 - 0.10), // 10% discount
+    },
   };
   
   const PlanCard: React.FC<{
@@ -71,7 +70,7 @@ const SubscriptionPage: React.FC = () => {
   return (
     <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Find the Perfect Plan</h1>
@@ -95,7 +94,7 @@ const SubscriptionPage: React.FC = () => {
               <div className="absolute top-1 left-1 bg-white border-gray-300 border rounded-full h-6 w-6 peer-checked:translate-x-full transition-transform"></div>
             </label>
             <span className={`font-medium transition-colors ${billingCycle === 'annually' ? 'text-primary' : 'text-gray-500'}`}>
-              Annually <span className="hidden sm:inline-block text-sm text-green-600 font-semibold">(Save 22%)</span>
+              Annually <span className="hidden sm:inline-block text-sm text-green-600 font-semibold">(Save 10%)</span>
             </span>
           </div>
 
@@ -106,7 +105,11 @@ const SubscriptionPage: React.FC = () => {
               name="Basic"
               price="Free"
               description="Perfect for getting started and handling occasional applications."
-              features={["5 document generations per week", "Standard AI model"]}
+              features={[
+                "5 tokens to start",
+                "Access to basic templates",
+                "FAQ support"
+              ]}
               isCurrent
             />
 
@@ -114,19 +117,29 @@ const SubscriptionPage: React.FC = () => {
             <PlanCard
               name="Premium"
               price={`€${billingCycle === 'monthly' ? plans.premium.monthly : (plans.premium.annually / 12).toFixed(2)}`}
-              billingInfo={billingCycle === 'annually' ? `Billed €${plans.premium.annually} annually` : undefined}
-              description="Unlock your full potential for a more demanding job search."
-              features={["70 document generations per week", "Access to advanced \"Thinking Mode\" AI", "Priority support"]}
+              billingInfo={billingCycle === 'annually' ? `Billed €${plans.premium.annually.toFixed(2)} annually` : undefined}
+              description="Ideal for active job seekers who need more power and support."
+              features={[
+                "80 tokens per month",
+                "Access to all templates",
+                "Email support",
+                "Extended history & storage (1 month)"
+              ]}
               isPopular
             />
-
-            {/* The Crew Plan */}
+            
+            {/* Pro Plan */}
             <PlanCard
-              name="The Crew"
-              price={`€${billingCycle === 'monthly' ? plans.crew.monthly : (plans.crew.annually / 12).toFixed(2)}`}
-              billingInfo={billingCycle === 'annually' ? `Billed €${plans.crew.annually} annually` : undefined}
-              description="Collaborate and succeed together with your team or support group."
-              features={["All Premium features", "For up to 5 users", "Ideal for groups, families, or colleagues"]}
+              name="Pro"
+              price={`€${billingCycle === 'monthly' ? plans.pro.monthly : (plans.pro.annually / 12).toFixed(2)}`}
+              billingInfo={billingCycle === 'annually' ? `Billed €${plans.pro.annually.toFixed(2)} annually` : undefined}
+              description="The ultimate toolkit for professionals who want to stand out."
+              features={[
+                "300 tokens per month",
+                "Everything in Premium, plus:",
+                "Extended history & storage (3 months)",
+                "Priority chat & email support",
+              ]}
             />
           </div>
 
@@ -136,18 +149,43 @@ const SubscriptionPage: React.FC = () => {
             <p className="mt-3 text-gray-600 max-w-2xl mx-auto">
               Purchase a one-time pack of tokens for extra document generations. They never expire and there's no subscription required.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 max-w-lg mx-auto">
-                <select 
-                  value={selectedPack}
-                  onChange={(e) => setSelectedPack(e.target.value)}
-                  className="w-full sm:w-auto flex-grow block pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md shadow-sm"
-                >
-                    <option value="20">20 Generations Pack - €5</option>
-                    <option value="50">50 Generations Pack - €10</option>
-                </select>
-                <button className="w-full sm:w-auto flex-shrink-0 text-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+              {/* Starter Pack */}
+              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
+                <h4 className="text-xl font-bold text-neutral">Starter Pack</h4>
+                <span className="text-4xl font-extrabold text-neutral mt-2">20 Tokens</span>
+                <p className="text-3xl font-bold text-accent my-4">€5</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
                   Purchase Pack
                 </button>
+              </div>
+              {/* Boost Pack */}
+              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
+                <h4 className="text-xl font-bold text-neutral">Boost Pack</h4>
+                <span className="text-4xl font-extrabold text-neutral mt-2">100 Tokens</span>
+                <p className="text-3xl font-bold text-accent my-4">€15</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+                  Purchase Pack
+                </button>
+              </div>
+              {/* Power Pack */}
+              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
+                <h4 className="text-xl font-bold text-neutral">Power Pack</h4>
+                <span className="text-4xl font-extrabold text-neutral mt-2">300 Tokens</span>
+                <p className="text-3xl font-bold text-accent my-4">€40</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+                  Purchase Pack
+                </button>
+              </div>
+              {/* Mega Pack */}
+              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
+                <h4 className="text-xl font-bold text-neutral">Mega Pack</h4>
+                <span className="text-4xl font-extrabold text-neutral mt-2">800 Tokens</span>
+                <p className="text-3xl font-bold text-accent my-4">€100</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+                  Purchase Pack
+                </button>
+              </div>
             </div>
           </div>
 

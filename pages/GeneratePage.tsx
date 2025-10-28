@@ -145,8 +145,11 @@ const GeneratePage: React.FC = () => {
       setError('Please provide a job description.');
       return;
     }
+    
+    const baseDocsCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
+    const thinkingModeCost = options.thinkingMode && baseDocsCost > 0 ? 10 : 0;
+    const generationCost = baseDocsCost + thinkingModeCost;
 
-    const generationCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
     if (tokens < generationCost) {
         setError('You do not have enough tokens to generate these documents.');
         return;
@@ -299,9 +302,12 @@ const GeneratePage: React.FC = () => {
     <span>Fetch</span>
   );
   
-  const generationCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
+  const baseDocsCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
+  const thinkingModeCost = options.thinkingMode && baseDocsCost > 0 ? 10 : 0;
+  const generationCost = baseDocsCost + thinkingModeCost;
+  
   const hasEnoughTokens = tokens >= generationCost;
-  const canGenerate = jobDescription && hasEnoughTokens && generationCost > 0 && !isGenerating;
+  const canGenerate = jobDescription && hasEnoughTokens && baseDocsCost > 0 && !isGenerating;
 
   let buttonContent;
     if (isGenerating) {
@@ -311,7 +317,7 @@ const GeneratePage: React.FC = () => {
                 <span className="text-lg font-bold">Generating...</span>
             </div>
         );
-  } else if (generationCost === 0) {
+  } else if (baseDocsCost === 0) {
       buttonContent = (
           <div className="text-center">
               <span className="block text-base font-bold">Select a Document</span>
@@ -328,7 +334,7 @@ const GeneratePage: React.FC = () => {
   } else {
       buttonContent = (
           <div className="text-center">
-              <span className="block text-lg font-bold">Generate Document{generationCost > 1 ? 's' : ''}</span>
+              <span className="block text-lg font-bold">Generate Document{baseDocsCost > 1 ? 's' : ''}</span>
               <span className="block text-sm font-medium text-blue-200 mt-1">{generationCost} Token{generationCost > 1 ? 's' : ''} Cost</span>
           </div>
       );
@@ -508,7 +514,10 @@ const GeneratePage: React.FC = () => {
                                     </TooltipLabel>
                                     <p id="thinking-mode-description" className="text-xs text-gray-600">Ideal for senior roles or competitive applications where quality is paramount.</p>
                                 </div>
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0 flex items-center space-x-3">
+                                    <span className="text-sm font-bold text-purple-700 bg-purple-200 px-2.5 py-1 rounded-full">
+                                        +10 Tokens
+                                    </span>
                                     <label htmlFor="thinking-mode" className="inline-flex relative items-center cursor-pointer">
                                     <input type="checkbox" id="thinking-mode" className="sr-only peer" checked={options.thinkingMode} onChange={(e) => setOptions(o => ({ ...o, thinkingMode: e.target.checked }))} aria-describedby="thinking-mode-description" />
                                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-purple-50 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
