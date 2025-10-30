@@ -380,7 +380,7 @@ const GeneratePage: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isConfigCollapsed ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100 mt-6'}`}>
+                    <div className={`transition-all duration-500 ease-in-out ${isConfigCollapsed ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100 mt-6'}`}>
                         <div>
                         <label htmlFor="job-url" className="block text-sm font-medium text-gray-700">
                             Job Posting URL (Optional)
@@ -553,7 +553,9 @@ const GeneratePage: React.FC = () => {
                             <div>
                                 <div className="flex items-center">
                                     <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
-                                    <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">Create Resume</label>
+                                    <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">
+                                        Create Resume
+                                    </label>
                                 </div>
                                 <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateResume ? 'opacity-50' : 'opacity-100'}`}>
                                     <div className="relative flex items-start">
@@ -579,7 +581,9 @@ const GeneratePage: React.FC = () => {
                             <div className="pt-6 border-t border-gray-200">
                                 <div className="flex items-center">
                                     <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
-                                    <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">Create Cover Letter</label>
+                                    <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">
+                                        Create Cover Letter
+                                    </label>
                                 </div>
                                 <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateCoverLetter ? 'opacity-50' : 'opacity-100'}`}>
                                     <div>
