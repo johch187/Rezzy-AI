@@ -10,6 +10,7 @@ import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
 import type { ProfileData, DocumentHistoryItem, CareerPath } from './types';
+import { importAndParseResume } from './services/parserService';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
@@ -65,6 +66,10 @@ export const ProfileContext = createContext<{
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   careerPath: CareerPath | null;
   setCareerPath: (path: CareerPath | null) => void;
+  isParsing: boolean;
+  parsingError: string | null;
+  parseResumeInBackground: (file: File) => void;
+  clearParsingError: () => void;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
@@ -102,6 +107,9 @@ const App: React.FC = () => {
       return null;
     }
   });
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsingError, setParsingError] = useState<string | null>(null);
+
 
   // Function to explicitly save profile (and update lastSavedProfile)
   const saveProfile = useCallback((profileToSave: ProfileData) => {
@@ -147,6 +155,57 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const parseResumeInBackground = useCallback((file: File) => {
+    if (!file) return;
+
+    setIsParsing(true);
+    setParsingError(null);
+
+    const MAX_FILE_SIZE_MB = 2;
+    const ALLOWED_MIME_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
+    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md'];
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setParsingError(`File too large: Please upload a file smaller than ${MAX_FILE_SIZE_MB}MB.`);
+      setIsParsing(false);
+      return;
+    }
+
+    const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+    if (!ALLOWED_MIME_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
+      setParsingError(`Unsupported file type: '${fileExtension}'. Please upload a PDF, TXT, or MD file.`);
+      setIsParsing(false);
+      return;
+    }
+    
+    // Non-blocking async call
+    (async () => {
+        try {
+            const parsedData = await importAndParseResume(file);
+            
+            const blankProfileContent: Partial<ProfileData> = {
+                fullName: '', jobTitle: '', email: '', phone: '', website: '', location: '',
+                linkedin: '', github: '', summary: '', education: [], experience: [],
+                projects: [], technicalSkills: [], softSkills: [], tools: [],
+                languages: [], certifications: [], interests: [], customSections: [],
+                additionalInformation: '', industry: '', experienceLevel: 'entry', vibe: ''
+            };
+
+            setProfile(currentProfile => {
+                const newProfile = { ...currentProfile, ...blankProfileContent, ...parsedData };
+                saveProfile(newProfile); // Explicitly save after successful parse.
+                return newProfile;
+            });
+            
+        } catch (err: any) {
+            setParsingError(err.message || "An unexpected error occurred during parsing.");
+        } finally {
+            setIsParsing(false);
+        }
+    })();
+  }, [saveProfile]);
+
+
   // Autosave effect (debounced)
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -161,7 +220,20 @@ const App: React.FC = () => {
     };
   }, [profile, lastSavedProfile, saveProfile]); // Dependencies on profile and lastSavedProfile
 
-  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory, careerPath, setCareerPath: saveCareerPath }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory, careerPath, saveCareerPath]);
+  const contextValue = useMemo(() => ({ 
+      profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, 
+      isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
+      documentHistory, addDocumentToHistory, careerPath, setCareerPath: saveCareerPath,
+      isParsing,
+      parsingError,
+      parseResumeInBackground,
+      clearParsingError: () => setParsingError(null)
+   }), [
+      profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, 
+      isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
+      documentHistory, addDocumentToHistory, careerPath, saveCareerPath,
+      isParsing, parsingError, parseResumeInBackground
+    ]);
 
   return (
     <ProfileContext.Provider value={contextValue}>

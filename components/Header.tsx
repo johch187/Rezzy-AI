@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { LoadingSpinnerIcon, TokenIcon, UserIcon, HamburgerIcon } from './Icons';
+import { LoadingSpinnerIcon, UserIcon, HamburgerIcon } from './Icons';
 
 const Header: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const profileContext = useContext(ProfileContext);
-  const isFetchingUrl = profileContext?.isFetchingUrl ?? false;
 
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
@@ -27,7 +26,6 @@ const Header: React.FC = () => {
   
   const buttonClasses = "inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all";
   const enabledClasses = "bg-brand-blue hover:bg-blue-700 hover:shadow-lg";
-  const disabledClasses = "bg-brand-blue/60 cursor-not-allowed";
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -105,62 +103,57 @@ const Header: React.FC = () => {
               // App Header: Full controls
               <>
                 <Link
-                  to="/generate"
-                  className={`${buttonClasses} ${isFetchingUrl ? disabledClasses : enabledClasses}`}
-                  onClick={(e) => { if (isFetchingUrl) e.preventDefault(); }}
-                  aria-disabled={isFetchingUrl}
+                  to="/career-coach"
+                  className={`${buttonClasses} ${enabledClasses}`}
                   role="button"
                 >
-                  {isFetchingUrl ? (
-                    <>
-                      <LoadingSpinnerIcon className="h-5 w-5 mr-2" />
-                      Fetching...
-                    </>
-                  ) : (
-                    'Tailor for New Role'
-                  )}
+                  Career Coach
                 </Link>
                 
-                <div className="flex items-center space-x-2">
-                    {profileContext && (
-                        <div className="flex items-stretch rounded-full bg-slate-100 border border-slate-200 text-sm font-medium shadow-sm">
-                            <div className="flex items-center space-x-2 px-3 py-1.5 text-slate-700" aria-live="polite">
-                                <TokenIcon />
-                                <span className="font-bold text-slate-900">{profileContext.tokens}</span>
-                                <span className="hidden sm:inline">Tokens</span>
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="p-1 rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
+                    aria-label="User menu"
+                    aria-haspopup="true"
+                  >
+                   <UserIcon />
+                  </button>
+                  {dropdownOpen && (
+                    <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition ease-out duration-100"
+                      role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
+                        
+                        {profileContext && (
+                            <div className="px-4 py-3">
+                                <p className="text-xs text-slate-500 uppercase tracking-wider">Tokens</p>
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center">
+                                        <span className="text-lg font-bold text-slate-900">{profileContext.tokens}</span>
+                                    </div>
+                                    <Link 
+                                        to="/subscription" 
+                                        onClick={() => setDropdownOpen(false)} 
+                                        className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" 
+                                        title="Get More Tokens"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                    </Link>
+                                </div>
                             </div>
-                            <Link
-                                to="/subscription"
-                                className="flex items-center justify-center px-2 border-l border-slate-300 text-slate-700 hover:bg-slate-200 rounded-r-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-blue transition-colors"
-                                title="Get More Tokens"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                            </Link>
+                        )}
+
+                        <div className="border-t border-slate-100"></div>
+
+                        <div className="py-1" role="none">
+                          <Link to="/builder" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">My Profile</Link>
+                          <Link to="/account" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">Account Settings</Link>
+                          <div className="border-t border-slate-100 my-1"></div>
+                          <Link to="/" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">Logout</Link>
                         </div>
-                    )}
-                    <div className="relative" ref={dropdownRef}>
-                      <button
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="p-1 rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
-                        aria-label="User menu"
-                        aria-haspopup="true"
-                      >
-                       <UserIcon />
-                      </button>
-                      {dropdownOpen && (
-                        <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition ease-out duration-100"
-                          role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
-                            <div className="py-1" role="none">
-                              <Link to="/builder" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">My Profile</Link>
-                              <Link to="/account" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">Account Settings</Link>
-                              <div className="border-t border-slate-100 my-1"></div>
-                              <Link to="/" onClick={() => setDropdownOpen(false)} className="text-slate-700 block px-4 py-2 text-sm hover:bg-slate-100" role="menuitem">Logout</Link>
-                            </div>
-                        </div>
-                      )}
                     </div>
+                  )}
                 </div>
               </>
             )}

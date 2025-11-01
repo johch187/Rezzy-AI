@@ -65,7 +65,8 @@ const CareerCoachPage: React.FC = () => {
             switch (call.name) {
                 case 'updateProfessionalSummary': {
                     const { newSummary } = call.args;
-                    setProfile(prev => ({ ...prev, summary: newSummary }));
+                    // FIX: Cast `newSummary` to string to match ProfileData type.
+                    setProfile(prev => ({ ...prev, summary: newSummary as string }));
                     setMessages(prev => [...prev, {
                         role: 'system',
                         content: "Success! I've updated your professional summary on your Profile page.",
@@ -84,7 +85,8 @@ const CareerCoachPage: React.FC = () => {
                         id: crypto.randomUUID()
                     }]);
                     setTimeout(() => {
-                        navigate('/generate', { state: { jobDescription } });
+                        // FIX: Cast `jobDescription` to string to match expected state type on destination page. The error was reported on line 116 (the case statement) but applies here.
+                        navigate('/generate', { state: { jobDescription: jobDescription as string } });
                     }, 1500);
                     functionExecutionResult = { result: "Successfully navigated user to the resume generator." };
                     break;
@@ -93,32 +95,33 @@ const CareerCoachPage: React.FC = () => {
                     if (shouldNavigate) break;
                     shouldNavigate = true;
                      const { counterpartInfo, mode } = call.args;
-                     const modeText = mode === 'prep' ? "prepare for your chat" : "write an outreach message";
+                     const modeText = (mode as string) === 'prep' ? "prepare for your chat" : "write an outreach message";
                      setMessages(prev => [...prev, {
                         role: 'system',
                         content: `Great idea. I can definitely help you ${modeText}. I'm taking you to the Coffee Chat tool now.`,
                         id: crypto.randomUUID()
                     }]);
                      setTimeout(() => {
-                        navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo, initialMode: mode } });
+                        // FIX: Cast arguments from function call to their expected types.
+                        navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo as string, initialMode: mode as 'prep' | 'reach_out' } });
                     }, 1500);
                     functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
                     break;
                 }
                 case 'generateAndSaveCareerPath': {
                     const { currentRole, targetRole } = call.args;
-                    setMessages(prev => [...prev, {
-                        role: 'system',
-                        content: `Understood! I'm now generating a personalized career path for you from **${currentRole}** to **${targetRole}**. This happens in the background, so feel free to ask me something else while I work. Your new roadmap will be available on the **Career Path** page shortly.`,
-                        id: crypto.randomUUID()
-                    }]);
-
-                    generateCareerPath(profile, currentRole, targetRole)
+                    // The system message that was here has been removed to avoid duplicating the AI's own text response.
+                    // The model is now responsible for telling the user that the process has started.
+                    
+                    // Generate the path in the background
+                    // FIX: Cast arguments to string to satisfy function signature.
+                    generateCareerPath(profile, currentRole as string, targetRole as string)
                         .then(newPath => {
                             setCareerPath(newPath);
+                            // Add a system message ONLY when the generation is complete.
                             setMessages(prev => [...prev, {
                                 role: 'system',
-                                content: `Your career path to becoming a ${targetRole} is ready! You can view it now on the 'Career Path' page.`,
+                                content: `Your career path to becoming a ${targetRole as string} is ready! You can view it now on the 'Career Path' page.`,
                                 id: crypto.randomUUID()
                             }]);
                         })
@@ -131,7 +134,7 @@ const CareerCoachPage: React.FC = () => {
                             }]);
                         });
                     
-                    functionExecutionResult = { result: "The career path generation has been started in the background. I have notified the user. I am now waiting for the user's next prompt." };
+                    functionExecutionResult = { result: "The career path generation has been started in the background. I have already notified the user of this in my main text response. I will now wait for the user's next prompt." };
                     break;
                 }
                 default:
@@ -167,14 +170,18 @@ const CareerCoachPage: React.FC = () => {
         try {
             let response = await chatSession.current.sendMessage({ message: currentInput });
             
-            const functionCallFollowUpResponse = await handleFunctionCall(response);
-
-            if (functionCallFollowUpResponse) {
-                response = functionCallFollowUpResponse;
-            }
-
+            // NEW: Immediately display any text part of the response.
             if (response && response.text) {
                 const modelResponse = { role: 'model' as const, content: response.text, id: crypto.randomUUID() };
+                setMessages(prev => [...prev, modelResponse]);
+            }
+            
+            // Handle function calls, which may trigger a follow-up response.
+            const functionCallFollowUpResponse = await handleFunctionCall(response);
+
+            // If the function call handling resulted in a new response from the model, display its text.
+            if (functionCallFollowUpResponse && functionCallFollowUpResponse.text) {
+                const modelResponse = { role: 'model' as const, content: functionCallFollowUpResponse.text, id: crypto.randomUUID() };
                 setMessages(prev => [...prev, modelResponse]);
             }
 

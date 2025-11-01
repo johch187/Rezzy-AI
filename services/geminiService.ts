@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentRequest } from "@google/genai";
+import { GoogleGenAI, GenerateContentParameters } from "@google/genai";
 import { parseError } from '../utils';
 
 if (!process.env.API_KEY) {
@@ -17,7 +17,8 @@ const INITIAL_BACKOFF_MS = 1000;
  * @returns A promise that resolves with the AI's response text.
  * @throws An error with a user-friendly message if the request fails after all retries.
  */
-export const generateContentWithRetry = async (request: GenerateContentRequest): Promise<string> => {
+// FIX: Replaced deprecated `GenerateContentRequest` with `GenerateContentParameters`.
+export const generateContentWithRetry = async (request: GenerateContentParameters): Promise<string> => {
     let lastError: Error | null = null;
 
     for (let i = 0; i < MAX_RETRIES; i++) {

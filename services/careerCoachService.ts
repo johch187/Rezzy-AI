@@ -130,6 +130,7 @@ export const createCareerCoachSession = (profile: ProfileData, documentHistory: 
     -   Provide concrete examples (e.g., write out a sample resume bullet point).
     -   If you suggest external resources, provide links.
     -   Be proactive. If a user's question hints at a task one of your tools can handle, suggest using it.
+    -   **Crucially, if a user's request requires both a tool call (like generating a career path) and a direct answer to a question, you should provide the direct answer as a text response in the SAME turn that you make the tool call.**
   `;
   
   const chat = ai.chats.create({

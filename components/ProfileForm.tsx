@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { importAndParseResume } from '../services/parserService';
 import { ProfileContext } from '../App';
 import AccordionItem from './AccordionItem';
 import { XCircleIcon, LoadingSpinnerIcon, UploadIcon } from './Icons';
-import type { ProfileData } from '../types';
 
 import { PersonalInfoSection } from './profile/PersonalInfoSection';
 import { SummarySection } from './profile/SummarySection';
@@ -24,22 +22,13 @@ const ProfileForm: React.FC = () => {
     return <div>Loading profile editor...</div>;
   }
 
-  const { profile, setProfile, saveProfile, lastSavedProfile } = profileContext;
+  const { profile, saveProfile, lastSavedProfile, isParsing, parsingError, parseResumeInBackground, clearParsingError } = profileContext;
 
   const [openSections, setOpenSections] = useState<Set<AccordionSection>>(() => new Set(['personal'])); 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
-  const [isAutofilling, setIsAutofilling] = useState(false);
-  const [parsingError, setParsingError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(lastSavedProfile);
-
-  useEffect(() => {
-    if (parsingError) {
-        const timer = setTimeout(() => setParsingError(null), 10000);
-        return () => clearTimeout(timer);
-    }
-  }, [parsingError]);
 
   const handleSave = () => {
     if (saveProfile(profile)) {
@@ -56,67 +45,13 @@ const ProfileForm: React.FC = () => {
     });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setParsingError(null);
-    setIsAutofilling(true);
     e.target.value = ''; // Clear the input so the same file can be re-uploaded if needed
 
-    const MAX_FILE_SIZE_MB = 2;
-    const ALLOWED_MIME_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
-    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md'];
-
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setParsingError(`File too large: Please upload a file smaller than ${MAX_FILE_SIZE_MB}MB.`);
-      setIsAutofilling(false);
-      return;
-    }
-
-    const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
-    if (!ALLOWED_MIME_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
-      setParsingError(`Unsupported file type: '${fileExtension}'. Please upload a PDF, TXT, or MD file.`);
-      setIsAutofilling(false);
-      return;
-    }
-
-    try {
-        const parsedData = await importAndParseResume(file);
-        
-        const blankProfileContent: Partial<ProfileData> = {
-            fullName: '', jobTitle: '', email: '', phone: '', website: '', location: '',
-            linkedin: '', github: '', summary: '', education: [], experience: [],
-            projects: [], technicalSkills: [], softSkills: [], tools: [],
-            languages: [], certifications: [], interests: [], customSections: [],
-            additionalInformation: '', industry: '', experienceLevel: 'entry', vibe: ''
-        };
-
-        const newProfile = { ...profile, ...blankProfileContent, ...parsedData };
-        setProfile(newProfile);
-        saveProfile(newProfile);
-
-        setOpenSections(prevOpenSections => {
-            const newOpenSections = new Set(prevOpenSections);
-            newOpenSections.add('personal');
-            if (parsedData.summary?.trim()) newOpenSections.add('summary');
-            if (parsedData.experience?.length) newOpenSections.add('experience');
-            if (parsedData.education?.length) newOpenSections.add('education');
-            if (parsedData.projects?.length) newOpenSections.add('projects');
-            if (parsedData.technicalSkills?.length) newOpenSections.add('technicalSkills');
-            if (parsedData.softSkills?.length) newOpenSections.add('softSkills');
-            if (parsedData.tools?.length) newOpenSections.add('tools');
-            if (parsedData.languages?.length) newOpenSections.add('languages');
-            if (parsedData.certifications?.length) newOpenSections.add('certifications');
-            if (parsedData.interests?.length) newOpenSections.add('interests');
-            return newOpenSections;
-        });
-
-    } catch (err: any) {
-        setParsingError(err.message || "An unexpected error occurred during parsing.");
-    } finally {
-        setIsAutofilling(false);
-    }
+    parseResumeInBackground(file);
   };
 
   return (
@@ -135,16 +70,17 @@ const ProfileForm: React.FC = () => {
               onChange={handleFileChange}
               className="hidden"
               accept=".pdf,.txt,.md"
+              disabled={isParsing}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isAutofilling}
+              disabled={isParsing}
               className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {isAutofilling ? (
+              {isParsing ? (
                 <>
                   <LoadingSpinnerIcon className="h-5 w-5 mr-2" />
-                  Parsing Resume...
+                  Parsing in background...
                 </>
               ) : (
                 <>
@@ -163,7 +99,7 @@ const ProfileForm: React.FC = () => {
               <p className="font-bold">File Upload Error</p>
               <p>{parsingError}</p>
             </div>
-            <button onClick={() => setParsingError(null)} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close file error">
+            <button onClick={clearParsingError} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close file error">
               <XCircleIcon className="h-6 w-6" />
             </button>
           </div>
