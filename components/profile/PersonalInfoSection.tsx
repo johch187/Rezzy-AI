@@ -46,17 +46,28 @@ export const PersonalInfoSection = React.memo(() => {
     const [lastName, setLastName] = useState('');
 
     useEffect(() => {
-        const nameParts = profile.fullName.trim().split(' ');
-        const first = nameParts[0] || '';
-        const last = nameParts.slice(1).join(' ');
-        setFirstName(first);
-        setLastName(last);
-    }, [profile.fullName]);
+        // This effect synchronizes local state with the global profile.fullName,
+        // but only when fullName is changed from an external source (like resume parsing).
+        // It avoids a feedback loop from its own updates.
+        const currentCombined = `${firstName} ${lastName}`.trim();
+        if (profile.fullName.trim() !== currentCombined) {
+            const nameParts = profile.fullName.trim().split(/\s+/);
+            const first = nameParts[0] || '';
+            const last = nameParts.slice(1).join(' ');
+            setFirstName(first);
+            setLastName(last);
+        }
+    }, [profile.fullName, firstName, lastName]);
 
-    const handleNameChange = (newFirstName: string, newLastName: string) => {
-        setFirstName(newFirstName);
-        setLastName(newLastName);
-        const newFullName = `${newFirstName} ${newLastName}`.trim();
+    const handleFirstNameChange = (value: string) => {
+        setFirstName(value);
+        const newFullName = `${value} ${lastName}`.trim();
+        setProfile(prev => ({ ...prev, fullName: newFullName }));
+    };
+    
+    const handleLastNameChange = (value: string) => {
+        setLastName(value);
+        const newFullName = `${firstName} ${value}`.trim();
         setProfile(prev => ({ ...prev, fullName: newFullName }));
     };
     
@@ -73,12 +84,12 @@ export const PersonalInfoSection = React.memo(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input name="firstName" value={firstName} onChange={(e) => handleNameChange(e.target.value, lastName)} className={`${baseInputStyles} ${errors.firstName ? errorInputStyles : validInputStyles}`} placeholder="Jordan" />
+                <input name="firstName" value={firstName} onChange={(e) => handleFirstNameChange(e.target.value)} className={`${baseInputStyles} ${errors.firstName ? errorInputStyles : validInputStyles}`} placeholder="Jordan" />
                 <ErrorMessage message={errors.firstName} id="firstName-error" />
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input name="lastName" value={lastName} onChange={(e) => handleNameChange(firstName, e.target.value)} className={`${baseInputStyles} ${errors.lastName ? errorInputStyles : validInputStyles}`} placeholder="Lee" />
+                <input name="lastName" value={lastName} onChange={(e) => handleLastNameChange(e.target.value)} className={`${baseInputStyles} ${errors.lastName ? errorInputStyles : validInputStyles}`} placeholder="Lee" />
                 <ErrorMessage message={errors.lastName} id="lastName-error" />
             </div>
             <div>

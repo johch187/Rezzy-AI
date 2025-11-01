@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { ProfileData, GenerationOptions, GeneratedContent } from '../types';
 import { parseError } from '../utils';
+// Fix: Import generateContentWithRetry to resolve undefined function error.
+import { generateContentWithRetry } from './geminiService';
 
 if (!process.env.API_KEY) {
     console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
@@ -233,69 +235,43 @@ export const generateTailoredDocuments = async (
     - If a document was not requested (e.g., "Generate a resume: \`false\`"), its value in the JSON MUST be \`null\`.
   `;
   
-  const MAX_RETRIES = 3;
-  const INITIAL_BACKOFF_MS = 1000;
-  let lastError: Error | null = null;
-
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              resume: {
-                type: Type.STRING,
-                description: "The full resume content in Markdown format. Null if not requested."
-              },
-              coverLetter: {
-                type: Type.STRING,
-                description: "The full cover letter content in Markdown format. Null if not requested."
-              }
-            },
-            required: ["resume", "coverLetter"]
+  // Refactor: Use the robust generateContentWithRetry function to handle API calls.
+  const jsonText = await generateContentWithRetry({
+    model: modelName,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          resume: {
+            type: Type.STRING,
+            description: "The full resume content in Markdown format. Null if not requested."
           },
-          ...(options.thinkingMode && { thinkingConfig: { thinkingBudget: 32768 } })
-        }
-      });
-  
-      const jsonText = response.text.trim();
-      let generatedContent;
-
-      try {
-        generatedContent = JSON.parse(jsonText);
-      } catch (jsonError) {
-          console.error("Failed to parse JSON response from Gemini:", jsonText);
-          // Re-throw to trigger the retry mechanism with a more informative error.
-          throw new Error("Model returned a malformed, non-JSON response.");
-      }
-      
-      return {
-        resume: generatedContent.resume || null,
-        coverLetter: generatedContent.coverLetter || null,
-      };
-  
-    } catch (error: any) {
-      lastError = error;
-      const { message, isRetryable } = parseError(error);
-
-      if (isRetryable && i < MAX_RETRIES - 1) {
-          const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
-          console.warn(`API call failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-          console.error("Non-retryable or final error calling Gemini API:", error);
-          throw new Error(message);
-      }
+          coverLetter: {
+            type: Type.STRING,
+            description: "The full cover letter content in Markdown format. Null if not requested."
+          }
+        },
+        required: ["resume", "coverLetter"]
+      },
+      ...(options.thinkingMode && { thinkingConfig: { thinkingBudget: 32768 } })
     }
-  }
+  });
 
-  // If the loop finished without returning, it means all retries failed.
-  const finalError = parseError(lastError).message || "The model is currently busy. We tried several times without success. Please try again in a few moments.";
-  throw new Error(finalError);
+  let generatedContent;
+
+  try {
+    generatedContent = JSON.parse(jsonText);
+  } catch (jsonError) {
+      console.error("Failed to parse JSON response from Gemini:", jsonText);
+      throw new Error("The AI returned a response in an unexpected format. Please try again.");
+  }
+  
+  return {
+    resume: generatedContent.resume || null,
+    coverLetter: generatedContent.coverLetter || null,
+  };
 };
 
 export const generateCoffeeChatBrief = async (
@@ -384,43 +360,88 @@ A great way to close would be to ask, "Based on our chat, is there anyone else i
     Produce only the formatted "Coffee Chat Brief". Do not include any introductory text like "Here is your brief:".
   `;
 
-  const MAX_RETRIES = 3;
-  const INITIAL_BACKOFF_MS = 1000;
-  let lastError: Error | null = null;
+  // Refactor: Use the robust generateContentWithRetry function to handle API calls.
+  const brief = await generateContentWithRetry({
+    model: 'gemini-2.5-pro', // Use the more powerful model for this task
+    contents: prompt,
+    config: {
+      temperature: 0.6, // A bit of creativity but still grounded
+      topP: 0.9,
+      thinkingConfig: { thinkingBudget: 32768 }
+    }
+  });
 
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro', // Use the more powerful model for this task
+  return brief;
+};
+
+export const generateReachOutMessage = async (
+  profile: ProfileData,
+  counterpartInfo: string
+): Promise<string> => {
+    if (!process.env.API_KEY) {
+        return Promise.resolve(`Hi Sarah,
+
+My name is Alex Doe, and I came across your profile while exploring careers in Product Management. I was really inspired by your journey from engineering to your current role at Innovate Inc.
+
+I'm currently a Software Engineer and aspiring to make a similar transition. I would be incredibly grateful for the opportunity to hear about your experience.
+
+Would you be open to a brief 15-20 minute virtual coffee chat in the coming weeks? I'm flexible and happy to work around your schedule.
+
+Thanks so much for your time and consideration.
+
+Best,
+Alex`);
+    }
+
+    const prompt = `
+        **Role:** You are a world-class professional communication coach. Your task is to write a concise, warm, and effective outreach message for a user who wants to request a coffee chat with a professional contact.
+
+        **Tone:** Your tone must be respectful, confident, and friendly, but still professional. Avoid overly casual language or corporate jargon. The message should sound authentic and human.
+
+        ---
+
+        **INPUT DATA:**
+
+        **1. The User's Professional Profile (who is sending the message):**
+        \`\`\`json
+        ${JSON.stringify(profile, null, 2)}
+        \`\`\`
+
+        **2. Information About the Counterpart (who is receiving the message):**
+        This is a collection of notes, a bio, or a LinkedIn profile summary.
+        \`\`\`text
+        ${counterpartInfo}
+        \`\`\`
+
+        ---
+
+        **YOUR TASK:**
+
+        Analyze both inputs to write a short outreach message (ideally for a platform like LinkedIn or email). The message MUST follow this structure and these rules:
+
+        1.  **Find the Hook:** Identify the single strongest point of connection between the user and the counterpart. This could be a shared university, a past employer, a mutual connection, a shared professional interest, or admiration for a specific project they worked on. This is the most important step.
+        2.  **Opening (1 sentence):** Start with a polite opening. If a strong hook exists, lead with it. For example: "I hope you don't mind the outreach. I'm a fellow [University Name] alum and was so impressed by..." or "My name is [User's Name], and I've been following your work on [Project Name]..."
+        3.  **Context (1-2 sentences):** Briefly state who you are and why you're reaching out. Connect your background or aspirations to their experience. For example: "I'm currently a [User's Job Title] and am deeply interested in transitioning into [Their Field]."
+        4.  **The "Ask" (1 sentence):** Clearly and politely ask for a brief chat. Specify the length. For example: "I would be grateful for the chance to learn more about your experience and was hoping to ask for a brief 15-minute virtual coffee chat in the coming weeks."
+        5.  **Make it Easy (1 sentence):** Show respect for their time and remove friction. For example: "I know you're busy, so I'm happy to work around whatever is easiest for your schedule."
+        6.  **Closing:** End with a polite and professional closing, like "Best," or "Thank you for your consideration," followed by the user's first name.
+
+        **CRITICAL CONSTRAINTS:**
+        - Keep the entire message under 100 words.
+        - The final output MUST be only the message text itself.
+        - Do not include a subject line or any introductory phrases like "Here is the message:".
+        - Do not use placeholders like \`[Your Name]\`; use the actual name from the user's profile.
+    `;
+    
+    const message = await generateContentWithRetry({
+        model: 'gemini-2.5-pro',
         contents: prompt,
         config: {
-          temperature: 0.6, // A bit of creativity but still grounded
-          topP: 0.9,
-          thinkingConfig: { thinkingBudget: 32768 }
+            temperature: 0.5,
+            topP: 0.9,
+            thinkingConfig: { thinkingBudget: 32768 }
         }
-      });
+    });
 
-      const brief = response.text.trim();
-      if (!brief) {
-          throw new Error("The AI returned an empty response. Please try again with more detailed information.");
-      }
-      return brief;
-
-    } catch (error: any) {
-      lastError = error;
-      const { message, isRetryable } = parseError(error);
-
-      if (isRetryable && i < MAX_RETRIES - 1) {
-          const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
-          console.warn(`Coffee Chat generation failed (attempt ${i + 1}/${MAX_RETRIES}). Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-          console.error("Non-retryable or final error during Coffee Chat generation:", error);
-          throw new Error(message);
-      }
-    }
-  }
-  
-  const finalError = parseError(lastError).message || "The model is currently busy. We tried several times without success. Please try again in a few moments.";
-  throw new Error(finalError);
+    return message;
 };

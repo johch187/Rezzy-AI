@@ -94,11 +94,11 @@ const Sidebar: React.FC = () => {
                 </li>
                 <li>
                   <NavLink
-                    to="/coffee-chat-prepper"
+                    to="/coffee-chats"
                     className={({ isActive }) => `${navLinkClasses} ${isActive ? activeNavLinkClasses : ''}`}
                   >
                     <CoffeeChatIcon />
-                    Coffee Chat Prepper
+                    Coffee Chats
                   </NavLink>
                 </li>
               </ul>

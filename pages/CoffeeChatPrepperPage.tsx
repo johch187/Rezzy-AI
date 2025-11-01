@@ -1,13 +1,21 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateCoffeeChatBrief } from '../services/generationService';
+import { generateCoffeeChatBrief, generateReachOutMessage } from '../services/generationService';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 
 const CoffeeChatPrepperPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
     const navigate = useNavigate();
-    const [counterpartInfo, setCounterpartInfo] = useState('');
+    const location = useLocation();
+
+    const { initialMode, initialCounterpartInfo } = (location.state as {
+        initialMode?: 'prep' | 'reach_out';
+        initialCounterpartInfo?: string;
+    }) || {};
+
+    const [generationMode, setGenerationMode] = useState<'prep' | 'reach_out'>(initialMode || 'prep');
+    const [counterpartInfo, setCounterpartInfo] = useState(initialCounterpartInfo || '');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,11 +36,15 @@ const CoffeeChatPrepperPage: React.FC = () => {
         setError(null);
 
         try {
-            const result = await generateCoffeeChatBrief(profile, counterpartInfo);
+            const result = generationMode === 'prep'
+                ? await generateCoffeeChatBrief(profile, counterpartInfo)
+                : await generateReachOutMessage(profile, counterpartInfo);
+
             setTokens(prev => prev - 1);
-            navigate('/coffee-chat-prepper/result', { 
+            navigate('/coffee-chats/result', { 
                 state: { 
-                    brief: result,
+                    content: result,
+                    generationMode: generationMode,
                     counterpartInfo: counterpartInfo,
                 } 
             });
@@ -42,6 +54,12 @@ const CoffeeChatPrepperPage: React.FC = () => {
             setIsLoading(false);
         }
     };
+    
+    const placeholderText = generationMode === 'prep'
+        ? "e.g., Sarah Chen - Product Manager at Innovate Inc. Previously at Acme Corp. Studied Computer Science at State University. Passionate about user-centric design and mentoring..."
+        : "e.g., John Doe - Senior Engineer at Google. Alumnus of my university. Found his profile on LinkedIn, interested in his work on AI projects.";
+        
+    const buttonText = generationMode === 'prep' ? 'Generate Brief' : 'Generate Message';
 
     return (
         <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
@@ -54,24 +72,47 @@ const CoffeeChatPrepperPage: React.FC = () => {
                             </svg>
                         </div>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Coffee Chat Prepper</h1>
-                    <p className="mt-6 text-xl text-gray-600">
-                        Nail your next networking chat. Paste in notes, a bio, or a LinkedIn URL, and our AI coach will create a personalized brief to help you shine.
+                    <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Coffee Chats</h1>
+                    <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+                        Ace your professional networking. Provide details about a person you want to connect with—like their bio, notes, or a LinkedIn profile—and our AI coach will generate a tailored outreach message or a personalized brief to ensure you make a great impression.
                     </p>
                 </div>
 
                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+                    <div className="mb-6">
+                        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200" role="radiogroup">
+                            <button
+                                onClick={() => setGenerationMode('prep')}
+                                className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${generationMode === 'prep' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
+                                aria-pressed={generationMode === 'prep'}
+                                role="radio"
+                                aria-checked={generationMode === 'prep'}
+                            >
+                                Coffee Chat Prep
+                            </button>
+                            <button
+                                onClick={() => setGenerationMode('reach_out')}
+                                className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${generationMode === 'reach_out' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
+                                aria-pressed={generationMode === 'reach_out'}
+                                role="radio"
+                                aria-checked={generationMode === 'reach_out'}
+                            >
+                                Reach Out Message
+                            </button>
+                        </div>
+                    </div>
+
                     <label htmlFor="counterpart-info" className="block text-lg font-semibold text-gray-800">
-                        Who are you meeting?
+                        Who are you connecting with?
                     </label>
                     <p className="text-gray-500 mt-1 mb-4 text-sm">
-                        Paste any information you have: their bio, job description, LinkedIn profile text, your notes, etc. The more detail, the better!
+                        Paste any information you have: their bio, LinkedIn profile text, your notes, etc. The more detail, the better!
                     </p>
                     <textarea
                         id="counterpart-info"
                         rows={12}
                         className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-1 focus:ring-primary focus:border-primary transition bg-gray-50"
-                        placeholder="e.g., Sarah Chen - Product Manager at Innovate Inc. Previously at Acme Corp. Studied Computer Science at State University. Passionate about user-centric design and mentoring..."
+                        placeholder={placeholderText}
                         value={counterpartInfo}
                         onChange={(e) => setCounterpartInfo(e.target.value)}
                         disabled={isLoading}
@@ -86,10 +127,10 @@ const CoffeeChatPrepperPage: React.FC = () => {
                             {isLoading ? (
                                 <>
                                     <LoadingSpinnerIcon className="h-5 w-5 mr-3" />
-                                    Generating Brief...
+                                    Generating...
                                 </>
                             ) : (
-                                "Generate Brief"
+                                buttonText
                             )}
                         </button>
                     </div>

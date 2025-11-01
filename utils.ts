@@ -52,6 +52,10 @@ export const parseError = (error: any): { message: string, isRetryable: boolean 
     if (errorMessage.includes('network request failed') || errorMessage.includes('fetch') || errorMessage.includes('network error') || errorMessage.includes('timed out')) {
          return { message: "Network Error: We couldn't connect to the service. Please check your internet connection and try again.", isRetryable: true };
     }
+    // Fix: Make "empty response" errors retryable, as this is often a transient issue.
+    if (errorMessage.includes('empty response')) {
+        return { message: "The AI returned an empty response. This can be a temporary issue.", isRetryable: true };
+    }
     if (error instanceof SyntaxError || errorMessage.includes('json')) {
         return { message: "Invalid AI Response: The model returned a response in an unexpected format. This can be a temporary issue, please try again.", isRetryable: true };
     }

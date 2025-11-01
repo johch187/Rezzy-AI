@@ -155,8 +155,8 @@ const App: React.FC = () => {
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/gdpr" element={<GDPRPage />} />
-              <Route path="/coffee-chat-prepper" element={<CoffeeChatPrepperPage />} />
-              <Route path="/coffee-chat-prepper/result" element={<CoffeeChatResultPage />} />
+              <Route path="/coffee-chats" element={<CoffeeChatPrepperPage />} />
+              <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
             </Routes>
           </main>
           <Footer />
