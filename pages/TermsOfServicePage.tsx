@@ -5,27 +5,26 @@ const TermsOfServicePage: React.FC = () => {
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Terms of Service</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Terms of Service</h1>
         </div>
         <div className="max-w-3xl mx-auto">
-          <div className="prose prose-lg max-w-none prose-h2:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
+          <div className="prose prose-lg max-w-none prose-h2:text-slate-900 prose-a:text-brand-blue hover:prose-a:text-blue-700">
             <p>
-              Please read these terms of use carefully before using the AI Resume
-              Builder app. By using the app, you agree to comply with these
+              Please read these terms of use carefully before using the Keju
+              app. By using the app, you agree to comply with these
               terms throughout your usage. If you do not agree to these terms,
               please stop using the app immediately.
             </p>
             <h2>Usage of the App</h2>
             <p>
-              The AI Resume Builder app (“the app”) is developed by Johanchen AB
-              (“we,” “us” or “the company”) to assist users in creating
-              professional resumes using AI-powered tools.
+              The Keju app (“the app”) is developed by Keju Inc.
+              (“we,” “us” or “the company”) to assist users in navigating their careers using AI-powered tools.
             </p>
             <h2>Limitation of Liability</h2>
             <p>
               We do not take responsibility for the accuracy, completeness, or
-              timeliness of the data provided by the app. AI Resume Builder
-              serves as a tool to assist users in writing resumes, but it is the
+              timeliness of the data provided by the app. Keju
+              serves as a tool to assist users in their career journey, but it is the
               user’s responsibility to verify the accuracy of the content and
               ensure compliance with any applicable job application standards or
               personal requirements.
@@ -58,10 +57,10 @@ const TermsOfServicePage: React.FC = () => {
               its licensors and is protected by intellectual property laws.
             </p>
             <p>
-              By using the AI Resume Builder app, you confirm that you have
+              By using the Keju app, you confirm that you have
               read, understood, and accepted these terms of use. If you have any
               questions, please contact us at{' '}
-              <a href="mailto:info@johanchen.com">info@johanchen.com</a>.
+              <a href="mailto:support@keju.io">support@keju.io</a>.
             </p>
           </div>
         </div>

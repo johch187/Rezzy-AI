@@ -13,7 +13,7 @@ export const XCircleIcon: React.FC<{ className?: string }> = ({ className = "h-5
 );
 
 export const ArrowIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${!collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-slate-500 transition-transform duration-300 ${!collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
 );
@@ -25,7 +25,7 @@ export const ThinkingIcon: React.FC = () => (
 );
 
 export const QuestionMarkCircleIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block text-gray-400 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block text-slate-400 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
@@ -45,15 +45,15 @@ export const CheckIcon: React.FC = () => (
 );
 
 export const SpinnerIcon: React.FC = () => (
-    <div className="h-6 w-6 rounded-full border-2 border-t-primary border-r-primary border-b-gray-200 border-l-gray-200 animate-spin" />
+    <div className="h-6 w-6 rounded-full border-2 border-t-brand-blue border-r-brand-blue border-b-slate-200 border-l-slate-200 animate-spin" />
 );
 
 export const PendingIcon: React.FC = () => (
-    <div className="h-6 w-6 rounded-full border-2 border-gray-300" />
+    <div className="h-6 w-6 rounded-full border-2 border-slate-300" />
 );
 
 // Icon for Subscription Page
-export const SubscriptionCheckIcon: React.FC<{ className?: string }> = ({ className = "flex-shrink-0 h-6 w-6 text-primary" }) => (
+export const SubscriptionCheckIcon: React.FC<{ className?: string }> = ({ className = "flex-shrink-0 h-6 w-6 text-brand-blue" }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
@@ -79,7 +79,7 @@ export const UploadIcon: React.FC = () => (
 );
 
 export const TokenIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2-2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
     </svg>
 );
@@ -119,5 +119,19 @@ export const GoogleDocsIcon: React.FC<{ className?: string }> = ({ className = "
 export const HamburgerIcon: React.FC<{ className?: string }> = ({ className = "h-6 w-6" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+);
+
+export const CareerCoachIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+      <path d="M6 12v5c3.33 1.67 6.67 1.67 10 0v-5"/>
+    </svg>
+);
+
+export const CareerPathIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
+        <circle cx="4" cy="4" r="2" />
     </svg>
 );

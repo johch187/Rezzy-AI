@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { ProfileData, GenerationOptions, GeneratedContent } from '../types';
+import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath } from '../types';
 import { parseError } from '../utils';
-// Fix: Import generateContentWithRetry to resolve undefined function error.
 import { generateContentWithRetry } from './geminiService';
 
 if (!process.env.API_KEY) {
@@ -42,132 +41,6 @@ I am excited by the opportunity to bring my technical skills and collaborative s
 
 Sincerely,
 Alex Doe`
-};
-
-const FETCH_TIMEOUT_MS = 15000; // Increased timeout for potentially slow AI responses
-
-export const fetchJobDescriptionFromUrl = async (url: string): Promise<string> => {
-  // 1. Improved client-side validation for URLs.
-  let urlObject: URL;
-  try {
-    const urlWithProtocol = /^(https?:\/\/)/.test(url) ? url : `https://${url}`;
-    urlObject = new URL(urlWithProtocol);
-  } catch (_) {
-    throw new Error('The URL you entered appears to be invalid. Please double-check it. It should look like "company.com/careers/job".');
-  }
-
-  const { hostname } = urlObject;
-  const isIpAddress = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
-  if (!hostname.includes('.') && hostname !== 'localhost' && !isIpAddress) {
-     throw new Error(`The URL hostname "${hostname}" seems to be missing a top-level domain like '.com' or '.org'. Please provide a full and valid URL.`);
-  }
-
-  const protectedSites = ['linkedin.com', 'indeed.com', 'glassdoor.com', 'ziprecruiter.com'];
-  if (protectedSites.some(site => hostname.replace('www.', '').includes(site))) {
-     console.warn("Attempting to fetch from a protected site. This may fail due to login requirements or bot protection.");
-  }
-  
-  const MAX_RETRIES = 3;
-  const INITIAL_BACKOFF_MS = 1000;
-  let lastError: Error | null = null;
-
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-        const fetchPromise = new Promise<string>(async (resolve, reject) => {
-            try {
-                if (!process.env.API_KEY) {
-                    return reject(new Error("API_KEY is not configured. Cannot fetch URL content. Please paste the job description manually."));
-                }
-            
-                const prompt = `
-                    You are a highly advanced web content extraction engine. Your sole purpose is to visit a URL, pinpoint the main job description content, and return it as clean, readable text.
-
-                    URL to process: ${urlObject.href}
-
-                    **Primary Extraction Protocol:**
-
-                    1.  **Initial Scan & Content Identification:**
-                        -   Access the URL and perform an initial scan of the HTML structure.
-                        -   Identify the primary content container. Look for semantic tags like \`<main>\`, \`<article>\`, or elements with IDs/classes like \`job-description\`, \`job-details\`, \`job-content\`. Prioritize these over generic \`<div>\`s.
-                        -   Be aware of common website layouts. Intelligently ignore headers, footers, navigation bars, sidebars, "related jobs" widgets, and cookie consent banners.
-
-                    2.  **Deep Content Extraction & Cleaning:**
-                        -   Once the main content block is identified, extract all relevant text.
-                        -   Look for standard job description sections with headings like "Responsibilities", "Qualifications", "Requirements", "What you'll do", "Who you are", "Skills".
-                        -   Aggressively remove any remaining non-essential text, such as social media links, application form fields, or boilerplate company info that isn't part of the core description.
-                        -   Preserve line breaks and paragraph structure for readability. Use simple markdown for headings (e.g., \`## Responsibilities\`) if it enhances clarity.
-
-                    3.  **Handling Complex Scenarios:**
-                        -   **Dynamic Content (JavaScript):** If you detect that the main content is loaded via JavaScript and is not present in the initial HTML, look for embedded JSON data, especially \`application/ld+json\` scripts which often contain structured \`JobPosting\` schema. Extract the 'description' field from this JSON if available. If you cannot execute JS or find this data, and the page is mostly empty, you must fail with the \`NO_CONTENT\` error code.
-                        -   **iFrames:** If the job description appears to be within an \`<iframe>\`, analyze its \`src\` attribute. If it's a direct link to a job board (e.g., Greenhouse, Lever), attempt to fetch and process that \`src\` URL instead.
-
-                    4.  **Final Output:**
-                        -   Return ONLY the cleaned and formatted plain text of the job description. Your output should begin directly with the job title or the first line of the description. Do not add any introductory phrases like "Here is the job description:".
-
-                    **Strict Error Reporting Protocol:**
-
-                    - If you cannot successfully extract a valid job description for ANY reason, you MUST return a single line containing ONLY a specific error code, prefixed with "FETCH_ERROR:".
-                    - Do not provide any explanation, just the code.
-                    - Use one of the following codes:
-                        - \`FETCH_ERROR: NOT_FOUND\`: The URL results in a 404 Not Found error.
-                        - \`FETCH_ERROR: ACCESS_DENIED\`: You are blocked by a login wall, CAPTCHA, or a 403 Forbidden error.
-                        - \`FETCH_ERROR: SERVER_ERROR\`: The website's server returns an error (e.g., 500, 502, 503, 504).
-                        - \`FETCH_ERROR: NO_CONTENT\`: The page loads successfully, but after applying all extraction rules, you cannot find a discernible job description (e.g., the page is blank, it's a list of jobs, or an expired posting).
-                        - \`FETCH_ERROR: TIMEOUT\`: The connection to the server timed out.
-
-                    - Example of a failure response: \`FETCH_ERROR: ACCESS_DENIED\`
-                `;
-
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: prompt,
-                });
-
-                const extractedText = response.text.trim();
-
-                if (extractedText.startsWith('FETCH_ERROR:')) {
-                    const errorCode = extractedText.replace('FETCH_ERROR:', '').trim();
-                    const error = new Error(`Scraping failed with code: ${errorCode}`);
-                    (error as any).code = errorCode; // Attach code for parseError to handle
-                    return reject(error);
-
-                } else if (!extractedText || extractedText.length < 50) {
-                    return reject(new Error("The AI returned very little content from the URL. It's likely not a valid job description. Please paste the full description manually."));
-                } else {
-                    return resolve(extractedText);
-                }
-            } catch (error) {
-                // Catches errors from the ai.models.generateContent call itself
-                return reject(error);
-            }
-        });
-        
-        const timeoutPromise = new Promise<string>((_, reject) => {
-            setTimeout(() => {
-                reject(new Error(`The request timed out after ${FETCH_TIMEOUT_MS / 1000} seconds. The website might be slow or unreachable.`));
-            }, FETCH_TIMEOUT_MS);
-        });
-        
-        const result = await Promise.race([fetchPromise, timeoutPromise]);
-        return result; // Success! Exit the loop and return.
-    } catch (error: any) {
-        lastError = error;
-        const { message, isRetryable } = parseError(error);
-
-        if (isRetryable && i < MAX_RETRIES - 1) {
-            const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
-            console.warn(`Attempt ${i + 1}/${MAX_RETRIES} failed: ${message}. Retrying in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-            // Non-retryable error, or final attempt failed.
-            throw new Error(message);
-        }
-    }
-  }
-  
-  // This should theoretically not be reached if the catch block always throws.
-  const { message } = parseError(lastError);
-  throw new Error(message || `Failed to fetch URL after ${MAX_RETRIES} attempts.`);
 };
 
 export const generateTailoredDocuments = async (
@@ -235,7 +108,6 @@ export const generateTailoredDocuments = async (
     - If a document was not requested (e.g., "Generate a resume: \`false\`"), its value in the JSON MUST be \`null\`.
   `;
   
-  // Refactor: Use the robust generateContentWithRetry function to handle API calls.
   const jsonText = await generateContentWithRetry({
     model: modelName,
     contents: prompt,
@@ -360,7 +232,6 @@ A great way to close would be to ask, "Based on our chat, is there anyone else i
     Produce only the formatted "Coffee Chat Brief". Do not include any introductory text like "Here is your brief:".
   `;
 
-  // Refactor: Use the robust generateContentWithRetry function to handle API calls.
   const brief = await generateContentWithRetry({
     model: 'gemini-2.5-pro', // Use the more powerful model for this task
     contents: prompt,
@@ -444,4 +315,122 @@ Alex`);
     });
 
     return message;
+};
+
+export const generateCareerPath = async (
+  profile: ProfileData,
+  currentRole: string,
+  targetRole: string
+): Promise<CareerPath> => {
+    
+    if (!process.env.API_KEY) {
+        return Promise.resolve({
+            currentRole,
+            targetRole,
+            path: [
+                {
+                    timeframe: "Next 3-6 Months",
+                    milestoneTitle: "Foundation Building",
+                    milestoneDescription: "Focus on acquiring the core skills and knowledge needed for your target role.",
+                    actionItems: [
+                        { category: "Skills", title: "Complete an Online Course", description: `Enroll in and complete a foundational course related to ${targetRole} on a platform like Coursera or Udemy.` },
+                        { category: "Networking", title: "Informational Interviews", description: "Reach out to 2-3 professionals currently in your target role on LinkedIn for a brief coffee chat to understand their journey." },
+                    ]
+                },
+                {
+                    timeframe: "Year 1",
+                    milestoneTitle: "Practical Application",
+                    milestoneDescription: "Apply your new skills in a real-world context to build a portfolio and gain experience.",
+                    actionItems: [
+                        { category: "Projects", title: "Build a Portfolio Project", description: `Develop a project that showcases your abilities relevant to ${targetRole}. Document your process and results.` },
+                        { category: "Career", title: "Seek Relevant Responsibilities", description: "Volunteer for tasks or projects at your current job that are related to the responsibilities of a " + targetRole + "." },
+                    ]
+                }
+            ]
+        });
+    }
+
+    const careerPathSchema = {
+        type: Type.OBJECT,
+        properties: {
+            path: {
+                type: Type.ARRAY,
+                description: "An array of milestone objects representing the career path.",
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        timeframe: { type: Type.STRING, description: "The general timeframe for this milestone (e.g., 'Year 1-2 of University', 'First 6 Months in Role')." },
+                        milestoneTitle: { type: Type.STRING, description: "A concise, motivating title for this stage of the career path." },
+                        milestoneDescription: { type: Type.STRING, description: "A brief 1-2 sentence summary of the goal for this milestone." },
+                        actionItems: {
+                            type: Type.ARRAY,
+                            description: "A list of concrete actions the user should take during this milestone.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    category: { 
+                                        type: Type.STRING, 
+                                        enum: ['Academics', 'Internships', 'Projects', 'Skills', 'Networking', 'Career', 'Extracurriculars', 'Certifications'],
+                                        description: "The category of the action item."
+                                    },
+                                    title: { type: Type.STRING, description: "A short, actionable title for the task." },
+                                    description: { type: Type.STRING, description: "A detailed, practical description of the action item, providing specific examples or advice." }
+                                },
+                                required: ["category", "title", "description"]
+                            }
+                        }
+                    },
+                    required: ["timeframe", "milestoneTitle", "milestoneDescription", "actionItems"]
+                }
+            }
+        },
+        required: ["path"]
+    };
+
+    const prompt = `
+        You are a seasoned career strategist and mentor AI. Your task is to create a detailed, actionable, and realistic career path for a user based on their current situation and future aspirations.
+
+        **CONTEXT:**
+
+        *   **User's Current Situation:** ${currentRole}
+        *   **User's Target Role:** ${targetRole}
+        *   **User's Background Profile (for context):**
+            \`\`\`json
+            ${JSON.stringify(profile, null, 2)}
+            \`\`\`
+
+        **YOUR DIRECTIVE:**
+
+        Create a step-by-step career path, structured as a series of chronological milestones. The path should be both ambitious and achievable. Each milestone must contain specific, tangible action items.
+
+        1.  **Analyze the Gap:** First, analyze the gap between the user's current situation/profile and their target role. Identify the key skills, experiences, and network they need to build.
+        2.  **Define Milestones:** Break down the journey into 3-5 logical milestones. Each milestone should have a clear timeframe and objective.
+        3.  **Create Actionable Steps:** For each milestone, provide a list of concrete action items. These should be specific and practical. Instead of "Learn to code," suggest "Complete a Python for Data Science course and build a portfolio project analyzing a public dataset."
+        4.  **Categorize Actions:** Assign a category to each action item from the provided list to help the user organize their efforts.
+        5.  **Maintain a Realistic Tone:** The advice should be encouraging but grounded in reality. Acknowledge the effort required.
+
+        **EXAMPLE SCENARIOS:**
+        *   If the user is a 'University Student' aiming for 'Investment Banking', the path should include steps like 'Spring Week Internships', 'Summer Analyst Programs', 'Networking with Alumni', and 'Financial Modeling Courses'.
+        *   If the user is a 'Junior Software Engineer' aiming for 'Product Manager', the path should include steps like 'Take on product-adjacent tasks', 'Build a side project from scratch', 'Get a certification like Certified Scrum Product Owner (CSPO)', and 'Conduct informational interviews with PMs'.
+
+        Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema.
+    `;
+    
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: careerPathSchema,
+            thinkingConfig: { thinkingBudget: 32768 }
+        }
+    });
+    
+    const parsedData = JSON.parse(jsonText);
+
+    return {
+        path: parsedData.path,
+        currentRole: currentRole,
+        targetRole: targetRole,
+    };
 };

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { generateTailoredDocuments } from '../services/generationService';
 import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
@@ -41,8 +41,11 @@ const TextAreaSkeleton: React.FC = () => (
 const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { profile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, addDocumentToHistory } = profileContext!;
+  
+  const { jobDescription: initialJobDescription } = (location.state as { jobDescription?: string }) || {};
 
   const [options, setOptions] = useState<Omit<GenerationOptions, 'jobDescription'>>({
     generateResume: true,
@@ -61,7 +64,7 @@ const GeneratePage: React.FC = () => {
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
 
   const [jobUrl, setJobUrl] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
+  const [jobDescription, setJobDescription] = useState(initialJobDescription || '');
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);

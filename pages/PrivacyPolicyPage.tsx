@@ -5,15 +5,15 @@ const PrivacyPolicyPage: React.FC = () => {
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Privacy Policy</h1>
-            <p className="mt-4 text-xl text-gray-500">Last updated: October 26, 2025</p>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Privacy Policy</h1>
+            <p className="mt-4 text-xl text-slate-500">Last updated: October 26, 2025</p>
         </div>
         <div className="max-w-3xl mx-auto">
-          <div className="prose prose-lg max-w-none prose-h2:text-neutral prose-a:text-primary hover:prose-a:text-blue-700">
+          <div className="prose prose-lg max-w-none prose-h2:text-slate-900 prose-a:text-brand-blue hover:prose-a:text-blue-700">
             <p>
-              Johanchen AB (“we” or “us”) respects your privacy and collects minimal
+              Keju Inc. (“we” or “us”) respects your privacy and collects minimal
               information. This privacy policy applies to our AI-powered
-              application, AI Resume Builder, designed to help users create resumes. By using our
+              application, Keju, designed to help users with career navigation. By using our
               app, you agree to our collection, use, and sharing of your
               information as described in this policy.
             </p>
@@ -27,17 +27,17 @@ const PrivacyPolicyPage: React.FC = () => {
             </p>
             <p>
               Additionally, all data entered into the app is sent to platforms
-              like Google Gemini or OpenAI for processing to generate your resume.
+              like Google Gemini or OpenAI for processing to generate your career guidance and documents.
               This data is used solely to provide and enhance the app's AI
               capabilities.
             </p>
             <h2>How We Use Your Information</h2>
             <p>
               The information you provide is processed by the AI to help generate
-              and refine your resume. The data shared with Firebase is used
+              and refine your career path and application documents. The data shared with Firebase is used
               solely to improve app performance, identify bugs, and enhance the
               overall user experience. Data sent to Google Gemini or OpenAI is
-              used exclusively to process your resume and optimize the AI features
+              used exclusively to process your requests and optimize the AI features
               of the app.
             </p>
             <h2>Sharing Your Information</h2>
@@ -67,7 +67,7 @@ const PrivacyPolicyPage: React.FC = () => {
             <p>
               If you have any questions or concerns about this privacy policy,
               please contact us at{' '}
-              <a href="mailto:info@johanchen.com">info@johanchen.com</a>.
+              <a href="mailto:privacy@keju.io">privacy@keju.io</a>.
             </p>
           </div>
         </div>

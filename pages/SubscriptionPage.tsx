@@ -6,9 +6,9 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
         {children}
         <span className="relative group/tooltip cursor-help ml-1">
             <QuestionMarkCircleIcon />
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-left">
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-left">
                 {text}
-                <svg className="absolute text-gray-800 h-2 w-4 left-1/2 -translate-x-1/2 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                <svg className="absolute text-slate-800 h-2 w-4 left-1/2 -translate-x-1/2 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
             </span>
         </span>
     </span>
@@ -39,30 +39,30 @@ const SubscriptionPage: React.FC = () => {
   }> = ({ name, price, billingInfo, description, features, isCurrent, isPopular }) => {
     
     const cardClasses = isPopular 
-      ? "border-2 border-primary ring-4 ring-blue-100 bg-white" 
-      : "border border-gray-200 bg-white";
+      ? "border-2 border-brand-blue ring-4 ring-blue-100 bg-white" 
+      : "border border-slate-200 bg-white";
     
     const buttonClasses = isCurrent
-      ? "w-full text-center px-4 py-3 border border-gray-300 text-sm font-bold rounded-lg text-gray-500 bg-gray-100 cursor-default"
+      ? "w-full text-center px-4 py-3 border border-slate-300 text-sm font-bold rounded-lg text-slate-500 bg-slate-100 cursor-default"
       : isPopular
-      ? "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-primary hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg hover:shadow-primary/50"
-      : "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-neutral hover:bg-gray-800 transition-transform transform hover:scale-105";
+      ? "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg hover:shadow-brand-blue/50"
+      : "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-slate-900 hover:bg-slate-800 transition-transform transform hover:scale-105";
 
     return (
       <div className={`rounded-2xl p-8 flex flex-col relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${cardClasses}`}>
-        {isPopular && <span className="absolute top-0 -translate-y-1/2 bg-primary text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">Most Popular</span>}
+        {isPopular && <span className="absolute top-0 -translate-y-1/2 bg-brand-blue text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">Most Popular</span>}
         
-        <h3 className="text-2xl font-bold text-neutral">{name}</h3>
+        <h3 className="text-2xl font-bold text-slate-900">{name}</h3>
         
-        <div className="mt-4 text-gray-500 flex items-baseline gap-x-2">
-          <span className="text-5xl font-extrabold tracking-tight text-neutral">{price}</span>
+        <div className="mt-4 text-slate-500 flex items-baseline gap-x-2">
+          <span className="text-5xl font-extrabold tracking-tight text-slate-900">{price}</span>
           {price !== 'Free' && <span>/ month</span>}
         </div>
-        {billingInfo && <p className="text-sm text-gray-500 mt-1">{billingInfo}</p>}
+        {billingInfo && <p className="text-sm text-slate-500 mt-1">{billingInfo}</p>}
 
-        <p className="mt-6 text-gray-600 min-h-12">{description}</p>
+        <p className="mt-6 text-slate-700 min-h-12">{description}</p>
         
-        <ul className="mt-8 space-y-4 text-gray-700">
+        <ul className="mt-8 space-y-4 text-slate-700">
           {features.map((feature, index) => {
             const creditRolloverMatch = feature.match(/^(Credit rollovers)\s*\((.*)\)/);
             
@@ -117,15 +117,15 @@ const SubscriptionPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Find the Perfect Plan</h1>
-            <p className="mt-4 text-xl text-gray-500">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Find the Perfect Plan</h1>
+            <p className="mt-4 text-xl text-slate-500">
               Start for free, and unlock powerful features when you're ready.
             </p>
           </div>
 
           {/* Billing Cycle Toggle */}
           <div className="flex justify-center items-center space-x-4 mb-12">
-            <span className={`font-medium transition-colors ${billingCycle === 'monthly' ? 'text-primary' : 'text-gray-500'}`}>Monthly</span>
+            <span className={`font-medium transition-colors ${billingCycle === 'monthly' ? 'text-brand-blue' : 'text-slate-500'}`}>Monthly</span>
             <label htmlFor="billing-toggle" className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -134,10 +134,10 @@ const SubscriptionPage: React.FC = () => {
                 checked={billingCycle === 'annually'}
                 onChange={() => setBillingCycle(prev => prev === 'monthly' ? 'annually' : 'monthly')}
               />
-              <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-base-200 peer-focus:ring-primary peer-checked:bg-primary transition-colors"></div>
-              <div className="absolute top-1 left-1 bg-white border-gray-300 border rounded-full h-6 w-6 peer-checked:translate-x-full transition-transform"></div>
+              <div className="w-14 h-8 bg-slate-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-base-200 peer-focus:ring-brand-blue peer-checked:bg-brand-blue transition-colors"></div>
+              <div className="absolute top-1 left-1 bg-white border-slate-300 border rounded-full h-6 w-6 peer-checked:translate-x-full transition-transform"></div>
             </label>
-            <span className={`font-medium transition-colors ${billingCycle === 'annually' ? 'text-primary' : 'text-gray-500'}`}>
+            <span className={`font-medium transition-colors ${billingCycle === 'annually' ? 'text-brand-blue' : 'text-slate-500'}`}>
               Annually <span className="hidden sm:inline-block text-sm text-green-600 font-semibold">(Save 10%)</span>
             </span>
           </div>
@@ -187,27 +187,27 @@ const SubscriptionPage: React.FC = () => {
           </div>
 
           {/* Boost Applications Section */}
-          <div className="mt-20 text-center bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-200">
-            <h3 className="text-3xl font-bold text-neutral">Need a Quick Boost?</h3>
-            <p className="mt-3 text-gray-600 max-w-2xl mx-auto">
+          <div className="mt-20 text-center bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-slate-200">
+            <h3 className="text-3xl font-bold text-slate-900">Need a Quick Boost?</h3>
+            <p className="mt-3 text-slate-700 max-w-2xl mx-auto">
               Purchase a one-time pack of tokens for extra document generations. They never expire and there's no subscription required.
             </p>
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
               {/* Boost Pack */}
-              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
-                <h4 className="text-xl font-bold text-neutral">Boost Pack</h4>
-                <span className="text-4xl font-extrabold text-neutral mt-2">20 Tokens</span>
-                <p className="text-3xl font-bold text-accent my-4">€10</p>
-                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+              <div className="border border-slate-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-brand-blue/50">
+                <h4 className="text-xl font-bold text-slate-900">Boost Pack</h4>
+                <span className="text-4xl font-extrabold text-slate-900 mt-2">20 Tokens</span>
+                <p className="text-3xl font-bold text-brand-blue my-4">€10</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
                   Purchase Pack
                 </button>
               </div>
               {/* Power Pack */}
-              <div className="border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-accent/50">
-                <h4 className="text-xl font-bold text-neutral">Power Pack</h4>
-                <span className="text-4xl font-extrabold text-neutral mt-2">50 Tokens</span>
-                <p className="text-3xl font-bold text-accent my-4">€20</p>
-                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-accent hover:bg-pink-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-accent/40">
+              <div className="border border-slate-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-brand-blue/50">
+                <h4 className="text-xl font-bold text-slate-900">Power Pack</h4>
+                <span className="text-4xl font-extrabold text-slate-900 mt-2">50 Tokens</span>
+                <p className="text-3xl font-bold text-brand-blue my-4">€20</p>
+                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
                   Purchase Pack
                 </button>
               </div>

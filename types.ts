@@ -138,7 +138,6 @@ export interface DocumentHistoryItem {
   content: string; // The markdown content
 }
 
-// Fix: Add missing IncludedProfileSelections interface.
 export interface IncludedProfileSelections {
   summary: boolean;
   additionalInformation: boolean;
@@ -153,4 +152,24 @@ export interface IncludedProfileSelections {
   interestIds: Set<string>;
   customSectionIds: Set<string>;
   customSectionItemIds: { [sectionId: string]: Set<string> };
+}
+
+// --- Career Path Types ---
+export interface ActionItem {
+  category: 'Academics' | 'Internships' | 'Projects' | 'Skills' | 'Networking' | 'Career' | 'Extracurriculars' | 'Certifications';
+  title: string;
+  description: string;
+}
+
+export interface CareerMilestone {
+  timeframe: string;
+  milestoneTitle: string;
+  milestoneDescription: string;
+  actionItems: ActionItem[];
+}
+
+export interface CareerPath {
+  path: CareerMilestone[];
+  currentRole: string;
+  targetRole: string;
 }

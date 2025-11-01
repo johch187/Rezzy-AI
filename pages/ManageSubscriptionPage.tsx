@@ -5,8 +5,8 @@ import { DocumentDuplicateIcon } from '../components/Icons';
 
 // Reusable card component for styling consistency
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
-    <h2 className="text-xl font-bold text-neutral border-b border-gray-200 pb-4 mb-6">{title}</h2>
+  <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+    <h2 className="text-xl font-bold text-slate-900 border-b border-slate-200 pb-4 mb-6">{title}</h2>
     {children}
   </div>
 );
@@ -17,13 +17,13 @@ const Button: React.FC<{ onClick?: () => void; children: React.ReactNode; varian
   let variantClasses = '';
   switch (variant) {
     case 'primary':
-      variantClasses = 'text-white bg-primary hover:bg-blue-700 focus:ring-primary';
+      variantClasses = 'text-white bg-brand-blue hover:bg-blue-700 focus:ring-brand-blue';
       break;
     case 'danger':
       variantClasses = 'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500';
       break;
     default: // secondary
-      variantClasses = 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-primary';
+      variantClasses = 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 focus:ring-brand-blue';
       break;
   }
   return (
@@ -39,7 +39,7 @@ const ManageSubscriptionPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   
   const userEmail = profileContext?.profile?.email || 'user@example.com';
-  const referralLink = `https://airesumebuilder.app/join?ref=${userEmail.split('@')[0]}`;
+  const referralLink = `https://keju.io/join?ref=${userEmail.split('@')[0]}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink).then(() => {
@@ -53,8 +53,8 @@ const ManageSubscriptionPage: React.FC = () => {
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Account Settings</h1>
-            <p className="mt-4 text-xl text-gray-500">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Account Settings</h1>
+            <p className="mt-4 text-xl text-slate-500">
               Manage your subscription, billing, and account details.
             </p>
           </div>
@@ -64,8 +64,8 @@ const ManageSubscriptionPage: React.FC = () => {
             <SettingsCard title="Current Plan">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <div>
-                  <p className="text-lg font-semibold text-gray-800">Basic Plan (Free)</p>
-                  <p className="text-gray-500 text-sm mt-1">You currently have the free Basic plan.</p>
+                  <p className="text-lg font-semibold text-slate-800">Basic Plan (Free)</p>
+                  <p className="text-slate-500 text-sm mt-1">You currently have the free Basic plan.</p>
                 </div>
                 <div className="flex space-x-2 mt-4 sm:mt-0">
                   <Link to="/subscription">
@@ -80,8 +80,8 @@ const ManageSubscriptionPage: React.FC = () => {
             <SettingsCard title="Billing Information">
                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <div>
-                  <p className="text-gray-800"><span className="font-semibold">Payment Method:</span> Visa ending in 1234</p>
-                  <p className="text-gray-500 text-sm mt-1">Next invoice will be billed on November 24, 2025.</p>
+                  <p className="text-slate-800"><span className="font-semibold">Payment Method:</span> Visa ending in 1234</p>
+                  <p className="text-slate-500 text-sm mt-1">Next invoice will be billed on November 24, 2025.</p>
                 </div>
                 <div className="flex space-x-2 mt-4 sm:mt-0">
                     <Button>Update Payment</Button>
@@ -94,8 +94,8 @@ const ManageSubscriptionPage: React.FC = () => {
             <SettingsCard title="Account Details">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                  <input type="email" disabled value={userEmail} className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm" />
+                  <label className="block text-sm font-medium text-slate-700">Email Address</label>
+                  <input type="email" disabled value={userEmail} className="mt-1 block w-full rounded-md border-slate-300 bg-slate-100 shadow-sm sm:text-sm" />
                 </div>
                 <div className="flex justify-end">
                   <Button variant="danger">Delete Account</Button>
@@ -105,7 +105,7 @@ const ManageSubscriptionPage: React.FC = () => {
             
             {/* Refer a Friend Card */}
             <SettingsCard title="Refer a Friend & Earn Tokens">
-                <p className="text-gray-600 mb-4">
+                <p className="text-slate-700 mb-4">
                     Share your unique referral link with friends. For every friend that signs up, you both get 20 bonus tokens!
                 </p>
                 <div className="flex flex-col sm:flex-row items-stretch gap-2">
@@ -113,11 +113,11 @@ const ManageSubscriptionPage: React.FC = () => {
                         type="text" 
                         readOnly 
                         value={referralLink} 
-                        className="flex-grow block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm focus:ring-0 focus:border-gray-300"
+                        className="flex-grow block w-full rounded-md border-slate-300 bg-slate-100 shadow-sm sm:text-sm focus:ring-0 focus:border-slate-300"
                     />
                     <button 
                         onClick={handleCopyLink}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900"
                     >
                         <DocumentDuplicateIcon />
                         <span className="ml-2">{copied ? 'Copied!' : 'Copy Link'}</span>

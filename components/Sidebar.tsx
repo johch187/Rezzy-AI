@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { XCircleIcon, DownloadIcon } from './Icons';
+import { XCircleIcon, DownloadIcon, CareerCoachIcon, CareerPathIcon } from './Icons';
 import { downloadFile } from '../utils';
 
 const ProfileIcon: React.FC = () => (
@@ -34,8 +34,8 @@ const Sidebar: React.FC = () => {
     downloadFile(content, filename, 'text/markdown');
   };
 
-  const navLinkClasses = "flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors";
-  const activeNavLinkClasses = "bg-primary/10 text-primary font-semibold";
+  const navLinkClasses = "flex items-center px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-brand-blue transition-colors";
+  const activeNavLinkClasses = "bg-brand-blue/10 text-brand-blue font-semibold";
 
   return (
     <>
@@ -54,16 +54,16 @@ const Sidebar: React.FC = () => {
         aria-labelledby="sidebar-title"
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
            <div className="flex items-center space-x-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-blue" viewBox="0 0 20 20" fill="currentColor">
                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 4a1 1 0 00-.526.92V15a1 1 0 00.526.92l7 4a1 1 0 00.788 0l7-4a1 1 0 00.526-.92V6.994a1 1 0 00-.526-.92l-7-4zM10 18.341L3.5 14.5v-7.842L10 10.341v8zM16.5 14.5L10 18.341v-8L16.5 6.658v7.842zM10 3.659l6.5 3.714-6.5 3.715L3.5 7.373 10 3.659z" />
              </svg>
-             <h2 id="sidebar-title" className="text-xl font-bold text-neutral">AI Resume Builder</h2>
+             <h2 id="sidebar-title" className="text-xl font-bold text-slate-900">Keju</h2>
            </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="p-2 rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue"
             aria-label="Close navigation menu"
           >
             <XCircleIcon className="h-6 w-6" />
@@ -92,6 +92,24 @@ const Sidebar: React.FC = () => {
                     Create Resume / Cover Letter
                   </NavLink>
                 </li>
+                 <li>
+                  <NavLink
+                    to="/career-coach"
+                    className={({ isActive }) => `${navLinkClasses} ${isActive ? activeNavLinkClasses : ''}`}
+                  >
+                    <CareerCoachIcon />
+                    Career Coach
+                  </NavLink>
+                </li>
+                 <li>
+                  <NavLink
+                    to="/career-path"
+                    className={({ isActive }) => `${navLinkClasses} ${isActive ? activeNavLinkClasses : ''}`}
+                  >
+                    <CareerPathIcon />
+                    Career Path
+                  </NavLink>
+                </li>
                 <li>
                   <NavLink
                     to="/coffee-chats"
@@ -105,27 +123,27 @@ const Sidebar: React.FC = () => {
             </nav>
             
             {/* Document History */}
-            <div className="p-4 border-t border-gray-200 flex-grow flex flex-col min-h-0">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="p-4 border-t border-slate-200 flex-grow flex flex-col min-h-0">
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                 History
                 </h3>
                 <div className="flex-grow overflow-y-auto pr-2 -mr-2">
                 {documentHistory && documentHistory.length > 0 ? (
                     <ul className="space-y-2">
                     {documentHistory.map(doc => (
-                        <li key={doc.id} className="group flex items-center justify-between p-2 rounded-lg hover:bg-gray-100">
+                        <li key={doc.id} className="group flex items-center justify-between p-2 rounded-lg hover:bg-slate-100">
                         <div className="flex-grow overflow-hidden">
-                            <p className="text-sm font-medium text-gray-800 truncate" title={doc.name}>
+                            <p className="text-sm font-medium text-slate-800 truncate" title={doc.name}>
                             {doc.name}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-slate-500">
                             {new Date(doc.generatedAt).toLocaleDateString()}
                             <span className="capitalize mx-1">&bull; {doc.type}</span>
                             </p>
                         </div>
                         <button 
                             onClick={(e) => handleDownload(e, doc.content, doc.name, doc.type)}
-                            className="ml-2 p-1 text-gray-400 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                            className="ml-2 p-1 text-slate-400 hover:text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
                             aria-label={`Download ${doc.name}`}
                             title="Download Markdown"
                         >
@@ -136,7 +154,7 @@ const Sidebar: React.FC = () => {
                     </ul>
                 ) : (
                     <div className="text-center py-4">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-slate-500">
                         Generated documents will appear here.
                         </p>
                     </div>

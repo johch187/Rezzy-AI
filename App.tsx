@@ -9,13 +9,15 @@ import GDPRPage from './pages/GDPRPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
-import type { ProfileData, DocumentHistoryItem } from './types';
+import type { ProfileData, DocumentHistoryItem, CareerPath } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import Sidebar from './components/Sidebar';
 import CoffeeChatPrepperPage from './pages/CoffeeChatPrepperPage';
 import CoffeeChatResultPage from './pages/CoffeeChatResultPage';
+import CareerCoachPage from './pages/CareerCoachPage';
+import CareerPathPage from './pages/CareerPathPage';
 
 const initialProfile: ProfileData = {
   fullName: '',
@@ -61,6 +63,8 @@ export const ProfileContext = createContext<{
   addDocumentToHistory: (doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  careerPath: CareerPath | null;
+  setCareerPath: (path: CareerPath | null) => void;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
@@ -89,6 +93,15 @@ const App: React.FC = () => {
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [careerPath, setCareerPath] = useState<CareerPath | null>(() => {
+    try {
+      const savedPath = localStorage.getItem('careerPath');
+      return savedPath ? JSON.parse(savedPath) : null;
+    } catch (error) {
+      console.error("Failed to parse career path from localStorage", error);
+      return null;
+    }
+  });
 
   // Function to explicitly save profile (and update lastSavedProfile)
   const saveProfile = useCallback((profileToSave: ProfileData) => {
@@ -120,6 +133,19 @@ const App: React.FC = () => {
         return updatedHistory;
     });
   }, []);
+  
+  const saveCareerPath = useCallback((newPath: CareerPath | null) => {
+    try {
+        if (newPath) {
+            localStorage.setItem('careerPath', JSON.stringify(newPath));
+        } else {
+            localStorage.removeItem('careerPath');
+        }
+        setCareerPath(newPath); // Update state
+    } catch (error) {
+        console.error("Failed to save career path to localStorage", error);
+    }
+  }, []);
 
   // Autosave effect (debounced)
   useEffect(() => {
@@ -135,7 +161,7 @@ const App: React.FC = () => {
     };
   }, [profile, lastSavedProfile, saveProfile]); // Dependencies on profile and lastSavedProfile
 
-  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory]);
+  const contextValue = useMemo(() => ({ profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory, careerPath, setCareerPath: saveCareerPath }), [profile, setProfile, saveProfile, lastSavedProfile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, documentHistory, addDocumentToHistory, careerPath, saveCareerPath]);
 
   return (
     <ProfileContext.Provider value={contextValue}>
@@ -157,6 +183,8 @@ const App: React.FC = () => {
               <Route path="/gdpr" element={<GDPRPage />} />
               <Route path="/coffee-chats" element={<CoffeeChatPrepperPage />} />
               <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
+              <Route path="/career-coach" element={<CareerCoachPage />} />
+              <Route path="/career-path" element={<CareerPathPage />} />
             </Routes>
           </main>
           <Footer />
