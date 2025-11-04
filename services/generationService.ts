@@ -359,9 +359,9 @@ export const generateCareerPath = async (
                 items: {
                     type: Type.OBJECT,
                     properties: {
-                        timeframe: { type: Type.STRING, description: "The general timeframe for this milestone (e.g., 'Year 1-2 of University', 'First 6 Months in Role')." },
+                        timeframe: { type: Type.STRING, description: "The general timeframe for this milestone (e.g., 'Year 1', 'Year 2')." },
                         milestoneTitle: { type: Type.STRING, description: "A concise, motivating title for this stage of the career path." },
-                        milestoneDescription: { type: Type.STRING, description: "A brief 1-2 sentence summary of the goal for this milestone." },
+                        milestoneDescription: { type: Type.STRING, description: "A brief 1-2 sentence summary of the goal for this milestone, potentially highlighting the quarterly focus." },
                         actionItems: {
                             type: Type.ARRAY,
                             description: "A list of concrete actions the user should take during this milestone.",
@@ -373,7 +373,7 @@ export const generateCareerPath = async (
                                         enum: ['Academics', 'Internships', 'Projects', 'Skills', 'Networking', 'Career', 'Extracurriculars', 'Certifications'],
                                         description: "The category of the action item."
                                     },
-                                    title: { type: Type.STRING, description: "A short, actionable title for the task." },
+                                    title: { type: Type.STRING, description: "A short, actionable title for the task. Prefix with the quarter, e.g., 'Q1: Learn Python Basics'." },
                                     description: { type: Type.STRING, description: "A detailed, practical description of the action item, providing specific examples or advice." }
                                 },
                                 required: ["category", "title", "description"]
@@ -388,11 +388,11 @@ export const generateCareerPath = async (
     };
 
     const prompt = `
-        You are a seasoned career strategist and mentor AI. Your task is to create a detailed, actionable, and realistic career path for a user based on their current situation and future aspirations.
+        You are a world-class career strategist and mentor AI. Your task is to create an exceptionally detailed, actionable, and realistic 5-year career path for a user.
 
         **CONTEXT:**
 
-        *   **User's Current Situation:** ${currentRole}
+        *   **User's Current Role:** ${currentRole}
         *   **User's Target Role:** ${targetRole}
         *   **User's Background Profile (for context):**
             \`\`\`json
@@ -401,19 +401,27 @@ export const generateCareerPath = async (
 
         **YOUR DIRECTIVE:**
 
-        Create a step-by-step career path, structured as a series of chronological milestones. The path should be both ambitious and achievable. Each milestone must contain specific, tangible action items.
+        Create a comprehensive 5-year career path, structured as exactly 5 chronological milestones (one for each year). The path must be ambitious yet achievable, with a strong focus on granular, quarterly actions.
 
-        1.  **Analyze the Gap:** First, analyze the gap between the user's current situation/profile and their target role. Identify the key skills, experiences, and network they need to build.
-        2.  **Define Milestones:** Break down the journey into 3-5 logical milestones. Each milestone should have a clear timeframe and objective.
-        3.  **Create Actionable Steps:** For each milestone, provide a list of concrete action items. These should be specific and practical. Instead of "Learn to code," suggest "Complete a Python for Data Science course and build a portfolio project analyzing a public dataset."
-        4.  **Categorize Actions:** Assign a category to each action item from the provided list to help the user organize their efforts.
-        5.  **Maintain a Realistic Tone:** The advice should be encouraging but grounded in reality. Acknowledge the effort required.
+        1.  **Analyze the Gap:** Deeply analyze the user's profile against the requirements of the target role. Identify critical gaps in skills, experience, projects, and network.
+        2.  **Define 5 Yearly Milestones:** Structure the entire path into 5 milestones with the timeframes "Year 1", "Year 2", "Year 3", "Year 4", and "Year 5". Each milestone should represent a major phase of development (e.g., "Year 1: Foundational Skills & Immersion", "Year 3: Specialization & Leadership").
+        3.  **Create Granular Quarterly Action Items:** For EACH of the 5 yearly milestones, you MUST provide a detailed list of action items.
+            *   **Quarterly Focus:** Each action item's title MUST be prefixed with the quarter it should be focused on (e.g., "Q1:", "Q2:", "Q3:", "Q4:").
+            *   **Comprehensive Categories:** Ensure the action items for each year cover the following four areas:
+                *   **Skills:** Specific technical or soft skills to learn (e.g., "Q1: Master Advanced Excel Pivot Tables & VLOOKUPs").
+                *   **Projects:** Concrete projects to build or contribute to (e.g., "Q3: Develop a personal portfolio website showcasing financial models").
+                *   **Networking:** Specific types of people to connect with or events to attend (e.g., "Q2: Conduct informational interviews with 3 alumni in the target role").
+                *   **Certifications:** Relevant certifications to pursue (e.g., "Q4: Begin studying for the CFA Level 1 exam").
+            *   **Actionable Descriptions:** The description for each action item must be specific and practical. Instead of "Learn Python," suggest "Complete the 'Python for Everybody' specialization on Coursera and apply skills to a small data analysis project."
 
-        **EXAMPLE SCENARIOS:**
-        *   If the user is a 'University Student' aiming for 'Investment Banking', the path should include steps like 'Spring Week Internships', 'Summer Analyst Programs', 'Networking with Alumni', and 'Financial Modeling Courses'.
-        *   If the user is a 'Junior Software Engineer' aiming for 'Product Manager', the path should include steps like 'Take on product-adjacent tasks', 'Build a side project from scratch', 'Get a certification like Certified Scrum Product Owner (CSPO)', and 'Conduct informational interviews with PMs'.
+        **EXAMPLE SCENARIO (for a Junior Developer -> Senior Developer path):**
+        A "Year 2" milestone might have action items like:
+        - "Q1: Skills: Master containerization with Docker and Kubernetes."
+        - "Q2: Projects: Lead a feature development from design to deployment."
+        - "Q3: Networking: Mentor a junior engineer or intern on the team."
+        - "Q4: Certifications: Obtain the AWS Certified Developer - Associate certification."
 
-        Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema.
+        Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema. The path array must contain exactly 5 milestone objects.
     `;
     
     const jsonText = await generateContentWithRetry({

@@ -1,20 +1,60 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Keju - Your AI-Powered Career Navigator
 
-# Run and deploy your AI Studio app
+Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a fully client-side application built with React and powered by the Google Gemini API.
 
-This contains everything you need to run your app locally.
+## ✨ Key Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1nwupY-cAKIjQ3UKye7I__ZjwpYUt0trU
+-   **Dynamic Profile Builder**: Create a comprehensive professional profile that acts as the single source of truth for the AI.
+-   **Intelligent Resume Import**: Upload a PDF, TXT, or MD file to automatically parse and populate your profile in seconds.
+-   **Tailored Document Generation**: Generate job-specific resumes and cover letters by combining your profile with a target job description.
+-   **AI Career Coach**: Chat with an interactive AI assistant for personalized career advice, interview prep, and more.
+-   **Personalized Career Path**: Get a detailed, multi-year career roadmap to guide you from your current role to your dream job.
+-   **Networking Assistant**: Prepare for coffee chats with AI-generated briefs or craft the perfect outreach message.
+-   **100% Client-Side**: All your data is stored securely in your browser's local storage. No backend, no accounts, no fuss.
 
-## Run Locally
+## 🛠️ Tech Stack
 
-**Prerequisites:**  Node.js
+-   **Frontend**: [React](https://reactjs.org/) with [TypeScript](https://www.typescriptlang.org/)
+-   **AI Engine**: [Google Gemini API](https://ai.google.dev/gemini-api) (`@google/genai`)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **Routing**: [React Router](https://reactrouter.com/) (using `HashRouter`)
+-   **Client-Side Storage**: Browser `localStorage`
 
+## 🚀 Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+This is a static web application with no build step required.
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/your-username/keju.git
+    ```
+2.  Navigate to the project directory:
+    ```bash
+    cd keju
+    ```
+3.  Open the `index.html` file in your favorite web browser.
+
+That's it! The application will run locally.
+
+*Note: For the AI features to work, you will need to provide a Google Gemini API key. This project is configured to read the key from a `process.env.API_KEY` variable, which is typically handled by the hosting environment.*
+
+## 📂 Project Structure
+
+The project is organized to separate concerns and improve maintainability:
+
+```
+/
+├── components/       # Reusable React components
+├── docs/             # Detailed project documentation (Roadmap, Architecture, etc.)
+├── pages/            # Top-level page components for each route
+├── services/         # Business logic and API communication (Gemini, parsing, etc.)
+├── types.ts          # Centralized TypeScript type definitions
+├── App.tsx           # Root component with routing and global context
+├── index.html        # Main HTML file
+├── index.tsx         # Application entry point
+└── README.md         # You are here!
+```
+
+## 📖 Documentation
+
+For a deeper dive into the project's vision, architecture, and feature implementation, please see the documents in the `/docs` folder.

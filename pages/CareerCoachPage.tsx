@@ -65,7 +65,6 @@ const CareerCoachPage: React.FC = () => {
             switch (call.name) {
                 case 'updateProfessionalSummary': {
                     const { newSummary } = call.args;
-                    // FIX: Cast `newSummary` to string to match ProfileData type.
                     setProfile(prev => ({ ...prev, summary: newSummary as string }));
                     setMessages(prev => [...prev, {
                         role: 'system',
@@ -85,7 +84,6 @@ const CareerCoachPage: React.FC = () => {
                         id: crypto.randomUUID()
                     }]);
                     setTimeout(() => {
-                        // FIX: Cast `jobDescription` to string to match expected state type on destination page. The error was reported on line 116 (the case statement) but applies here.
                         navigate('/generate', { state: { jobDescription: jobDescription as string } });
                     }, 1500);
                     functionExecutionResult = { result: "Successfully navigated user to the resume generator." };
@@ -102,7 +100,6 @@ const CareerCoachPage: React.FC = () => {
                         id: crypto.randomUUID()
                     }]);
                      setTimeout(() => {
-                        // FIX: Cast arguments from function call to their expected types.
                         navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo as string, initialMode: mode as 'prep' | 'reach_out' } });
                     }, 1500);
                     functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
@@ -110,11 +107,8 @@ const CareerCoachPage: React.FC = () => {
                 }
                 case 'generateAndSaveCareerPath': {
                     const { currentRole, targetRole } = call.args;
-                    // The system message that was here has been removed to avoid duplicating the AI's own text response.
-                    // The model is now responsible for telling the user that the process has started.
                     
                     // Generate the path in the background
-                    // FIX: Cast arguments to string to satisfy function signature.
                     generateCareerPath(profile, currentRole as string, targetRole as string)
                         .then(newPath => {
                             setCareerPath(newPath);
@@ -170,7 +164,7 @@ const CareerCoachPage: React.FC = () => {
         try {
             let response = await chatSession.current.sendMessage({ message: currentInput });
             
-            // NEW: Immediately display any text part of the response.
+            // Immediately display any text part of the response.
             if (response && response.text) {
                 const modelResponse = { role: 'model' as const, content: response.text, id: crypto.randomUUID() };
                 setMessages(prev => [...prev, modelResponse]);

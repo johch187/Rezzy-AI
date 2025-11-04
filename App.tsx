@@ -1,5 +1,5 @@
 import React, { useState, createContext, useMemo, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import GeneratePage from './pages/GeneratePage';
 import GenerationResultPage from './pages/GenerationResultPage';
@@ -73,6 +73,39 @@ export const ProfileContext = createContext<{
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
+
+const AppContent: React.FC = () => {
+    const location = useLocation();
+    const isAppPage = !['/', '/login'].includes(location.pathname);
+
+    return (
+        <>
+            {isAppPage && <Sidebar />}
+            <div className="min-h-screen bg-base-200 flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                    <Routes>
+                        <Route path="/" element={<LandingPage />} />
+                        <Route path="/builder" element={<HomePage />} />
+                        <Route path="/generate" element={<GeneratePage />} />
+                        <Route path="/generate/results" element={<GenerationResultPage />} />
+                        <Route path="/subscription" element={<SubscriptionPage />} />
+                        <Route path="/account" element={<ManageSubscriptionPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                        <Route path="/terms" element={<TermsOfServicePage />} />
+                        <Route path="/gdpr" element={<GDPRPage />} />
+                        <Route path="/coffee-chats" element={<CoffeeChatPrepperPage />} />
+                        <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
+                        <Route path="/career-coach" element={<CareerCoachPage />} />
+                        <Route path="/career-path" element={<CareerPathPage />} />
+                    </Routes>
+                </main>
+                <Footer />
+            </div>
+        </>
+    );
+};
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<ProfileData>(() => {
@@ -238,29 +271,7 @@ const App: React.FC = () => {
   return (
     <ProfileContext.Provider value={contextValue}>
       <HashRouter>
-        <Sidebar />
-        <div className="min-h-screen bg-base-200 flex flex-col">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/builder" element={<HomePage />} />
-              <Route path="/generate" element={<GeneratePage />} />
-              <Route path="/generate/results" element={<GenerationResultPage />} />
-              <Route path="/subscription" element={<SubscriptionPage />} />
-              <Route path="/account" element={<ManageSubscriptionPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-              <Route path="/terms" element={<TermsOfServicePage />} />
-              <Route path="/gdpr" element={<GDPRPage />} />
-              <Route path="/coffee-chats" element={<CoffeeChatPrepperPage />} />
-              <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
-              <Route path="/career-coach" element={<CareerCoachPage />} />
-              <Route path="/career-path" element={<CareerPathPage />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
+        <AppContent />
       </HashRouter>
     </ProfileContext.Provider>
   );

@@ -74,7 +74,7 @@ export const ExperienceSection = React.memo(() => {
                         <div className="space-y-2 mt-1">
                             {exp.achievements.map(ach => (
                                 <div key={ach.id} className="flex items-center space-x-2">
-                                    <textarea value={ach.text} onChange={e => handleAchievementChange(exp.id, ach.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Managed client accounts, increasing retention by 15%. Or: Spearheaded a new feature launch." />
+                                    <textarea value={ach.text} onChange={e => handleAchievementChange(exp.id, ach.id, e.target.value)} rows={2} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Use the STAR method (Situation, Task, Action, Result) to describe your accomplishments." />
                                     <button onClick={() => removeAchievement(exp.id, ach.id)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0" aria-label="Remove achievement">
                                         <XCircleIcon />
                                     </button>
