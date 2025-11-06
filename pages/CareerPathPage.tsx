@@ -1,8 +1,9 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import type { ActionItem } from '../types';
+import type { ActionItem, YouTubeVideo } from '../types';
 import { CareerCoachIcon } from '../components/Icons';
+import { getYouTubeRecommendations } from '../services/generationService';
 
 const CategoryIcon: React.FC<{ category: ActionItem['category'] }> = ({ category }) => {
     const iconMap: { [key in ActionItem['category']]: React.ReactElement } = {
@@ -23,6 +24,31 @@ const CareerPathPage: React.FC = () => {
     const careerPath = profileContext?.profile?.careerPath;
     const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
     const milestoneRefs = useRef<(HTMLDivElement | null)[]>([]);
+    
+    const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+    const [isLoadingVideos, setIsLoadingVideos] = useState(true);
+    const [videoError, setVideoError] = useState<string | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (careerPath?.targetRole) {
+            setIsLoadingVideos(true);
+            setVideoError(null);
+            getYouTubeRecommendations(careerPath.targetRole)
+                .then(recommendedVideos => {
+                    setVideos(recommendedVideos);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch video recommendations:", err);
+                    setVideoError("Sorry, we couldn't fetch video recommendations at this time.");
+                })
+                .finally(() => {
+                    setIsLoadingVideos(false);
+                });
+        } else {
+            setIsLoadingVideos(false);
+        }
+    }, [careerPath]);
 
     useEffect(() => {
         if (!careerPath) return;
@@ -54,6 +80,31 @@ const CareerPathPage: React.FC = () => {
             block: 'start',
         });
     };
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollContainerRef.current) {
+            const scrollAmount = scrollContainerRef.current.clientWidth * 0.9;
+            scrollContainerRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
+
+    const VideoCarouselSkeleton: React.FC = () => (
+        <div className="animate-pulse">
+            <h2 className="text-2xl font-bold text-neutral mb-4">Recommended Videos</h2>
+            <div className="flex space-x-6">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-80">
+                        <div className="bg-slate-200 h-40 rounded-lg"></div>
+                        <div className="mt-2 h-4 bg-slate-200 rounded w-5/6"></div>
+                        <div className="mt-1 h-3 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 
     const renderNoPath = () => (
         <div className="text-center py-20 max-w-2xl mx-auto">
@@ -91,6 +142,48 @@ const CareerPathPage: React.FC = () => {
                     <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
                         A personalized roadmap from <span className="font-semibold text-secondary">{careerPath.currentRole}</span> to becoming a <span className="font-semibold text-secondary">{careerPath.targetRole}</span>.
                     </p>
+                </div>
+
+                <div className="mb-16">
+                    {isLoadingVideos ? (
+                        <VideoCarouselSkeleton />
+                    ) : videoError ? (
+                        <div className="text-center p-4 bg-red-100 text-red-700 rounded-lg">{videoError}</div>
+                    ) : videos.length > 0 && (
+                        <div>
+                            <h2 className="text-2xl font-bold text-neutral mb-4">Recommended Videos to Get Started</h2>
+                             <div className="relative group">
+                                <div ref={scrollContainerRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth py-4 space-x-6">
+                                    {videos.map((video, index) => (
+                                        <a 
+                                            key={index} 
+                                            href={`https://www.youtube.com/watch?v=${video.videoId}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="snap-start flex-shrink-0 w-80 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl"
+                                        >
+                                            <img 
+                                                src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`} 
+                                                alt={video.title} 
+                                                className="w-full h-40 object-cover"
+                                            />
+                                            <div className="p-4">
+                                                <h4 className="font-bold text-neutral truncate" title={video.title}>{video.title}</h4>
+                                                <p className="text-sm text-slate-500 mt-1">{video.channel}</p>
+                                                <p className="text-sm text-slate-600 mt-2 text-ellipsis overflow-hidden h-10">{video.description}</p>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                                <button onClick={() => scroll('left')} className="absolute top-1/2 -translate-y-1/2 left-0 -ml-6 w-12 h-12 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md border border-slate-200 text-slate-600 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                <button onClick={() => scroll('right')} className="absolute top-1/2 -translate-y-1/2 right-0 -mr-6 w-12 h-12 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md border border-slate-200 text-slate-600 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-12">

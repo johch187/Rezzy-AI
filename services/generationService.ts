@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath } from '../types';
+import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouTubeVideo } from '../types';
 import { parseError } from '../utils';
 import { generateContentWithRetry } from './geminiService';
 
@@ -448,4 +448,57 @@ export const generateCareerPath = async (
         currentRole: currentRole,
         targetRole: targetRole,
     };
+};
+
+export const getYouTubeRecommendations = async (targetRole: string): Promise<YouTubeVideo[]> => {
+    if (!process.env.API_KEY) {
+        // Mock data for development
+        return Promise.resolve([
+            { title: "Day in the Life of a Google Product Manager", channel: "Exponent", description: "An inside look at the daily responsibilities of a PM at Google.", videoId: "i9lV7c_I-gA" },
+            { title: "How to Become a Product Manager in 2024", channel: "Product School", description: "A comprehensive guide on the skills and steps needed to break into product management.", videoId: "Z5x_gK-kg_4" },
+            { title: "Google Product Manager Mock Interview", channel: "Case Interview Prep", description: "Watch a mock interview to understand the types of questions asked for a Google PM role.", videoId: "g9I_6Kj24y2A" },
+            { title: "What is Product Management?", channel: "Aha!", description: "A foundational video explaining the core concepts of product management.", videoId: "S0N-k1a7i-c" },
+            { title: "The Product Manager Career Path", channel: "Lenny Rachitsky", description: "Lenny explores the different levels and growth trajectories for product managers.", videoId: "hEDRcn5h5_4" }
+        ]);
+    }
+
+    const prompt = `
+        You are an expert career development content curator. Your task is to find 5-7 highly relevant, popular, and insightful YouTube videos for someone aspiring to become a "${targetRole}".
+
+        **Instructions:**
+        1.  **Relevance is Key:** The videos must be directly related to the skills, interview process, daily life, or career path for a "${targetRole}".
+        2.  **Quality over Quantity:** Prioritize videos from reputable channels (e.g., industry experts, well-known educational channels, official company channels).
+        3.  **Provide Complete Data:** For each video, you must provide:
+            -   A concise \`title\`.
+            -   The \`channel\` name.
+            -   A brief, one-sentence \`description\` summarizing the video's value.
+            -   The unique 11-character \`videoId\`. DO NOT provide the full URL.
+
+        Your final output MUST be a single, valid JSON array of objects, strictly adhering to the provided schema.
+    `;
+
+    const recommendationsSchema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING, description: "The official title of the YouTube video." },
+                channel: { type: Type.STRING, description: "The name of the YouTube channel that published the video." },
+                description: { type: Type.STRING, description: "A brief, one-sentence summary of the video's content and value." },
+                videoId: { type: Type.STRING, description: "The unique 11-character YouTube video ID." }
+            },
+            required: ["title", "channel", "description", "videoId"]
+        }
+    };
+
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: recommendationsSchema,
+        }
+    });
+    
+    return JSON.parse(jsonText);
 };

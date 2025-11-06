@@ -171,6 +171,13 @@ export interface CareerMilestone {
   actionItems: ActionItem[];
 }
 
+export interface YouTubeVideo {
+  title: string;
+  channel: string;
+  description: string;
+  videoId: string;
+}
+
 export interface CareerPath {
   path: CareerMilestone[];
   currentRole: string;

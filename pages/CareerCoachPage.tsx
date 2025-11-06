@@ -183,13 +183,11 @@ const CareerCoachPage: React.FC = () => {
     
     const handleCreatePath = async () => {
         if (!careerPathPrompt || !profile || !chatSession.current) return;
-
         const { currentRole, targetRole } = careerPathPrompt;
-        
-        // Disable buttons and hide prompt immediately
+    
         setIsGeneratingPath(true);
         setCareerPathPrompt(null);
-        
+    
         // Add a temporary system message to show progress
         const tempMessageId = crypto.randomUUID();
         setMessages(prev => [...prev, {
@@ -197,47 +195,35 @@ const CareerCoachPage: React.FC = () => {
             content: `Understood. I'm now creating your personalized career path to become a ${targetRole}. This may take a moment...`,
             id: tempMessageId,
         }]);
-
+    
         try {
-            // 1. Generate the path in the background
             const newPath = await generateCareerPath(profile, currentRole, targetRole);
-            
-            // 2. Save it to the profile
             setProfile(prev => ({...prev, careerPath: newPath}));
-            
-            // 3. Inform the AI model that the task is complete so it can respond naturally
+    
             const modelNotification = `The user agreed to create the career path. I have successfully generated and saved it for them. Now, please provide a short, encouraging confirmation message informing them that their new career path to become a ${targetRole} is ready and can be viewed on the 'Career Path' page.`;
-            
             const response = await chatSession.current.sendMessage({ message: modelNotification });
-
-            // 4. Replace the temporary message with the AI's final confirmation
-            setMessages(prev => {
-                const updatedMessages = prev.filter(msg => msg.id !== tempMessageId);
-                if (response && response.text) {
-                    updatedMessages.push({ role: 'model', content: response.text, id: crypto.randomUUID() });
-                } else {
-                    // Fallback in case of an empty model response
-                    updatedMessages.push({
-                        role: 'system',
-                        content: `Your new career path to becoming a ${targetRole} is ready! You can view it now on the 'Career Path' page.`,
-                        id: crypto.randomUUID()
-                    });
-                }
-                return updatedMessages;
-            });
-
+    
+            const confirmationText = (response && response.text) 
+                ? response.text 
+                : `Your new career path to becoming a ${targetRole} is ready! You can view it now on the 'Career Path' page.`;
+    
+            // Replace the temporary message with the final confirmation from the model
+            setMessages(prev => prev.map(msg => 
+                msg.id === tempMessageId 
+                    ? { role: 'model', content: confirmationText, id: tempMessageId }
+                    : msg
+            ));
+    
         } catch (err: any) {
             console.error("Failed to generate career path:", err);
-            // Replace the temporary message with an error message
-            setMessages(prev => {
-                const updatedMessages = prev.filter(msg => msg.id !== tempMessageId);
-                updatedMessages.push({
-                    role: 'system',
-                    content: `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`,
-                    id: crypto.randomUUID()
-                });
-                return updatedMessages;
-            });
+            const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`;
+            
+            // Replace the temporary message with the error message
+            setMessages(prev => prev.map(msg => 
+                msg.id === tempMessageId 
+                    ? { role: 'system', content: errorMessage, id: tempMessageId }
+                    : msg
+            ));
         } finally {
             setIsGeneratingPath(false);
         }
