@@ -80,27 +80,30 @@ export const generateTailoredDocuments = async (
     Use these ONLY to understand the candidate's personal writing style, tone, and formatting preferences. DO NOT copy content directly. Create new, tailored content based on the Candidate Profile and Job Description.
     ${inspirationDocsText}
 
-    ### Generation Directives & Constraints
+    ### Core Directives & Constraints
 
     You MUST adhere to every instruction below.
 
-    - **Core Task:**
-      - **Keyword Extraction:** First, meticulously scan the **Job Description** and extract the top 5-10 most critical keywords and required skills (e.g., "financial modeling," "React," "client-facing," "agile methodology").
-      - **Achievement Prioritization:** Next, review the **Candidate Profile** and prioritize experiences and achievements that directly match these extracted keywords. You MUST select the achievements most relevant to the job description.
-      - **Content Weaving:** Weave these prioritized achievements and extracted keywords naturally throughout the generated resume to demonstrate a strong match.
+    - **Primary Goal:** Your main task is to analyze the **Job Description**, extract its key requirements, and then strategically weave the most relevant points from the **Candidate Profile** into the documents to create a powerful application.
+
+    - **Resume Content (CRITICAL):**
+      - **Achievements:** Every bullet point in the experience section MUST start with a strong action verb (e.g., "Orchestrated," "Engineered," "Maximized").
+      - **Quantification:** You MUST quantify achievements with metrics wherever possible (e.g., "Increased revenue by 15%," "Managed a team of 5"). If the profile lacks metrics, you may infer a realistic and plausible one based on the context.
 
     - **Document(s) to Generate:**
       - Generate a resume: \`${options.generateResume}\`
       - Generate a cover letter: \`${options.generateCoverLetter}\`
+
     - **Style & Tone:**
       - Overall Tone: \`${options.tone}\`.
       - Language Technicality (0=General, 100=Expert): \`${options.technicality}\`.
       - Candidate's Desired Vibe: "${profile.vibe}". Embody this.
+
     - **Resume-Specific Rules:**
-      - **Action Verbs & Quantification (CRITICAL):** Every single achievement bullet point MUST start with a strong action verb (e.g., "Orchestrated," "Engineered," "Maximized," "Streamlined"). Wherever possible, you MUST quantify the results with metrics (e.g., "Increased revenue by 15%," "Reduced processing time by 30%," "Managed a team of 5"). If the user's profile lacks a metric for a key achievement, you may infer a realistic and plausible metric based on the context.
       - Template Style: \`${profile.selectedResumeTemplate}\`. Structure and tone should reflect this.
       - Length: MUST NOT exceed \`${options.resumeLength}\`. Be concise.
-      - Professional Summary: A summary section is \`${options.includeSummary ? 'REQUIRED' : 'FORBIDDEN'}\`. If required, use the candidate's summary as a base but heavily tailor it to the job, incorporating keywords from the job description.
+      - Professional Summary: A summary section is \`${options.includeSummary ? 'REQUIRED' : 'FORBIDDEN'}\`. If required, use the candidate's summary as a base but heavily tailor it to the job.
+
     - **Cover Letter-Specific Rules:**
       - Template Style: \`${profile.selectedCoverLetterTemplate}\`.
       - Length: Keep it \`${options.coverLetterLength}\`.

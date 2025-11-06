@@ -20,7 +20,8 @@ const Sidebar: React.FC = () => {
 
   if (!profileContext) return null;
 
-  const { isSidebarOpen, setIsSidebarOpen, documentHistory, profiles, activeProfile, activeProfileId, switchProfile, addProfile, deleteProfile, renameProfile } = profileContext;
+  // FIX: The active profile data is exposed via the `profile` property on the context. Renaming it to `activeProfile` for use within this component.
+  const { isSidebarOpen, setIsSidebarOpen, documentHistory, profiles, profile: activeProfile, activeProfileId, switchProfile, addProfile, deleteProfile, renameProfile } = profileContext;
 
   useEffect(() => {
     setIsSidebarOpen(false);

@@ -23,6 +23,7 @@ The project is organized into a modular structure to promote separation of conce
     -   `generationService.ts`: Contains functions that build specific prompts and call the Gemini service for high-level tasks like generating documents or career paths.
     -   `parserService.ts`: Handles the logic for parsing uploaded resumes and converting generated markdown back into structured data.
     -   `careerCoachService.ts`: Manages the setup and interaction logic for the AI Career Coach chat session.
+    -   `scrapingService.ts`: Handles fetching and parsing job description content from URLs.
 -   **`types.ts`**: A central file for all TypeScript type and interface definitions, providing a single source of truth for the application's data models.
 -   **`utils.ts`**: A collection of helper functions, such as error parsing and file utilities, used throughout the application.
 
@@ -30,20 +31,22 @@ The project is organized into a modular structure to promote separation of conce
 
 -   **React Context API (`ProfileContext`):** Global application state is managed using React's built-in Context API. This was chosen for its simplicity and to avoid dependencies on external state management libraries for an application of this scale.
 -   **Managed State:** The `ProfileContext`, defined in `App.tsx`, provides the following global state and functions to the entire component tree:
-    -   `profile`: The user's complete professional profile data.
+    -   **Multi-Profile Data:**
+        -   `profiles`: An object holding all user-created profiles.
+        -   `activeProfileId`: The ID of the currently selected profile.
+        -   `profile`: The derived active profile object.
+        -   Functions to manage profiles: `switchProfile`, `addProfile`, `deleteProfile`, `renameProfile`.
     -   `tokens`: The number of available generation tokens.
     -   `documentHistory`: A list of recently generated documents.
-    -   `careerPath`: The user's generated career roadmap.
-    -   Functions to modify this state (e.g., `setProfile`, `addDocumentToHistory`).
 -   **Local State (`useState`):** Component-level state (e.g., form inputs, UI toggles) is managed using the `useState` hook within individual components.
 
 ## 4. Routing
 
 -   **React Router DOM:** Navigation within the SPA is handled by `react-router-dom`.
--   **`HashRouter`:** We use `HashRouter` as the routing strategy. This is a deliberate choice for the MVP as it works seamlessly with static file hosting (like GitHub Pages or Vercel) without requiring any server-side configuration for URL rewriting.
+-   **`HashRouter`:** We use `HashRouter` as the routing strategy. This is a deliberate choice for the MVP as it works seamlessly with static file hosting without requiring any server-side configuration for URL rewriting.
 
 ## 5. Data Persistence
 
--   **Browser `localStorage`:** All user-facing data is persisted directly in the user's browser using the `localStorage` API. This includes the main `userProfile`, `documentHistory`, and `careerPath`.
--   **Strategy:** This client-side persistence model was chosen to enable a fully-featured experience without the need for a backend database or user authentication, which simplifies the architecture and reduces operational overhead for the MVP.
+-   **Browser `localStorage`:** All user-facing data is persisted directly in the user's browser using the `localStorage` API. This includes all user profiles (`userProfiles`), the last active profile ID (`activeProfileId`), and `documentHistory`.
+-   **Strategy:** This client-side persistence model was chosen to enable a fully-featured experience without the need for a backend database or user authentication, which simplifies the architecture for the MVP.
 -   **Trade-offs:** The primary trade-off is that user data is tied to a specific browser on a specific device and is not shareable or accessible across devices. This is an acceptable limitation for the MVP.

@@ -66,68 +66,79 @@ const CareerCoachPage: React.FC = () => {
         if (!functionCalls || functionCalls.length === 0 || !profile) {
             return null; // No function call to handle
         }
-        
+    
         const functionResponses: Part[] = [];
+        // Defer state updates until after the API call to avoid race conditions
+        const postSendActions: (() => void)[] = [];
         let shouldNavigate = false;
-
+    
         for (const call of functionCalls) {
             let functionExecutionResult: any;
-
+    
             switch (call.name) {
                 case 'updateProfessionalSummary': {
                     const { newSummary } = call.args;
-                    setProfile(prev => ({ ...prev, summary: newSummary as string }));
-                    setMessages(prev => [...prev, {
-                        role: 'system',
-                        content: "Success! I've updated your professional summary on your Profile page.",
-                        id: crypto.randomUUID()
-                    }]);
                     functionExecutionResult = { result: "The user's professional summary was successfully updated." };
+                    postSendActions.push(() => {
+                        setProfile(prev => ({ ...prev, summary: newSummary as string }));
+                        setMessages(prev => [...prev, {
+                            role: 'system',
+                            content: "Success! I've updated your professional summary on your Profile page.",
+                            id: crypto.randomUUID()
+                        }]);
+                    });
                     break;
                 }
                 case 'navigateToResumeGenerator': {
                     if (shouldNavigate) break;
                     shouldNavigate = true;
                     const { jobDescription } = call.args;
-                    setMessages(prev => [...prev, {
-                        role: 'system',
-                        content: "Perfect! Let's build a tailored resume for that role. I'll take you to the generator and pre-fill the job description.",
-                        id: crypto.randomUUID()
-                    }]);
-                    setTimeout(() => {
-                        navigate('/generate', { state: { jobDescription: jobDescription as string } });
-                    }, 1500);
                     functionExecutionResult = { result: "Successfully navigated user to the resume generator." };
+                    postSendActions.push(() => {
+                        setMessages(prev => [...prev, {
+                            role: 'system',
+                            content: "Perfect! Let's build a tailored resume for that role. I'll take you to the generator and pre-fill the job description.",
+                            id: crypto.randomUUID()
+                        }]);
+                        setTimeout(() => {
+                            navigate('/generate', { state: { jobDescription: jobDescription as string } });
+                        }, 1500);
+                    });
                     break;
                 }
                  case 'navigateToCoffeeChat': {
                     if (shouldNavigate) break;
                     shouldNavigate = true;
                      const { counterpartInfo, mode } = call.args;
-                     const modeText = (mode as string) === 'prep' ? "prepare for your chat" : "write an outreach message";
-                     setMessages(prev => [...prev, {
-                        role: 'system',
-                        content: `Great idea. I can definitely help you ${modeText}. I'm taking you to the Coffee Chat tool now.`,
-                        id: crypto.randomUUID()
-                    }]);
-                     setTimeout(() => {
-                        navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo as string, initialMode: mode as 'prep' | 'reach_out' } });
-                    }, 1500);
-                    functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
+                     functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
+                     postSendActions.push(() => {
+                         const modeText = (mode as string) === 'prep' ? "prepare for your chat" : "write an outreach message";
+                         setMessages(prev => [...prev, {
+                            role: 'system',
+                            content: `Great idea. I can definitely help you ${modeText}. I'm taking you to the Coffee Chat tool now.`,
+                            id: crypto.randomUUID()
+                        }]);
+                         setTimeout(() => {
+                            navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo as string, initialMode: mode as 'prep' | 'reach_out' } });
+                        }, 1500);
+                     });
                     break;
                 }
                 case 'promptToCreateCareerPath': {
                     const { currentRole, targetRole, isReplacing } = call.args;
-                    setCareerPathPrompt({
-                        show: true,
-                        currentRole: currentRole as string,
-                        targetRole: targetRole as string,
-                        isReplacing: isReplacing as boolean,
-                    });
                     functionExecutionResult = { result: "The user has been prompted via a special UI to create a career path. I will wait for their next text response to know their decision." };
+                    postSendActions.push(() => {
+                        setCareerPathPrompt({
+                            show: true,
+                            currentRole: currentRole as string,
+                            targetRole: targetRole as string,
+                            isReplacing: isReplacing as boolean,
+                        });
+                    });
                     break;
                 }
                 default:
+                    console.warn(`Unknown function call requested by model: ${call.name}`);
                     continue;
             }
             
@@ -138,12 +149,14 @@ const CareerCoachPage: React.FC = () => {
                 },
             });
         }
-
+    
         if (chatSession.current && functionResponses.length > 0) {
             const modelResponse = await chatSession.current.sendMessage({ message: functionResponses });
+            // After the API call is complete, execute all deferred state updates.
+            postSendActions.forEach(action => action());
             return modelResponse;
         }
-
+    
         return null;
     };
 

@@ -25,7 +25,8 @@ const TemplateSelector: React.FC = () => {
     const key = type === 'resume' ? 'selectedResumeTemplate' : 'selectedCoverLetterTemplate';
     const newProfile = { ...profile, [key]: templateId };
     setProfile(newProfile);
-    saveProfile(newProfile); // Immediately save the updated profile
+    // FIX: The saveProfile function from context does not take any arguments.
+    saveProfile(); // Immediately save the updated profile
   };
 
   const openPreview = (imageUrl: string) => {
