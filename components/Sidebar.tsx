@@ -1,8 +1,9 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { XCircleIcon, DownloadIcon, CareerCoachIcon, CareerPathIcon } from './Icons';
+import { XCircleIcon, DownloadIcon, CareerCoachIcon, CareerPathIcon, EditIcon, TrashIcon } from './Icons';
 import { downloadFile } from '../utils';
+import type { ProfileData } from '../types';
 
 const CreateDocIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -14,21 +15,62 @@ const CoffeeChatIcon: React.FC = () => (
 const Sidebar: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const location = useLocation();
+  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   if (!profileContext) return null;
 
-  const { isSidebarOpen, setIsSidebarOpen, documentHistory } = profileContext;
+  const { isSidebarOpen, setIsSidebarOpen, documentHistory, profiles, activeProfile, activeProfileId, switchProfile, addProfile, deleteProfile, renameProfile } = profileContext;
 
-  // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location, setIsSidebarOpen]);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+            setProfileMenuOpen(false);
+        }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleDownload = (e: React.MouseEvent, content: string, name: string, type: 'resume' | 'coverLetter') => {
-    e.stopPropagation(); // Prevent navigation or other parent events
+    e.stopPropagation();
     const sanitizedName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const filename = `${sanitizedName}_${type}.md`;
     downloadFile(content, filename, 'text/markdown');
+  };
+  
+  const handleAddProfile = () => {
+    const name = window.prompt("Enter a name for the new profile (e.g., 'Software Engineer')", "New Profile");
+    if (name) {
+        addProfile(name);
+    }
+    setProfileMenuOpen(false);
+  };
+  
+  const handleRenameProfile = () => {
+    if (!activeProfile) return;
+    const newName = window.prompt("Enter a new name for this profile:", activeProfile.name);
+    if (newName && activeProfileId) {
+        renameProfile(activeProfileId, newName);
+    }
+    setProfileMenuOpen(false);
+  };
+
+  const handleDeleteProfile = () => {
+    if (!activeProfile || Object.keys(profiles).length <= 1) {
+        alert("You must have at least one profile.");
+        return;
+    }
+    if (window.confirm(`Are you sure you want to delete the "${activeProfile.name}" profile? This action cannot be undone.`)) {
+        if (activeProfileId) {
+            deleteProfile(activeProfileId);
+        }
+    }
+    setProfileMenuOpen(false);
   };
 
   const navLinkClasses = "flex items-center px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-brand-blue transition-colors";
@@ -37,21 +79,18 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black bg-opacity-40 z-50 transition-opacity duration-300 ease-in-out ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsSidebarOpen(false)}
         aria-hidden="true"
       ></div>
 
-      {/* Sidebar Panel */}
       <aside
         className={`fixed top-0 left-0 h-full bg-white w-72 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="sidebar-title"
       >
-        {/* Sidebar Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200">
            <div className="flex items-center space-x-3">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-blue" viewBox="0 0 20 20" fill="currentColor">
@@ -68,8 +107,34 @@ const Sidebar: React.FC = () => {
           </button>
         </div>
         
-        <div className="flex flex-col h-full">
-            {/* Navigation Links */}
+        <div className="flex flex-col h-[calc(100%-69px)]">
+            <div className="p-4 border-b border-slate-200" ref={profileMenuRef}>
+                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Active Profile
+                </h3>
+                <div className="relative">
+                    <button onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} className="w-full flex items-center justify-between text-left p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue">
+                        <span className="font-semibold text-slate-800 truncate">{activeProfile?.name || 'No Profile'}</span>
+                        <svg className={`h-5 w-5 text-slate-500 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    </button>
+                    {isProfileMenuOpen && (
+                        <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-2xl border border-slate-200 z-10 animate-fade-in py-2">
+                           {/* FIX: Add explicit type to 'p' to resolve TypeScript errors about missing properties on type 'unknown'. */}
+                           {Object.values(profiles).map((p: ProfileData) => (
+                                <button key={p.id} onClick={() => { switchProfile(p.id); setProfileMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 ${p.id === activeProfileId ? 'text-brand-blue font-bold' : 'text-slate-700'}`}>
+                                    {p.name}
+                                </button>
+                           ))}
+                           <div className="border-t border-slate-100 my-2"></div>
+                           <button onClick={handleAddProfile} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">+ Create New Profile</button>
+                           <div className="border-t border-slate-100 my-2"></div>
+                           <button onClick={handleRenameProfile} className="flex items-center w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EditIcon className="h-4 w-4 mr-2" /> Rename Current</button>
+                           <button onClick={handleDeleteProfile} disabled={Object.keys(profiles).length <= 1} className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-slate-400 disabled:hover:bg-transparent"><TrashIcon /> <span className="ml-2">Delete Current</span></button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             <nav className="p-4">
               <ul className="space-y-2">
                 <li>
@@ -111,7 +176,6 @@ const Sidebar: React.FC = () => {
               </ul>
             </nav>
             
-            {/* Document History */}
             <div className="p-4 border-t border-slate-200 flex-grow flex flex-col min-h-0">
                 <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                 History

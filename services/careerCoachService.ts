@@ -58,9 +58,9 @@ const navigateToCoffeeChatDeclaration: FunctionDeclaration = {
     }
 };
 
-const generateAndSaveCareerPathDeclaration: FunctionDeclaration = {
-    name: 'generateAndSaveCareerPath',
-    description: "Generates a detailed career path roadmap for the user in the background and saves it. Use this when the user asks for long-term career advice, how to get to a specific role, or what steps they should take. Informs the user that the generation has started and that they can view the result on the 'Career Path' page when it's ready, allowing the conversation to continue.",
+const promptToCreateCareerPathDeclaration: FunctionDeclaration = {
+    name: 'promptToCreateCareerPath',
+    description: "Displays a special UI prompt to the user asking for their permission to generate a new career path. Call this function INSTEAD of asking the user with text in the chat. The UI will handle the user's 'yes' or 'no' response. After calling this, your job is to wait for the user's next text input.",
     parameters: {
         type: Type.OBJECT,
         properties: {
@@ -71,9 +71,13 @@ const generateAndSaveCareerPathDeclaration: FunctionDeclaration = {
             targetRole: {
                 type: Type.STRING,
                 description: "The career goal or job title the user is aiming for (e.g., 'Investment Banker', 'Senior Product Manager')."
+            },
+            isReplacing: {
+                type: Type.BOOLEAN,
+                description: "Set to 'true' if the user already has a career path and this would replace it. This allows the UI to show the correct confirmation message."
             }
         },
-        required: ['currentRole', 'targetRole']
+        required: ['currentRole', 'targetRole', 'isReplacing']
     }
 };
 
@@ -86,6 +90,16 @@ const generateAndSaveCareerPathDeclaration: FunctionDeclaration = {
  */
 export const createCareerCoachSession = (profile: ProfileData, documentHistory: DocumentHistoryItem[]): Chat => {
   const modelName = 'gemini-2.5-pro'; // Use the more advanced model for coaching
+
+  const careerPathInstruction = `
+    4.  **Guiding to Career Planning:**
+        -   **Tool:** \`promptToCreateCareerPath\`
+        -   **When to Use:** If the user asks for long-term career advice, how to break into a new field, or what steps to take to get to a specific role (e.g., "How do I become a Product Manager?").
+        -   **Action:**
+            -   Determine if this will replace an existing path by checking the context provided about the user's current career path.
+            -   Call the \`promptToCreateCareerPath\` tool with the user's current role, their desired target role, and whether it's replacing an existing plan (\`isReplacing\`).
+            -   DO NOT ask the user with text in the chat. The tool will handle showing the UI prompt. After calling the tool, simply wait for the user's next text response.
+  `;
 
   const systemInstruction = `
     You are an expert career coach and an integrated application assistant. Your primary goal is to provide personalized, actionable advice and seamlessly guide the user to the best tool within this application to help them achieve their goals. Your tone is encouraging, insightful, and highly practical.
@@ -120,10 +134,7 @@ export const createCareerCoachSession = (profile: ProfileData, documentHistory: 
         -   **When to Use:** If the user explicitly asks you to write, rewrite, or improve their professional summary.
         -   **Action:** Call the \`updateProfessionalSummary\` function with the new summary text. Do NOT just output the text in the chat. Confirm the action after the tool is called.
     
-    4.  **Guiding to Career Planning:**
-        -   **Tool:** \`generateAndSaveCareerPath\`
-        -   **When to Use:** If the user asks for long-term career advice, how to break into a new field, what steps to take to get a promotion, or expresses uncertainty about their career trajectory (e.g., "How do I become a Product Manager?").
-        -   **Action:** Identify their current role (e.g., from their profile or the conversation) and their desired target role. Call the \`generateAndSaveCareerPath\` function. This will happen in the background. You should tell the user that you've started the process and they can continue chatting.
+    ${careerPathInstruction}
 
     **General Conversation Rules:**
     -   Always leverage the user's profile to make your advice specific.
@@ -137,7 +148,7 @@ export const createCareerCoachSession = (profile: ProfileData, documentHistory: 
     model: modelName,
     config: {
         systemInstruction,
-        tools: [{ functionDeclarations: [updateSummaryFunctionDeclaration, navigateToResumeGeneratorDeclaration, navigateToCoffeeChatDeclaration, generateAndSaveCareerPathDeclaration] }],
+        tools: [{ functionDeclarations: [updateSummaryFunctionDeclaration, navigateToResumeGeneratorDeclaration, navigateToCoffeeChatDeclaration, promptToCreateCareerPathDeclaration] }],
     },
   });
 

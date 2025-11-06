@@ -65,6 +65,8 @@ export interface CustomSection {
 }
 
 export interface ProfileData {
+  id: string;
+  name: string;
   fullName: string;
   jobTitle: string;
   email: string;
@@ -94,6 +96,7 @@ export interface ProfileData {
   targetJobTitle: string;
   companyKeywords: string;
   keySkillsToHighlight: string;
+  careerPath: CareerPath | null;
 }
 
 export interface ParsedCoverLetter {

@@ -18,20 +18,20 @@ type AccordionSection = 'personal' | 'summary' | 'education' | 'experience' | 'p
 const ProfileForm: React.FC = () => {
   const profileContext = useContext(ProfileContext);
 
-  if (!profileContext) {
+  if (!profileContext || !profileContext.profile) {
     return <div>Loading profile editor...</div>;
   }
 
-  const { profile, saveProfile, lastSavedProfile, isParsing, parsingError, parseResumeInBackground, clearParsingError } = profileContext;
+  const { profile, setProfile, saveProfile, lastSavedProfile, isParsing, parsingError, parseResumeInBackground, clearParsingError } = profileContext;
 
   const [openSections, setOpenSections] = useState<Set<AccordionSection>>(() => new Set(['personal'])); 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isDirty = JSON.stringify(profile) !== JSON.stringify(lastSavedProfile);
+  const isDirty = profile && lastSavedProfile ? JSON.stringify(profile) !== JSON.stringify(lastSavedProfile) : false;
 
   const handleSave = () => {
-    if (saveProfile(profile)) {
+    if (saveProfile()) {
       setShowSaveConfirmation(true);
       setTimeout(() => setShowSaveConfirmation(false), 3000);
     }

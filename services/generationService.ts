@@ -84,7 +84,11 @@ export const generateTailoredDocuments = async (
 
     You MUST adhere to every instruction below.
 
-    - **Core Task:** Analyze the **Job Description** to identify key requirements. Then, use the **Candidate Profile** to find matching experiences and skills. Weave these into the documents, prioritizing what the job description asks for.
+    - **Core Task:**
+      - **Keyword Extraction:** First, meticulously scan the **Job Description** and extract the top 5-10 most critical keywords and required skills (e.g., "financial modeling," "React," "client-facing," "agile methodology").
+      - **Achievement Prioritization:** Next, review the **Candidate Profile** and prioritize experiences and achievements that directly match these extracted keywords. You MUST select the achievements most relevant to the job description.
+      - **Content Weaving:** Weave these prioritized achievements and extracted keywords naturally throughout the generated resume to demonstrate a strong match.
+
     - **Document(s) to Generate:**
       - Generate a resume: \`${options.generateResume}\`
       - Generate a cover letter: \`${options.generateCoverLetter}\`
@@ -93,9 +97,10 @@ export const generateTailoredDocuments = async (
       - Language Technicality (0=General, 100=Expert): \`${options.technicality}\`.
       - Candidate's Desired Vibe: "${profile.vibe}". Embody this.
     - **Resume-Specific Rules:**
+      - **Action Verbs & Quantification (CRITICAL):** Every single achievement bullet point MUST start with a strong action verb (e.g., "Orchestrated," "Engineered," "Maximized," "Streamlined"). Wherever possible, you MUST quantify the results with metrics (e.g., "Increased revenue by 15%," "Reduced processing time by 30%," "Managed a team of 5"). If the user's profile lacks a metric for a key achievement, you may infer a realistic and plausible metric based on the context.
       - Template Style: \`${profile.selectedResumeTemplate}\`. Structure and tone should reflect this.
       - Length: MUST NOT exceed \`${options.resumeLength}\`. Be concise.
-      - Professional Summary: A summary section is \`${options.includeSummary ? 'REQUIRED' : 'FORBIDDEN'}\`. If required, use the candidate's summary as a base but heavily tailor it to the job.
+      - Professional Summary: A summary section is \`${options.includeSummary ? 'REQUIRED' : 'FORBIDDEN'}\`. If required, use the candidate's summary as a base but heavily tailor it to the job, incorporating keywords from the job description.
     - **Cover Letter-Specific Rules:**
       - Template Style: \`${profile.selectedCoverLetterTemplate}\`.
       - Length: Keep it \`${options.coverLetterLength}\`.
@@ -407,11 +412,13 @@ export const generateCareerPath = async (
         2.  **Define 5 Yearly Milestones:** Structure the entire path into 5 milestones with the timeframes "Year 1", "Year 2", "Year 3", "Year 4", and "Year 5". Each milestone should represent a major phase of development (e.g., "Year 1: Foundational Skills & Immersion", "Year 3: Specialization & Leadership").
         3.  **Create Granular Quarterly Action Items:** For EACH of the 5 yearly milestones, you MUST provide a detailed list of action items.
             *   **Quarterly Focus:** Each action item's title MUST be prefixed with the quarter it should be focused on (e.g., "Q1:", "Q2:", "Q3:", "Q4:").
-            *   **Comprehensive Categories:** Ensure the action items for each year cover the following four areas:
+            *   **Leverage Existing Skills:** Your suggestions must be tailored. If the user already has a skill (e.g., Python), suggest an advanced application of it rather than learning it from scratch. Reference their profile to make these connections.
+            *   **Comprehensive & Diverse Categories:** Ensure the action items for each year cover a diverse range of categories like Skills, Projects, Networking, Certifications, and Extracurriculars.
                 *   **Skills:** Specific technical or soft skills to learn (e.g., "Q1: Master Advanced Excel Pivot Tables & VLOOKUPs").
-                *   **Projects:** Concrete projects to build or contribute to (e.g., "Q3: Develop a personal portfolio website showcasing financial models").
+                *   **Projects:** Suggest highly specific and creative projects that bridge the user's current skills with the target role's requirements. Instead of a generic "build a portfolio," suggest "Q3: Develop a web scraping tool using Python to analyze and compare 10-K filings for companies in the user's target industry."
                 *   **Networking:** Specific types of people to connect with or events to attend (e.g., "Q2: Conduct informational interviews with 3 alumni in the target role").
                 *   **Certifications:** Relevant certifications to pursue (e.g., "Q4: Begin studying for the CFA Level 1 exam").
+                *   **Extracurriculars:** Suggest relevant volunteer work, hackathons, or competitions that build relevant experience and network. For example, "Q1: Participate in a weekend hackathon focused on FinTech solutions."
             *   **Actionable Descriptions:** The description for each action item must be specific and practical. Instead of "Learn Python," suggest "Complete the 'Python for Everybody' specialization on Coursera and apply skills to a small data analysis project."
 
         **EXAMPLE SCENARIO (for a Junior Developer -> Senior Developer path):**
@@ -419,7 +426,7 @@ export const generateCareerPath = async (
         - "Q1: Skills: Master containerization with Docker and Kubernetes."
         - "Q2: Projects: Lead a feature development from design to deployment."
         - "Q3: Networking: Mentor a junior engineer or intern on the team."
-        - "Q4: Certifications: Obtain the AWS Certified Developer - Associate certification."
+        - "Q4: Extracurriculars: Contribute to a popular open-source library relevant to your tech stack."
 
         Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema. The path array must contain exactly 5 milestone objects.
     `;

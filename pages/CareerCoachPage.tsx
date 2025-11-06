@@ -32,27 +32,37 @@ const CareerCoachPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const chatSession = useRef<Chat | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    
+    const [careerPathPrompt, setCareerPathPrompt] = useState<{
+        show: boolean;
+        currentRole: string;
+        targetRole: string;
+        isReplacing: boolean;
+    } | null>(null);
+    const [isGeneratingPath, setIsGeneratingPath] = useState(false);
 
-    const { profile, setProfile, documentHistory, setCareerPath } = profileContext!;
+
+    if (!profileContext) return <div>Loading...</div>
+    const { profile, setProfile, documentHistory, activeProfileId } = profileContext;
 
     useEffect(() => {
         if (profile) {
             chatSession.current = createCareerCoachSession(profile, documentHistory);
             setMessages([{
                 role: 'model',
-                content: "Hi! I'm your Keju AI Career Coach. I've reviewed your profile and am ready to help. How can I assist you with your career goals today?",
+                content: `Hi! I'm your Keju AI Career Coach. I've reviewed your "${profile.name}" profile and am ready to help. How can I assist you today?`,
                 id: crypto.randomUUID()
             }]);
         }
-    }, [profile, documentHistory]);
+    }, [profile, documentHistory, activeProfileId]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, careerPathPrompt]);
 
     const handleFunctionCall = async (response: GenerateContentResponse): Promise<GenerateContentResponse | null> => {
         const functionCalls = response.functionCalls;
-        if (!functionCalls || functionCalls.length === 0) {
+        if (!functionCalls || functionCalls.length === 0 || !profile) {
             return null; // No function call to handle
         }
         
@@ -105,34 +115,19 @@ const CareerCoachPage: React.FC = () => {
                     functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
                     break;
                 }
-                case 'generateAndSaveCareerPath': {
-                    const { currentRole, targetRole } = call.args;
-                    
-                    // Generate the path in the background
-                    generateCareerPath(profile, currentRole as string, targetRole as string)
-                        .then(newPath => {
-                            setCareerPath(newPath);
-                            // Add a system message ONLY when the generation is complete.
-                            setMessages(prev => [...prev, {
-                                role: 'system',
-                                content: `Your career path to becoming a ${targetRole as string} is ready! You can view it now on the 'Career Path' page.`,
-                                id: crypto.randomUUID()
-                            }]);
-                        })
-                        .catch(err => {
-                            console.error("Failed to generate career path:", err);
-                            setMessages(prev => [...prev, {
-                                role: 'system',
-                                content: `I'm sorry, I ran into an issue while creating your career path. Please try asking again in a few moments.`,
-                                id: crypto.randomUUID()
-                            }]);
-                        });
-                    
-                    functionExecutionResult = { result: "The career path generation has been started in the background. I have already notified the user of this in my main text response. I will now wait for the user's next prompt." };
+                case 'promptToCreateCareerPath': {
+                    const { currentRole, targetRole, isReplacing } = call.args;
+                    setCareerPathPrompt({
+                        show: true,
+                        currentRole: currentRole as string,
+                        targetRole: targetRole as string,
+                        isReplacing: isReplacing as boolean,
+                    });
+                    functionExecutionResult = { result: "The user has been prompted via a special UI to create a career path. I will wait for their next text response to know their decision." };
                     break;
                 }
                 default:
-                    continue; // Skip unknown function calls
+                    continue;
             }
             
             functionResponses.push({
@@ -160,20 +155,18 @@ const CareerCoachPage: React.FC = () => {
         const currentInput = userInput;
         setUserInput('');
         setIsLoading(true);
+        setCareerPathPrompt(null); // Hide any open prompts when user types something new
 
         try {
             let response = await chatSession.current.sendMessage({ message: currentInput });
             
-            // Immediately display any text part of the response.
             if (response && response.text) {
                 const modelResponse = { role: 'model' as const, content: response.text, id: crypto.randomUUID() };
                 setMessages(prev => [...prev, modelResponse]);
             }
             
-            // Handle function calls, which may trigger a follow-up response.
             const functionCallFollowUpResponse = await handleFunctionCall(response);
 
-            // If the function call handling resulted in a new response from the model, display its text.
             if (functionCallFollowUpResponse && functionCallFollowUpResponse.text) {
                 const modelResponse = { role: 'model' as const, content: functionCallFollowUpResponse.text, id: crypto.randomUUID() };
                 setMessages(prev => [...prev, modelResponse]);
@@ -188,6 +181,89 @@ const CareerCoachPage: React.FC = () => {
         }
     };
     
+    const handleCreatePath = async () => {
+        if (!careerPathPrompt || !profile || !chatSession.current) return;
+
+        const { currentRole, targetRole } = careerPathPrompt;
+        
+        // Disable buttons and hide prompt immediately
+        setIsGeneratingPath(true);
+        setCareerPathPrompt(null);
+        
+        // Add a temporary system message to show progress
+        const tempMessageId = crypto.randomUUID();
+        setMessages(prev => [...prev, {
+            role: 'system',
+            content: `Understood. I'm now creating your personalized career path to become a ${targetRole}. This may take a moment...`,
+            id: tempMessageId,
+        }]);
+
+        try {
+            // 1. Generate the path in the background
+            const newPath = await generateCareerPath(profile, currentRole, targetRole);
+            
+            // 2. Save it to the profile
+            setProfile(prev => ({...prev, careerPath: newPath}));
+            
+            // 3. Inform the AI model that the task is complete so it can respond naturally
+            const modelNotification = `The user agreed to create the career path. I have successfully generated and saved it for them. Now, please provide a short, encouraging confirmation message informing them that their new career path to become a ${targetRole} is ready and can be viewed on the 'Career Path' page.`;
+            
+            const response = await chatSession.current.sendMessage({ message: modelNotification });
+
+            // 4. Replace the temporary message with the AI's final confirmation
+            setMessages(prev => {
+                const updatedMessages = prev.filter(msg => msg.id !== tempMessageId);
+                if (response && response.text) {
+                    updatedMessages.push({ role: 'model', content: response.text, id: crypto.randomUUID() });
+                } else {
+                    // Fallback in case of an empty model response
+                    updatedMessages.push({
+                        role: 'system',
+                        content: `Your new career path to becoming a ${targetRole} is ready! You can view it now on the 'Career Path' page.`,
+                        id: crypto.randomUUID()
+                    });
+                }
+                return updatedMessages;
+            });
+
+        } catch (err: any) {
+            console.error("Failed to generate career path:", err);
+            // Replace the temporary message with an error message
+            setMessages(prev => {
+                const updatedMessages = prev.filter(msg => msg.id !== tempMessageId);
+                updatedMessages.push({
+                    role: 'system',
+                    content: `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`,
+                    id: crypto.randomUUID()
+                });
+                return updatedMessages;
+            });
+        } finally {
+            setIsGeneratingPath(false);
+        }
+    };
+
+    const handleDeclinePath = () => {
+        setCareerPathPrompt(null);
+        if (chatSession.current) {
+            // Let the AI know the user declined, so it can respond appropriately.
+            setIsLoading(true); // show thinking indicator
+            chatSession.current.sendMessage({ message: "The user has clicked the 'No, thank you' button and chosen not to create a career path at this time. Please acknowledge this and ask how else you can help." })
+                .then(response => {
+                    if (response && response.text) {
+                        setMessages(prev => [...prev, { role: 'model', content: response.text, id: crypto.randomUUID() }]);
+                    }
+                })
+                .catch(error => {
+                     console.error("Error sending decline message to coach:", error);
+                     setMessages(prev => [...prev, { role: 'system', content: 'Understood. How else can I help you?', id: crypto.randomUUID() }]);
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
+        }
+    };
+
     const ModelIcon: React.FC = () => (
         <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-brand-blue" viewBox="0 0 20 20" fill="currentColor">
@@ -195,6 +271,46 @@ const CareerCoachPage: React.FC = () => {
             </svg>
         </div>
     );
+    
+    const renderCareerPathPrompt = () => {
+        if (!careerPathPrompt?.show) return null;
+
+        const promptText = careerPathPrompt.isReplacing
+            ? `I see you have an existing career plan. I can generate a new one to help you become a ${careerPathPrompt.targetRole}. This will replace your current path.`
+            : `I can generate a step-by-step career path to help you become a ${careerPathPrompt.targetRole}. Would you like me to create one for you?`;
+
+        return (
+             <div className="flex items-start gap-4">
+                <ModelIcon />
+                <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-indigo-50 text-slate-800 rounded-bl-none border border-indigo-200">
+                    <p className="font-medium">{promptText}</p>
+                    <div className="mt-4 flex items-center gap-3">
+                        <button
+                            onClick={handleCreatePath}
+                            disabled={isGeneratingPath}
+                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isGeneratingPath ? (
+                                <>
+                                 <LoadingSpinnerIcon className="h-5 w-5 mr-2" />
+                                 Creating...
+                                </>
+                            ) : (
+                                "Create Career Path"
+                            )}
+                        </button>
+                        <button
+                            onClick={handleDeclinePath}
+                            disabled={isGeneratingPath}
+                            className="px-4 py-2 bg-transparent text-slate-600 font-medium rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                        >
+                            No, thank you
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="flex flex-col h-[calc(100vh-80px)] bg-base-200">
@@ -216,6 +332,9 @@ const CareerCoachPage: React.FC = () => {
                                 </div>
                             </div>
                         ))}
+
+                        {renderCareerPathPrompt()}
+                        
                         {isLoading && (
                             <div className="flex items-start gap-4">
                                 <ModelIcon />
@@ -245,9 +364,9 @@ const CareerCoachPage: React.FC = () => {
                             placeholder="Ask me anything about your career..."
                             className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-brand-blue focus:outline-none transition"
                             rows={2}
-                            disabled={isLoading}
+                            disabled={isLoading || isGeneratingPath}
                         />
-                        <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
+                        <button type="submit" disabled={isLoading || !userInput.trim() || isGeneratingPath} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
                             Send
                         </button>
                     </form>
