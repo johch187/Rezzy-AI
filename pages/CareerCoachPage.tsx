@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
@@ -181,52 +182,40 @@ const CareerCoachPage: React.FC = () => {
         }
     };
     
-    const handleCreatePath = async () => {
-        if (!careerPathPrompt || !profile || !chatSession.current) return;
+    const handleCreatePath = () => {
+        if (!careerPathPrompt || !profile) return;
         const { currentRole, targetRole } = careerPathPrompt;
-    
+
         setIsGeneratingPath(true);
         setCareerPathPrompt(null);
-    
-        // Add a temporary system message to show progress
-        const tempMessageId = crypto.randomUUID();
+
         setMessages(prev => [...prev, {
             role: 'system',
-            content: `Understood. I'm now creating your personalized career path to become a ${targetRole}. This may take a moment...`,
-            id: tempMessageId,
+            content: `Great! I've started creating your personalized career path to become a ${targetRole}. This can take a minute or two. Feel free to ask me other questions while you wait!`,
+            id: crypto.randomUUID(),
         }]);
-    
-        try {
-            const newPath = await generateCareerPath(profile, currentRole, targetRole);
-            setProfile(prev => ({...prev, careerPath: newPath}));
-    
-            const modelNotification = `The user agreed to create the career path. I have successfully generated and saved it for them. Now, please provide a short, encouraging confirmation message informing them that their new career path to become a ${targetRole} is ready and can be viewed on the 'Career Path' page.`;
-            const response = await chatSession.current.sendMessage({ message: modelNotification });
-    
-            const confirmationText = (response && response.text) 
-                ? response.text 
-                : `Your new career path to becoming a ${targetRole} is ready! You can view it now on the 'Career Path' page.`;
-    
-            // Replace the temporary message with the final confirmation from the model
-            setMessages(prev => prev.map(msg => 
-                msg.id === tempMessageId 
-                    ? { role: 'model', content: confirmationText, id: tempMessageId }
-                    : msg
-            ));
-    
-        } catch (err: any) {
-            console.error("Failed to generate career path:", err);
-            const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`;
-            
-            // Replace the temporary message with the error message
-            setMessages(prev => prev.map(msg => 
-                msg.id === tempMessageId 
-                    ? { role: 'system', content: errorMessage, id: tempMessageId }
-                    : msg
-            ));
-        } finally {
-            setIsGeneratingPath(false);
-        }
+
+        // Run the generation in the background without awaiting
+        generateCareerPath(profile, currentRole, targetRole)
+            .then(newPath => {
+                setProfile(prev => ({...prev, careerPath: newPath}));
+                
+                const confirmationText = `I've finished creating your career path to becoming a **${targetRole}**! You can see the full, detailed plan on the 'Career Path' page. What should we look at next?`;
+                
+                setMessages(prev => [...prev, { 
+                    role: 'model', 
+                    content: confirmationText, 
+                    id: crypto.randomUUID() 
+                }]);
+            })
+            .catch(err => {
+                console.error("Failed to generate career path:", err);
+                const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`;
+                setMessages(prev => [...prev, { role: 'system', content: errorMessage, id: crypto.randomUUID() }]);
+            })
+            .finally(() => {
+                setIsGeneratingPath(false);
+            });
     };
 
     const handleDeclinePath = () => {
@@ -337,6 +326,12 @@ const CareerCoachPage: React.FC = () => {
             {/* Input Form */}
             <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-slate-200">
                 <div className="max-w-4xl mx-auto p-4">
+                    {isGeneratingPath && (
+                        <div className="text-sm text-slate-600 flex items-center justify-center mb-2 animate-fade-in">
+                            <LoadingSpinnerIcon className="h-4 w-4 mr-2" />
+                            <span>Generating your career path in the background...</span>
+                        </div>
+                    )}
                     <form onSubmit={handleSubmit} className="flex items-start gap-4">
                         <textarea
                             value={userInput}
@@ -350,9 +345,9 @@ const CareerCoachPage: React.FC = () => {
                             placeholder="Ask me anything about your career..."
                             className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-brand-blue focus:outline-none transition"
                             rows={2}
-                            disabled={isLoading || isGeneratingPath}
+                            disabled={isLoading}
                         />
-                        <button type="submit" disabled={isLoading || !userInput.trim() || isGeneratingPath} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
+                        <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
                             Send
                         </button>
                     </form>

@@ -295,7 +295,7 @@ Alex`);
 
         Analyze both inputs to write a short outreach message (ideally for a platform like LinkedIn or email). The message MUST follow this structure and these rules:
 
-        1.  **Find the Hook:** Identify the single strongest point of connection between the user and the counterpart. This could be a shared university, a past employer, a mutual connection, a shared professional interest, or admiration for a specific project they worked on. This is the most important step.
+        1.  **Find the Hook:** Identify the single strongest point of connection between the user and the counterpart. This could be a shared university, a past employer, a mutual connection, or admiration for a specific project they worked on. This is the most important step.
         2.  **Opening (1 sentence):** Start with a polite opening. If a strong hook exists, lead with it. For example: "I hope you don't mind the outreach. I'm a fellow [University Name] alum and was so impressed by..." or "My name is [User's Name], and I've been following your work on [Project Name]..."
         3.  **Context (1-2 sentences):** Briefly state who you are and why you're reaching out. Connect your background or aspirations to their experience. For example: "I'm currently a [User's Job Title] and am deeply interested in transitioning into [Their Field]."
         4.  **The "Ask" (1 sentence):** Clearly and politely ask for a brief chat. Specify the length. For example: "I would be grateful for the chance to learn more about your experience and was hoping to ask for a brief 15-minute virtual coffee chat in the coming weeks."
@@ -454,51 +454,65 @@ export const getYouTubeRecommendations = async (targetRole: string): Promise<You
     if (!process.env.API_KEY) {
         // Mock data for development
         return Promise.resolve([
-            { title: "Day in the Life of a Google Product Manager", channel: "Exponent", description: "An inside look at the daily responsibilities of a PM at Google.", videoId: "i9lV7c_I-gA" },
+            { title: "Day in the Life of a Product Manager", channel: "Exponent", description: "An inside look at the daily responsibilities of a PM at a top tech company.", videoId: "i9lV7c_I-gA" },
             { title: "How to Become a Product Manager in 2024", channel: "Product School", description: "A comprehensive guide on the skills and steps needed to break into product management.", videoId: "Z5x_gK-kg_4" },
-            { title: "Google Product Manager Mock Interview", channel: "Case Interview Prep", description: "Watch a mock interview to understand the types of questions asked for a Google PM role.", videoId: "g9I_6Kj24y2A" },
+            { title: "Cracking the PM Interview: The Product Sense Question", channel: "A Product Manager's Journey", description: "Learn how to tackle the most common type of product management interview question.", videoId: "wih43Y2_v2w" },
             { title: "What is Product Management?", channel: "Aha!", description: "A foundational video explaining the core concepts of product management.", videoId: "S0N-k1a7i-c" },
-            { title: "The Product Manager Career Path", channel: "Lenny Rachitsky", description: "Lenny explores the different levels and growth trajectories for product managers.", videoId: "hEDRcn5h5_4" }
+            { title: "The Product Manager Career Path", channel: "Lenny Rachitsky", description: "Lenny explores the different levels and growth trajectories for product managers.", videoId: "hEDRcn5h5_4" },
+            { title: "Google Product Manager Mock Interview", channel: "Case Interview Prep", description: "Watch a mock interview to understand the types of questions asked for a Google PM role.", videoId: "g9I_6Kj24yA" },
+            { title: "Product Strategy Explained", channel: "ProductPlan", description: "Understand the fundamentals of creating a successful product strategy.", videoId: "g_c91Y8s4sM" }
         ]);
     }
 
     const prompt = `
-        You are an expert career development content curator. Your task is to find 5-7 highly relevant, popular, and insightful YouTube videos for someone aspiring to become a "${targetRole}".
+        You are an expert career development content curator.
+        **TASK:** Use Google Search to find 6-8 highly relevant, popular, and insightful YouTube videos for someone aspiring to become a "${targetRole}".
 
-        **Instructions:**
-        1.  **Relevance is Key:** The videos must be directly related to the skills, interview process, daily life, or career path for a "${targetRole}".
-        2.  **Quality over Quantity:** Prioritize videos from reputable channels (e.g., industry experts, well-known educational channels, official company channels).
-        3.  **Provide Complete Data:** For each video, you must provide:
-            -   A concise \`title\`.
+        **INSTRUCTIONS:**
+        1.  **Analyze and Generalize the Role:** Before searching, analyze the user's target role: "${targetRole}".
+            -   If the role is specific to a company (e.g., "Product Manager at Google"), your search should prioritize general videos about the role (e.g., "Product Management skills", "Product Manager interview tips") over company-specific content. You can include 1-2 company-specific videos if they are highly relevant.
+            -   If the role is in a specific industry like finance (e.g., "Analyst at JP Morgan"), infer the broader role type (e.g., "Investment Banking Analyst") and find videos for that general career path.
+            -   The goal is to provide a broad, helpful overview of the profession, not just the specific company.
+
+        2.  **Use Search:** You MUST use your search tool to find real, current YouTube videos based on your generalized understanding of the role.
+        3.  **Relevance is Key:** The videos must be directly related to the skills, interview process, "day in the life", or career path for the generalized role.
+        4.  **Quality over Quantity:** Prioritize videos from reputable channels (e.g., industry experts, well-known educational channels, official company channels).
+        5.  **Extract Data:** For each video found, you MUST extract the following information:
+            -   The official \`title\`.
             -   The \`channel\` name.
             -   A brief, one-sentence \`description\` summarizing the video's value.
-            -   The unique 11-character \`videoId\`. DO NOT provide the full URL.
+            -   The unique 11-character \`videoId\` from the video's URL.
 
-        Your final output MUST be a single, valid JSON array of objects, strictly adhering to the provided schema.
+        **OUTPUT FORMAT:**
+        Your final output MUST be a single, valid JSON array of objects. Do not include any other text or markdown formatting.
+        The JSON must follow this structure:
+        \`\`\`json
+        [
+          {
+            "title": "The video title",
+            "channel": "The channel name",
+            "description": "A brief summary.",
+            "videoId": "ABC123defgh"
+          }
+        ]
+        \`\`\`
     `;
 
-    const recommendationsSchema = {
-        type: Type.ARRAY,
-        items: {
-            type: Type.OBJECT,
-            properties: {
-                title: { type: Type.STRING, description: "The official title of the YouTube video." },
-                channel: { type: Type.STRING, description: "The name of the YouTube channel that published the video." },
-                description: { type: Type.STRING, description: "A brief, one-sentence summary of the video's content and value." },
-                videoId: { type: Type.STRING, description: "The unique 11-character YouTube video ID." }
-            },
-            required: ["title", "channel", "description", "videoId"]
-        }
-    };
-
-    const jsonText = await generateContentWithRetry({
+    const response = await generateContentWithRetry({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
-            responseMimeType: "application/json",
-            responseSchema: recommendationsSchema,
+            tools: [{ googleSearch: {} }],
         }
     });
-    
-    return JSON.parse(jsonText);
+
+    try {
+        // The response text from a grounded model might be wrapped in markdown. Clean it before parsing.
+        const cleanedJson = response.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        return JSON.parse(cleanedJson);
+    } catch (e) {
+        console.error("Failed to parse YouTube recommendations JSON from Gemini:", response, e);
+        // Throw a user-friendly error to be caught by the calling component.
+        throw new Error("The AI was unable to find relevant videos at this time. This may be a temporary issue.");
+    }
 };

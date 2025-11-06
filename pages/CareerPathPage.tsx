@@ -32,23 +32,49 @@ const CareerPathPage: React.FC = () => {
 
     useEffect(() => {
         if (careerPath?.targetRole) {
-            setIsLoadingVideos(true);
-            setVideoError(null);
-            getYouTubeRecommendations(careerPath.targetRole)
-                .then(recommendedVideos => {
-                    setVideos(recommendedVideos);
-                })
-                .catch(err => {
-                    console.error("Failed to fetch video recommendations:", err);
-                    setVideoError("Sorry, we couldn't fetch video recommendations at this time.");
-                })
-                .finally(() => {
+            const fetchAndVerifyVideos = async () => {
+                setIsLoadingVideos(true);
+                setVideoError(null);
+                try {
+                    // 1. Get initial recommendations from Gemini
+                    const recommendedVideos = await getYouTubeRecommendations(careerPath.targetRole);
+
+                    // 2. Verify each video's existence concurrently using a public endpoint
+                    const verificationPromises = recommendedVideos.map(video => 
+                        fetch(`https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v=${video.videoId}&format=json`)
+                            .then(response => ({
+                                video,
+                                exists: response.ok // oEmbed returns 404 for non-existent videos
+                            }))
+                    );
+                    
+                    const verificationResults = await Promise.allSettled(verificationPromises);
+
+                    // 3. Filter for videos that actually exist and are accessible
+                    const validVideos = verificationResults
+                        .filter((result): result is PromiseFulfilledResult<{ video: YouTubeVideo; exists: boolean; }> => result.status === 'fulfilled' && result.value.exists)
+                        .map(result => result.value.video);
+
+                    if (validVideos.length === 0 && recommendedVideos.length > 0) {
+                        setVideoError("We couldn't find any currently available videos for this topic.");
+                    }
+
+                    setVideos(validVideos);
+
+                } catch (err: any) {
+                    console.error("Failed to fetch or verify video recommendations:", err);
+                    setVideoError(err.message || "Sorry, we couldn't fetch video recommendations at this time.");
+                } finally {
                     setIsLoadingVideos(false);
-                });
+                }
+            };
+
+            fetchAndVerifyVideos();
         } else {
             setIsLoadingVideos(false);
         }
     }, [careerPath]);
+
 
     useEffect(() => {
         if (!careerPath) return;
