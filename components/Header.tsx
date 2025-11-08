@@ -140,11 +140,11 @@ const Header: React.FC = () => {
               // App Header: Full controls
               <>
                 <Link
-                  to="/career-coach"
+                  to="/generate"
                   className={`${buttonClasses} ${enabledClasses}`}
                   role="button"
                 >
-                  Career Coach
+                  Tailor Application
                 </Link>
                 
                 <div className="relative" ref={notificationDropdownRef}>

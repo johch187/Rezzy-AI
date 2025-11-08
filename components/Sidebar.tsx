@@ -94,8 +94,8 @@ const Sidebar: React.FC = () => {
         aria-labelledby="sidebar-title"
       >
         <div className="flex flex-col h-full">
-           <div className={`flex items-center h-[65px] p-4 flex-shrink-0 transition-all duration-300 ease-out ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-               <Link to="/builder" className={`flex items-center overflow-hidden ${isSidebarCollapsed ? 'mx-auto' : 'space-x-3'}`} onClick={(e) => e.stopPropagation()}>
+           <div className={`flex items-center h-[65px] p-4 flex-shrink-0 transition-all duration-300 ease-out ${isSidebarCollapsed ? '' : 'justify-between'}`}>
+               <Link to="/builder" className={`flex items-center overflow-hidden ${isSidebarCollapsed ? 'w-full justify-center' : 'space-x-3'}`} onClick={(e) => e.stopPropagation()}>
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-blue flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                    <path d="M10.394 2.08a1 1 0 00-.788 0l-7 4a1 1 0 00-.526.92V15a1 1 0 00.526.92l7 4a1 1 0 00.788 0l7-4a1 1 0 00.526-.92V6.994a1 1 0 00-.526-.92l-7-4zM10 18.341L3.5 14.5v-7.842L10 10.341v8zM16.5 14.5L10 18.341v-8L16.5 6.658v7.842zM10 3.659l6.5 3.714-6.5 3.715L3.5 7.373 10 3.659z" />
                  </svg>
@@ -119,47 +119,37 @@ const Sidebar: React.FC = () => {
             
             <div className="flex-grow min-h-0 overflow-y-auto">
                 <nav className="p-4">
-                  <ul className="space-y-2">
-                    <li>
-                      <NavLink
-                        to="/career-coach"
-                        className={({ isActive }) => getNavLinkClasses(isActive, true)}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <CareerCoachIcon />
-                        <span className={textSpanClasses}>Career Coach</span>
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink
-                        to="/career-path"
-                        className={({ isActive }) => getNavLinkClasses(isActive)}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <CareerPathIcon />
-                        <span className={textSpanClasses}>Career Path</span>
-                      </NavLink>
-                    </li>
-                     <li>
-                      <NavLink
-                        to="/generate"
-                        className={({ isActive }) => getNavLinkClasses(isActive)}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <CreateDocIcon />
-                        <span className={textSpanClasses}>Document Generation</span>
-                      </NavLink>
-                    </li>
-                  </ul>
-                  
-                  <div className={`transition-all duration-300 ease-out overflow-hidden ${isSidebarCollapsed ? 'lg:max-h-0' : 'lg:max-h-24'}`}>
-                      <div className="border-t border-slate-100 my-4"></div>
-                      <h3 className={`px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ${textSpanClasses}`}>
-                          Preparation Tools
-                      </h3>
-                  </div>
-
                      <ul className="space-y-2">
+                        <li>
+                          <NavLink
+                            to="/career-coach"
+                            className={({ isActive }) => getNavLinkClasses(isActive, true)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <CareerCoachIcon />
+                            <span className={textSpanClasses}>Career Coach</span>
+                          </NavLink>
+                        </li>
+                        <li>
+                          <NavLink
+                            to="/career-path"
+                            className={({ isActive }) => getNavLinkClasses(isActive)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <CareerPathIcon />
+                            <span className={textSpanClasses}>Career Path</span>
+                          </NavLink>
+                        </li>
+                         <li>
+                          <NavLink
+                            to="/generate"
+                            className={({ isActive }) => getNavLinkClasses(isActive)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <CreateDocIcon />
+                            <span className={textSpanClasses}>Tailor Application</span>
+                          </NavLink>
+                        </li>
                         <li>
                           <NavLink
                             to="/interview-prep"
