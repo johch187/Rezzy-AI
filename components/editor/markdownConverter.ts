@@ -77,6 +77,24 @@ export const profileToMarkdown = (data: Partial<ProfileData>, order: string[]): 
                     });
                 }
                 break;
+            case 'certifications':
+                if (data.certifications && data.certifications.length > 0) {
+                    sectionMd += '## Certifications\n';
+                    data.certifications.forEach(cert => {
+                        sectionMd += `- ${cert.name}\n`;
+                    });
+                    sectionMd += '\n';
+                }
+                break;
+            case 'languages':
+                 if (data.languages && data.languages.length > 0) {
+                    sectionMd += '## Languages\n';
+                    data.languages.forEach(lang => {
+                        sectionMd += `- ${lang.name} (${lang.proficiency})\n`;
+                    });
+                    sectionMd += '\n';
+                }
+                break;
         }
         return sectionMd;
     };

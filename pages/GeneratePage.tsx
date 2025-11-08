@@ -11,7 +11,6 @@ import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSp
 import ContentAccordion from '../components/ContentAccordion';
 import TemplateSelector from '../components/TemplateSelector';
 import ProfileContentSelector from '../components/ProfileContentSelector';
-import GenerationModal from '../components/GenerationModal';
 
 const TooltipLabel: React.FC<{ htmlFor: string; text: string; children: React.ReactNode }> = ({ htmlFor, text, children }) => (
   <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
@@ -40,10 +39,9 @@ const TextAreaSkeleton: React.FC = () => (
 
 const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
-  const navigate = useNavigate();
   const location = useLocation();
 
-  const { profile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, addDocumentToHistory } = profileContext!;
+  const { profile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, addDocumentToHistory, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext!;
   
   const { jobDescription: initialJobDescription } = (location.state as { jobDescription?: string }) || {};
 
@@ -69,8 +67,7 @@ const GeneratePage: React.FC = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
   const [isGenerationOptionsCollapsed, setIsGenerationOptionsCollapsed] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-
+  
   const [includedProfileSelections, setIncludedProfileSelections] = useState<IncludedProfileSelections>({
     summary: true,
     additionalInformation: true,
@@ -89,6 +86,8 @@ const GeneratePage: React.FC = () => {
 
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
+
+  const isGenerating = backgroundTasks.some(t => t.type === 'document-generation' && t.status === 'running');
   
   useEffect(() => {
     if (!profile) return;
@@ -127,8 +126,7 @@ const GeneratePage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [fileError]);
-
-
+  
   const handleFetchUrl = useCallback(async () => {
     if (!jobUrl) return;
     setIsFetchingUrl(true);
@@ -143,7 +141,7 @@ const GeneratePage: React.FC = () => {
     }
   }, [jobUrl, setIsFetchingUrl]);
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(() => {
     if (!profileContext?.profile || !jobDescription) {
       setError('Please provide a job description.');
       return;
@@ -151,7 +149,8 @@ const GeneratePage: React.FC = () => {
     
     const baseDocsCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
     const thinkingModeCost = options.thinkingMode && baseDocsCost > 0 ? 10 : 0;
-    const generationCost = baseDocsCost + thinkingModeCost;
+    const analysisCost = (jobDescription.trim() && (options.generateResume || options.uploadedResume)) ? 2 : 0;
+    const generationCost = baseDocsCost + thinkingModeCost + analysisCost;
 
     if (tokens < generationCost) {
         setError('You do not have enough tokens to generate these documents.');
@@ -159,90 +158,91 @@ const GeneratePage: React.FC = () => {
     }
     
     setError(null);
-    setIsGenerating(true);
+    setTokens(prev => prev - generationCost);
+    
+    const taskId = startBackgroundTask({
+      type: 'document-generation',
+      description: `Documents for ${profile.targetJobTitle || 'Untitled Role'}`,
+    });
 
-    try {
-        setTokens(prev => prev - generationCost);
+    (async () => {
+      try {
+          const { profile } = profileContext;
+          const filteredProfile: ProfileData = {
+            ...profile,
+            summary: includedProfileSelections.summary ? profile.summary : '',
+            additionalInformation: includedProfileSelections.additionalInformation ? profile.additionalInformation : '',
+            education: profile.education.filter(e => includedProfileSelections.educationIds.has(e.id)),
+            experience: profile.experience.filter(e => includedProfileSelections.experienceIds.has(e.id)),
+            projects: profile.projects.filter(p => includedProfileSelections.projectIds.has(p.id)),
+            technicalSkills: profile.technicalSkills.filter(s => includedProfileSelections.technicalSkillIds.has(s.id)),
+            softSkills: profile.softSkills.filter(s => includedProfileSelections.softSkillIds.has(s.id)),
+            tools: profile.tools.filter(t => includedProfileSelections.toolIds.has(t.id)),
+            languages: profile.languages.filter(l => includedProfileSelections.languageIds.has(l.id)),
+            certifications: profile.certifications.filter(c => includedProfileSelections.certificationIds.has(c.id)),
+            interests: profile.interests.filter(i => includedProfileSelections.interestIds.has(i.id)),
+            customSections: profile.customSections
+              .map(cs => ({
+                ...cs,
+                items: cs.items.filter(item => includedProfileSelections.customSectionItemIds[cs.id]?.has(item.id)),
+              }))
+              .filter(cs => cs.items.length > 0),
+          };
 
-        const { profile } = profileContext;
-        const filteredProfile: ProfileData = {
-          ...profile,
-          summary: includedProfileSelections.summary ? profile.summary : '',
-          additionalInformation: includedProfileSelections.additionalInformation ? profile.additionalInformation : '',
-          education: profile.education.filter(e => includedProfileSelections.educationIds.has(e.id)),
-          experience: profile.experience.filter(e => includedProfileSelections.experienceIds.has(e.id)),
-          projects: profile.projects.filter(p => includedProfileSelections.projectIds.has(p.id)),
-          technicalSkills: profile.technicalSkills.filter(s => includedProfileSelections.technicalSkillIds.has(s.id)),
-          softSkills: profile.softSkills.filter(s => includedProfileSelections.softSkillIds.has(s.id)),
-          tools: profile.tools.filter(t => includedProfileSelections.toolIds.has(t.id)),
-          languages: profile.languages.filter(l => includedProfileSelections.languageIds.has(l.id)),
-          certifications: profile.certifications.filter(c => includedProfileSelections.certificationIds.has(c.id)),
-          interests: profile.interests.filter(i => includedProfileSelections.interestIds.has(i.id)),
-          customSections: profile.customSections
-            .map(cs => ({
-              ...cs,
-              items: cs.items.filter(item => includedProfileSelections.customSectionItemIds[cs.id]?.has(item.id)),
-            }))
-            .filter(cs => cs.items.length > 0),
-        };
+          const generationOptions = { ...options, jobDescription };
+          const result = await generateTailoredDocuments(filteredProfile, generationOptions);
+          
+          if (!result.documents.resume && !result.documents.coverLetter) {
+              throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");
+          }
+          
+          let parsedResume: Partial<ProfileData> | null = null;
+          let parsedCoverLetter: ParsedCoverLetter | null = null;
 
-        const generationOptions = { ...options, jobDescription };
-        const result = await generateTailoredDocuments(filteredProfile, generationOptions);
-        
-        if (!result.resume && !result.coverLetter) {
-            throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");
-        }
-        
-        // --- NEW: Parse documents immediately after generation ---
-        let parsedResume: Partial<ProfileData> | null = null;
-        let parsedCoverLetter: ParsedCoverLetter | null = null;
+          if (result.documents.resume) {
+              try {
+                  parsedResume = await parseGeneratedResume(result.documents.resume);
+              } catch (e) {
+                  console.warn("Failed to parse generated resume into form. Falling back to raw text.", e);
+              }
+          }
+          if (result.documents.coverLetter) {
+              try {
+                  parsedCoverLetter = await parseGeneratedCoverLetter(result.documents.coverLetter);
+              } catch (e) {
+                  console.warn("Failed to parse generated cover letter into form. Falling back to raw text.", e);
+              }
+          }
 
-        if (result.resume) {
-            try {
-                parsedResume = await parseGeneratedResume(result.resume);
-            } catch (e) {
-                console.warn("Failed to parse generated resume into form. Falling back to raw text.", e);
-            }
-        }
-        if (result.coverLetter) {
-            try {
-                parsedCoverLetter = await parseGeneratedCoverLetter(result.coverLetter);
-            } catch (e) {
-                console.warn("Failed to parse generated cover letter into form. Falling back to raw text.", e);
-            }
-        }
-        // --- End of new parsing logic ---
+          if (result.documents.resume) {
+              addDocumentToHistory({
+                  name: `Resume for ${profile.targetJobTitle || 'Untitled Role'}`,
+                  type: 'resume',
+                  content: result.documents.resume,
+              });
+          }
+          if (result.documents.coverLetter) {
+              addDocumentToHistory({
+                  name: `Cover Letter for ${profile.targetJobTitle || 'Untitled Role'}`,
+                  type: 'coverLetter',
+                  content: result.documents.coverLetter,
+              });
+          }
+          
+          const finalResultPayload = { 
+              generatedContent: result.documents,
+              analysisResult: result.analysis,
+              parsedResume,
+              parsedCoverLetter,
+          };
+          updateBackgroundTask(taskId, { status: 'completed', result: finalResultPayload });
 
-        if (result.resume) {
-            addDocumentToHistory({
-                name: `Resume for ${profile.targetJobTitle || 'Untitled Role'}`,
-                type: 'resume',
-                content: result.resume,
-            });
-        }
-        if (result.coverLetter) {
-            addDocumentToHistory({
-                name: `Cover Letter for ${profile.targetJobTitle || 'Untitled Role'}`,
-                type: 'coverLetter',
-                content: result.coverLetter,
-            });
-        }
-        
-        navigate('/generate/results', { 
-            state: { 
-                generatedContent: result,
-                parsedResume, // Pass parsed data to results page
-                parsedCoverLetter, // Pass parsed data to results page
-            } 
-        });
-
-    } catch (e: any) {
-        setError(e.message || 'An unexpected generation error occurred. Please try again.');
-        setTokens(prev => prev + generationCost);
-    } finally {
-        setIsGenerating(false);
-    }
-  }, [profileContext, jobDescription, options, navigate, includedProfileSelections, tokens, setTokens, addDocumentToHistory]);
+      } catch (e: any) {
+          setTokens(prev => prev + generationCost); // Refund tokens on failure
+          updateBackgroundTask(taskId, { status: 'error', result: { message: e.message || 'An unexpected generation error occurred.' } });
+      }
+    })();
+  }, [profileContext, jobDescription, options, includedProfileSelections, tokens, setTokens, addDocumentToHistory, startBackgroundTask, updateBackgroundTask]);
 
   const clearFile = (type: 'resume' | 'coverLetter') => {
     if (type === 'resume') {
@@ -307,7 +307,8 @@ const GeneratePage: React.FC = () => {
   
   const baseDocsCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
   const thinkingModeCost = options.thinkingMode && baseDocsCost > 0 ? 10 : 0;
-  const generationCost = baseDocsCost + thinkingModeCost;
+  const analysisCost = (jobDescription.trim() && (options.generateResume || options.uploadedResume)) ? 2 : 0;
+  const generationCost = baseDocsCost + thinkingModeCost + analysisCost;
   
   const hasEnoughTokens = tokens >= generationCost;
   const canGenerate = jobDescription && hasEnoughTokens && baseDocsCost > 0 && !isGenerating;
@@ -338,7 +339,10 @@ const GeneratePage: React.FC = () => {
       buttonContent = (
           <div className="text-center">
               <span className="block text-lg font-bold">Generate Document{baseDocsCost > 1 ? 's' : ''}</span>
-              <span className="block text-sm font-medium text-blue-200 mt-1">{generationCost} Token{generationCost > 1 ? 's' : ''} Cost</span>
+              <span className="block text-sm font-medium text-blue-200 mt-1">
+                {generationCost} Token{generationCost > 1 ? 's' : ''} Cost
+                {analysisCost > 0 && " (incl. Fit Analysis)"}
+              </span>
           </div>
       );
   }
@@ -355,7 +359,6 @@ const GeneratePage: React.FC = () => {
 
   return (
     <>
-        <GenerationModal isOpen={isGenerating} thinkingMode={options.thinkingMode} />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
             
             {error && (
@@ -404,7 +407,7 @@ const GeneratePage: React.FC = () => {
                             <textarea id="job-description" rows={15} className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm" placeholder="Paste the full job description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
                         )}
                         </div>
-
+                        
                         <ContentAccordion title="Inspiration Documents (Optional)" initiallyOpen={true}>
                         <p className="text-sm text-gray-600 mb-4">
                             Provide your previous documents to help the AI match your unique style, tone, and formatting. This is highly recommended for best results.
@@ -539,7 +542,7 @@ const GeneratePage: React.FC = () => {
             <aside className="lg:col-span-1 sticky top-24 space-y-8">
                 {/* Desktop-only Generate Button */}
                 <div className="w-full hidden lg:block">
-                {generateButton}
+                    {generateButton}
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">

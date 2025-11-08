@@ -1,7 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouTubeVideo } from '../types';
+// FIX: Import MentorMatch type to be used in the new findMentorMatch function.
+import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouTubeVideo, ApplicationAnalysisResult, MentorMatch } from '../types';
 import { parseError } from '../utils';
 import { generateContentWithRetry } from './geminiService';
+import { profileToMarkdown } from '../components/editor/markdownConverter';
 
 if (!process.env.API_KEY) {
     console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
@@ -46,10 +48,32 @@ Alex Doe`
 export const generateTailoredDocuments = async (
   profile: ProfileData,
   options: GenerationOptions
-): Promise<GeneratedContent> => {
+): Promise<{ documents: GeneratedContent; analysis: ApplicationAnalysisResult | null }> => {
 
   if (!process.env.API_KEY) {
-      return new Promise(resolve => setTimeout(() => resolve(MOCK_RESPONSE), 1500));
+      const mockAnalysis: ApplicationAnalysisResult = {
+          fitScore: 85,
+          gapAnalysis: "- Experience with Python is mentioned, but the job requires Go.",
+          keywordOptimization: "- Add 'cloud infrastructure' and 'CI/CD'.",
+          impactEnhancer: "- Quantify the 'improved system performance' bullet point."
+      };
+      return new Promise(resolve => setTimeout(() => resolve({ documents: MOCK_RESPONSE, analysis: mockAnalysis }), 1500));
+  }
+
+  let analysisResult: ApplicationAnalysisResult | null = null;
+  try {
+    if (options.jobDescription && (options.generateResume || options.uploadedResume)) {
+      const resumeForAnalysis = options.uploadedResume 
+        ? options.uploadedResume 
+        : profileToMarkdown(profile, profile.sectionOrder || ['summary', 'experience', 'education', 'projects', 'skills', 'certifications', 'languages']);
+      
+      if (resumeForAnalysis.trim()) {
+        analysisResult = await analyzeApplicationFit(resumeForAnalysis, options.jobDescription);
+      }
+    }
+  } catch (analysisError) {
+    console.warn("Application analysis failed during document generation, but generation will continue.", analysisError);
+    analysisResult = null; 
   }
 
   const modelName = options.thinkingMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
@@ -149,8 +173,11 @@ export const generateTailoredDocuments = async (
   }
   
   return {
-    resume: generatedContent.resume || null,
-    coverLetter: generatedContent.coverLetter || null,
+    documents: {
+      resume: generatedContent.resume || null,
+      coverLetter: generatedContent.coverLetter || null,
+    },
+    analysis: analysisResult,
   };
 };
 
@@ -488,7 +515,6 @@ export const getYouTubeRecommendations = async (targetRole: string): Promise<You
 
         **OUTPUT FORMAT:**
         Your final output MUST be a single, valid JSON array of objects. Do not include any other text or markdown formatting.
-        The JSON must follow this structure:
         \`\`\`json
         [
           {
@@ -510,12 +536,178 @@ export const getYouTubeRecommendations = async (targetRole: string): Promise<You
     });
 
     try {
-        // The response text from a grounded model might be wrapped in markdown. Clean it before parsing.
-        const cleanedJson = response.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        return JSON.parse(cleanedJson);
+        // The response from a grounded model can include conversational text.
+        // We need to robustly extract the JSON content.
+        // First, try to find a markdown code block.
+        const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+            return JSON.parse(jsonMatch[1]);
+        }
+        
+        // If no markdown block, find the raw JSON array.
+        const jsonStartIndex = response.indexOf('[');
+        const jsonEndIndex = response.lastIndexOf(']');
+
+        if (jsonStartIndex === -1 || jsonEndIndex === -1 || jsonEndIndex < jsonStartIndex) {
+            throw new Error("Could not find a valid JSON array in the AI response.");
+        }
+        
+        const jsonString = response.substring(jsonStartIndex, jsonEndIndex + 1);
+        return JSON.parse(jsonString);
     } catch (e) {
         console.error("Failed to parse YouTube recommendations JSON from Gemini:", response, e);
         // Throw a user-friendly error to be caught by the calling component.
         throw new Error("The AI was unable to find relevant videos at this time. This may be a temporary issue.");
     }
+};
+
+
+// --- NEW FEATURE SERVICES ---
+
+export const analyzeApplicationFit = async (resumeText: string, jobDescription: string): Promise<ApplicationAnalysisResult> => {
+    const prompt = `
+    You are an expert career analyst. Compare the provided RESUME against the JOB DESCRIPTION and return a detailed analysis as a JSON object.
+
+    **RESUME:**
+    \`\`\`
+    ${resumeText}
+    \`\`\`
+
+    **JOB DESCRIPTION:**
+    \`\`\`
+    ${jobDescription}
+    \`\`\`
+
+    **TASK:**
+    Provide a comprehensive analysis with the following four components:
+    1.  **fitScore:** An integer from 0 to 100 representing the percentage match.
+    2.  **gapAnalysis:** A markdown string identifying key skills and experiences required by the job but missing or under-emphasized in the resume. Use bullet points.
+    3.  **keywordOptimization:** A markdown string suggesting keywords from the job description to include in the resume to pass ATS scans. Use bullet points.
+    4.  **impactEnhancer:** A markdown string with concrete suggestions for making the resume's experience bullet points more impactful and metric-driven. Use bullet points.
+    `;
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            fitScore: { type: Type.INTEGER },
+            gapAnalysis: { type: Type.STRING },
+            keywordOptimization: { type: Type.STRING },
+            impactEnhancer: { type: Type.STRING },
+        },
+        required: ["fitScore", "gapAnalysis", "keywordOptimization", "impactEnhancer"]
+    };
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: { responseMimeType: "application/json", responseSchema: schema }
+    });
+    return JSON.parse(jsonText);
+};
+
+// FIX: Add findMentorMatch function to resolve missing export error.
+export const findMentorMatch = async (thesisTopic: string, facultyList: string): Promise<MentorMatch[]> => {
+    const prompt = `
+    You are an expert academic advisor AI. Your task is to analyze a student's thesis topic and a list of faculty members to find the best potential mentors.
+
+    **THESIS TOPIC / ABSTRACT:**
+    \`\`\`
+    ${thesisTopic}
+    \`\`\`
+
+    **LIST OF FACULTY & BIOS:**
+    \`\`\`
+    ${facultyList}
+    \`\`\`
+
+    **INSTRUCTIONS:**
+    1.  Carefully read the thesis topic to understand its core themes, methodologies, and subject area.
+    2.  For each faculty member in the provided list, analyze their research interests, publications, and expertise.
+    3.  Compare the student's topic with each faculty member's profile.
+    4.  Identify the top 3-5 faculty members who are the best fit.
+    5.  For each top match, provide a "score" (an integer from 0 to 100) representing the strength of the alignment.
+    6.  Provide a concise, compelling "reasoning" for why each person is a good match, specifically referencing shared keywords or research interests.
+
+    Return the results as a JSON array of objects, ordered from the highest score to the lowest.
+    `;
+    const schema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING, description: "The full name of the faculty member." },
+                score: { type: Type.INTEGER, description: "The match score from 0-100." },
+                reasoning: { type: Type.STRING, description: "A brief explanation of why this faculty member is a good match." },
+            },
+            required: ["name", "score", "reasoning"]
+        }
+    };
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: { responseMimeType: "application/json", responseSchema: schema }
+    });
+    return JSON.parse(jsonText);
+};
+
+export const shapeInterviewStory = async (brainDump: string): Promise<string> => {
+    const prompt = `You are an expert interview coach. Take the following "brain dump" from a user about an experience and reshape it into a clear, compelling story using the STAR (Situation, Task, Action, Result) method. The output should be a well-written narrative in markdown format.
+
+    **USER'S BRAIN DUMP:**
+    \`\`\`
+    ${brainDump}
+    \`\`\`
+    
+    **YOUR TASK:**
+    Structure the story clearly with markdown headings for each section: **Situation**, **Task**, **Action**, and **Result**. The result section must be impactful and quantified if possible.
+    `;
+    return await generateContentWithRetry({ model: 'gemini-2.5-pro', contents: prompt });
+};
+
+export const generateInterviewQuestions = async (jobDescription: string): Promise<string[]> => {
+    const prompt = `You are an expert hiring manager for the role described below. Generate a list of 10-15 likely interview questions (behavioral, technical, and situational) based on this job description. Return the output as a JSON array of strings.
+
+    **JOB DESCRIPTION:**
+    \`\`\`
+    ${jobDescription}
+    \`\`\`
+    `;
+    const schema = { type: Type.ARRAY, items: { type: Type.STRING } };
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: { responseMimeType: "application/json", responseSchema: schema }
+    });
+    return JSON.parse(jsonText);
+};
+
+export const reframeFeedback = async (feedbackText: string): Promise<string> => {
+    const prompt = `You are an empathetic career coach. A user has received the following feedback and wants help processing it. Reframe this feedback into a positive, actionable plan for growth. Your output should be a markdown string with sections for "Key Takeaways" and "Actionable Growth Opportunities".
+
+    **FEEDBACK:**
+    \`\`\`
+    ${feedbackText}
+    \`\`\`
+    `;
+    return await generateContentWithRetry({ model: 'gemini-2.5-pro', contents: prompt });
+};
+
+export const getNegotiationPrep = async (jobTitle: string, location: string): Promise<{ salaryRange: string; tips: string; }> => {
+    const prompt = `You are a negotiation expert. Use your search tool to find the average salary range for a **${jobTitle}** in **${location}**. Then, provide a list of tips and go-to phrases for negotiating a higher salary or better benefits. The output must be a JSON object with "salaryRange" and "tips" (in markdown) as keys.`;
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            salaryRange: { type: Type.STRING, description: "e.g., '$85,000 - $110,000 per year'" },
+            tips: { type: Type.STRING, description: "Markdown-formatted list of tips and phrases." },
+        },
+        required: ["salaryRange", "tips"]
+    };
+    const jsonText = await generateContentWithRetry({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            tools: [{ googleSearch: {} }],
+            responseMimeType: "application/json",
+            responseSchema: schema
+        }
+    });
+    return JSON.parse(jsonText);
 };

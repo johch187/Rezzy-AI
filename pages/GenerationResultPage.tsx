@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import type { ProfileData, GeneratedContent, ParsedCoverLetter } from '../types';
+import type { ProfileData, GeneratedContent, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import EditableDocument from '../components/EditableDocument';
 import { XCircleIcon } from '../components/Icons';
+import ApplicationAnalysisWidget from '../components/ApplicationAnalysisWidget';
 
 function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
   return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
@@ -12,7 +13,6 @@ function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
 function isParsedResume(content: any): content is Partial<ProfileData> {
   return content && typeof content === 'object' && ('experience' in content || 'education' in content);
 }
-
 
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();
@@ -39,8 +39,9 @@ const GenerationResultPage: React.FC = () => {
         );
     }
 
-    const { generatedContent, parsedResume: initialParsedResume, parsedCoverLetter: initialParsedCoverLetter } = location.state as {
+    const { generatedContent, parsedResume: initialParsedResume, parsedCoverLetter: initialParsedCoverLetter, analysisResult } = location.state as {
         generatedContent: GeneratedContent;
+        analysisResult: ApplicationAnalysisResult | null;
         parsedResume: Partial<ProfileData> | null;
         parsedCoverLetter: ParsedCoverLetter | null;
     };
@@ -51,6 +52,15 @@ const GenerationResultPage: React.FC = () => {
     const [parsedResume, setParsedResume] = useState<Partial<ProfileData> | null>(initialParsedResume);
     const [parsedCoverLetter, setParsedCoverLetter] = useState<ParsedCoverLetter | null>(initialParsedCoverLetter);
     const [parsingError, setParsingError] = useState<string | null>(null);
+    const [activeView, setActiveView] = useState<'resume' | 'coverLetter' | null>(null);
+
+    useEffect(() => {
+        if (generatedContent.resume) {
+            setActiveView('resume');
+        } else if (generatedContent.coverLetter) {
+            setActiveView('coverLetter');
+        }
+    }, [generatedContent]);
     
     useEffect(() => {
         const errorMessages: string[] = [];
@@ -81,13 +91,6 @@ const GenerationResultPage: React.FC = () => {
     
     const hasResume = !!editableDocs.resume;
     const hasCoverLetter = !!editableDocs.coverLetter;
-    const documentCount = (hasResume ? 1 : 0) + (hasCoverLetter ? 1 : 0);
-
-    const containerClasses = documentCount === 1
-      ? "flex justify-center"
-      : "grid grid-cols-1 lg:grid-cols-2 gap-8";
-
-    const itemWrapperClasses = documentCount === 1 ? "w-full max-w-4xl" : "";
 
     return (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -105,39 +108,72 @@ const GenerationResultPage: React.FC = () => {
 
             <div>
                 <div className="text-center mb-12 animate-slide-in-up">
-                    <h1 className="text-4xl font-extrabold text-neutral tracking-tight sm:text-5xl">Your Generated Documents</h1>
+                    <h1 className="text-4xl font-extrabold text-neutral tracking-tight sm:text-5xl">Your Generation Results</h1>
                     <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-600">
-                        Review, edit, and download your tailored documents.
+                        Review your application's fit, then edit and download your tailored documents.
                     </p>
                 </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <main className="lg:col-span-2 space-y-8">
+                        {(hasResume || hasCoverLetter) && (
+                            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 max-w-sm mx-auto" role="tablist">
+                                {hasResume && (
+                                    <button
+                                        onClick={() => setActiveView('resume')}
+                                        className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${activeView === 'resume' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        role="tab"
+                                        aria-selected={activeView === 'resume'}
+                                    >
+                                        Resume
+                                    </button>
+                                )}
+                                {hasCoverLetter && (
+                                    <button
+                                        onClick={() => setActiveView('coverLetter')}
+                                        className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${activeView === 'coverLetter' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        role="tab"
+                                        aria-selected={activeView === 'coverLetter'}
+                                    >
+                                        Cover Letter
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
-                <div className={`w-full ${containerClasses} animate-slide-in-up`}>
-                    {hasResume && (
-                        <div className={`space-y-4 ${itemWrapperClasses}`}>
-                            <h2 className="text-3xl font-bold text-neutral text-center lg:text-left">Generated Resume</h2>
-                            <EditableDocument
-                                documentType="resume"
-                                initialContent={editableDocs.resume!}
-                                onSave={handleSaveResume}
-                                structuredContent={parsedResume}
-                                tokens={tokens}
-                                setTokens={setTokens}
-                            />
+                        <div className="w-full">
+                            {activeView === 'resume' && hasResume && (
+                                <div className="space-y-4">
+                                    <EditableDocument
+                                        documentType="resume"
+                                        initialContent={editableDocs.resume!}
+                                        onSave={handleSaveResume}
+                                        structuredContent={parsedResume}
+                                        tokens={tokens}
+                                        setTokens={setTokens}
+                                    />
+                                </div>
+                            )}
+                            {activeView === 'coverLetter' && hasCoverLetter && (
+                                <div className="space-y-4">
+                                    <EditableDocument
+                                        documentType="cover-letter"
+                                        initialContent={editableDocs.coverLetter!}
+                                        onSave={handleSaveCoverLetter}
+                                        structuredContent={parsedCoverLetter}
+                                        tokens={tokens}
+                                        setTokens={setTokens}
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
-                    {hasCoverLetter && (
-                        <div className={`space-y-4 ${itemWrapperClasses}`}>
-                            <h2 className="text-3xl font-bold text-neutral text-center lg:text-left">Generated Cover Letter</h2>
-                            <EditableDocument
-                                documentType="cover-letter"
-                                initialContent={editableDocs.coverLetter!}
-                                onSave={handleSaveCoverLetter}
-                                structuredContent={parsedCoverLetter}
-                                tokens={tokens}
-                                setTokens={setTokens}
-                            />
-                        </div>
-                    )}
+                    </main>
+
+                    <aside className="lg:col-span-1 sticky top-24">
+                        {analysisResult && (
+                            <ApplicationAnalysisWidget analysis={analysisResult} />
+                        )}
+                    </aside>
                 </div>
             </div>
         </div>

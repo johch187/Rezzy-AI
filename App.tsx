@@ -1,4 +1,4 @@
-import React, { useState, createContext, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, createContext, useMemo, useEffect, useCallback, useContext } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import GeneratePage from './pages/GeneratePage';
@@ -9,7 +9,7 @@ import GDPRPage from './pages/GDPRPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
-import type { ProfileData, DocumentHistoryItem, CareerPath } from './types';
+import type { ProfileData, DocumentHistoryItem, CareerPath, BackgroundTask } from './types';
 import { importAndParseResume } from './services/parserService';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -19,6 +19,8 @@ import CoffeeChatPrepperPage from './pages/CoffeeChatPrepperPage';
 import CoffeeChatResultPage from './pages/CoffeeChatResultPage';
 import CareerCoachPage from './pages/CareerCoachPage';
 import CareerPathPage from './pages/CareerPathPage';
+import InterviewPrepPage from './pages/InterviewPrepPage';
+import ToastNotification from './components/ToastNotification';
 
 const createNewProfile = (name: string): ProfileData => {
   const newId = crypto.randomUUID();
@@ -76,10 +78,17 @@ export const ProfileContext = createContext<{
   addDocumentToHistory: (doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   isParsing: boolean;
   parsingError: string | null;
   parseResumeInBackground: (file: File) => void;
   clearParsingError: () => void;
+  backgroundTasks: BackgroundTask[];
+  startBackgroundTask: (taskInfo: Omit<BackgroundTask, 'id' | 'status' | 'result' | 'viewed' | 'createdAt'>) => string;
+  updateBackgroundTask: (taskId: string, updates: Partial<Omit<BackgroundTask, 'id'>>) => void;
+  markTaskAsViewed: (taskId: string) => void;
+  clearAllNotifications: () => void;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
@@ -87,11 +96,12 @@ const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
 const AppContent: React.FC = () => {
     const location = useLocation();
     const isAppPage = !['/', '/login'].includes(location.pathname);
+    const { isSidebarCollapsed } = useContext(ProfileContext)!;
 
     return (
-        <>
+        <div className="relative min-h-screen">
             {isAppPage && <Sidebar />}
-            <div className="min-h-screen bg-base-200 flex flex-col">
+            <div className={`flex flex-col min-h-screen bg-base-200 transition-all duration-300 ease-out ${isAppPage ? (isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72') : ''}`}>
                 <Header />
                 <main className="flex-grow">
                     <Routes>
@@ -109,11 +119,12 @@ const AppContent: React.FC = () => {
                         <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
                         <Route path="/career-coach" element={<CareerCoachPage />} />
                         <Route path="/career-path" element={<CareerPathPage />} />
+                        <Route path="/interview-prep" element={<InterviewPrepPage />} />
                     </Routes>
                 </main>
                 <Footer />
             </div>
-        </>
+        </div>
     );
 };
 
@@ -191,8 +202,25 @@ const App: React.FC = () => {
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [parsingError, setParsingError] = useState<string | null>(null);
+
+  const [backgroundTasks, setBackgroundTasks] = useState<BackgroundTask[]>(() => {
+    try {
+        const saved = localStorage.getItem('backgroundTasks');
+        // Filter out any tasks that are still 'running' when the app loads, as they are orphaned.
+        const tasks = saved ? JSON.parse(saved) : [];
+        return tasks.filter((t: BackgroundTask) => t.status !== 'running');
+    } catch {
+        return [];
+    }
+  });
+  const [toast, setToast] = useState<{ message: string; id: string } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('backgroundTasks', JSON.stringify(backgroundTasks));
+  }, [backgroundTasks]);
 
   const saveProfiles = useCallback(() => {
     try {
@@ -323,6 +351,37 @@ const App: React.FC = () => {
     })();
   }, [activeProfileId, updateActiveProfile]);
 
+  const startBackgroundTask = useCallback((taskInfo: Omit<BackgroundTask, 'id' | 'status' | 'result' | 'viewed' | 'createdAt'>): string => {
+    const taskId = crypto.randomUUID();
+    const newTask: BackgroundTask = {
+        ...taskInfo,
+        id: taskId,
+        status: 'running',
+        result: null,
+        viewed: false,
+        createdAt: new Date().toISOString(),
+    };
+    setBackgroundTasks(prev => [newTask, ...prev]);
+    setToast({ message: `${taskInfo.description} is now generating...`, id: crypto.randomUUID() });
+    setTimeout(() => setToast(null), 5000); // Auto-dismiss toast
+    return taskId;
+  }, []);
+
+  const updateBackgroundTask = useCallback((taskId: string, updates: Partial<Omit<BackgroundTask, 'id'>>) => {
+      setBackgroundTasks(prev => prev.map(task => 
+          task.id === taskId ? { ...task, ...updates } : task
+      ));
+  }, []);
+
+  const markTaskAsViewed = useCallback((taskId: string) => {
+      setBackgroundTasks(prev => prev.map(task => 
+          task.id === taskId ? { ...task, viewed: true } : task
+      ));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+      setBackgroundTasks(prev => prev.map(task => ({ ...task, viewed: true })).filter(task => task.status === 'running'));
+  }, []);
 
   // Autosave effect
   useEffect(() => {
@@ -350,17 +409,25 @@ const App: React.FC = () => {
       renameProfile,
       tokens, setTokens, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
+      isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
       isParsing,
       parsingError,
       parseResumeInBackground,
-      clearParsingError: () => setParsingError(null)
+      clearParsingError: () => setParsingError(null),
+      backgroundTasks,
+      startBackgroundTask,
+      updateBackgroundTask,
+      markTaskAsViewed,
+      clearAllNotifications,
    }), [
       activeProfile, updateActiveProfile, saveProfiles, lastSavedProfiles, profiles, activeProfileId, switchProfile, addProfile, deleteProfile, renameProfile,
       tokens, setTokens, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
+      isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
-      isParsing, parsingError, parseResumeInBackground
+      isParsing, parsingError, parseResumeInBackground,
+      backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications
     ]);
 
   if (!activeProfile) {
@@ -371,6 +438,7 @@ const App: React.FC = () => {
   return (
     <ProfileContext.Provider value={contextValue}>
       <HashRouter>
+        <ToastNotification toast={toast} onDismiss={() => setToast(null)} />
         <AppContent />
       </HashRouter>
     </ProfileContext.Provider>

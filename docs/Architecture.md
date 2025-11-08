@@ -15,14 +15,14 @@ The application is a modern Single-Page Application (SPA) built with the followi
 The project is organized into a modular structure to promote separation of concerns and maintainability:
 
 -   **`index.tsx`**: The main entry point of the application which renders the `App` component into the DOM.
--   **`App.tsx`**: The root component that manages global state via `ProfileContext` and sets up the application's routing structure.
--   **`pages/`**: Contains top-level components that correspond to a specific URL route (e.g., `HomePage.tsx`, `GeneratePage.tsx`). These components are responsible for the overall layout and data flow of a given page.
+-   **`App.tsx`**: The root component that manages global state via `ProfileContext` and sets up the application's routing structure, including all pages and tools.
+-   **`pages/`**: Contains top-level components that correspond to a specific URL route (e.g., `HomePage.tsx`, `GeneratePage.tsx`, `InterviewPrepPage.tsx`). These components are responsible for the overall layout and data flow of a given page.
 -   **`components/`**: A collection of reusable UI components used across different pages (e.g., `Header.tsx`, `AccordionItem.tsx`, `ProfileForm.tsx`). This promotes code reuse and consistency.
 -   **`services/`**: Holds modules responsible for business logic and external API interactions. This abstracts complex operations away from the UI components.
     -   `geminiService.ts`: A low-level wrapper for the Google Gemini API, including robust error handling and retry logic.
-    -   `generationService.ts`: Contains functions that build specific prompts and call the Gemini service for high-level tasks like generating documents or career paths.
+    -   `generationService.ts`: Contains high-level functions that build specific prompts and call the Gemini service for a wide range of tasks, from generating documents to analyzing application fit.
     -   `parserService.ts`: Handles the logic for parsing uploaded resumes and converting generated markdown back into structured data.
-    -   `careerCoachService.ts`: Manages the setup and interaction logic for the AI Career Coach chat session.
+    -   `careerCoachService.ts`: Manages the setup and interaction logic for the AI Career Coach chat session, including defining all available tools (function calls).
     -   `scrapingService.ts`: Handles fetching and parsing job description content from URLs.
 -   **`types.ts`**: A central file for all TypeScript type and interface definitions, providing a single source of truth for the application's data models.
 -   **`utils.ts`**: A collection of helper functions, such as error parsing and file utilities, used throughout the application.
@@ -43,10 +43,10 @@ The project is organized into a modular structure to promote separation of conce
 ## 4. Routing
 
 -   **React Router DOM:** Navigation within the SPA is handled by `react-router-dom`.
--   **`HashRouter`:** We use `HashRouter` as the routing strategy. This is a deliberate choice for the MVP as it works seamlessly with static file hosting without requiring any server-side configuration for URL rewriting.
+-   **`HashRouter`:** We use `HashRouter` as the routing strategy. This is a deliberate choice as it works seamlessly with static file hosting without requiring any server-side configuration for URL rewriting.
 
 ## 5. Data Persistence
 
 -   **Browser `localStorage`:** All user-facing data is persisted directly in the user's browser using the `localStorage` API. This includes all user profiles (`userProfiles`), the last active profile ID (`activeProfileId`), and `documentHistory`.
--   **Strategy:** This client-side persistence model was chosen to enable a fully-featured experience without the need for a backend database or user authentication, which simplifies the architecture for the MVP.
--   **Trade-offs:** The primary trade-off is that user data is tied to a specific browser on a specific device and is not shareable or accessible across devices. This is an acceptable limitation for the MVP.
+-   **Strategy:** This client-side persistence model was chosen to enable a fully-featured experience without the need for a backend database or user authentication, which simplifies the architecture.
+-   **Trade-offs:** The primary trade-off is that user data is tied to a specific browser on a specific device and is not shareable or accessible across devices.

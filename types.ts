@@ -183,3 +183,29 @@ export interface CareerPath {
   currentRole: string;
   targetRole: string;
 }
+
+// --- New Feature Types ---
+export interface ApplicationAnalysisResult {
+  fitScore: number; // A percentage from 0-100
+  gapAnalysis: string; // Markdown formatted text
+  keywordOptimization: string; // Markdown formatted text
+  impactEnhancer: string; // Markdown formatted text
+}
+
+// FIX: Add MentorMatch interface to resolve missing type error.
+export interface MentorMatch {
+  name: string;
+  score: number;
+  reasoning: string;
+}
+
+export interface BackgroundTask {
+  id: string;
+  // FIX: Add new task types to support mentor matching and application analysis features.
+  type: 'document-generation' | 'career-path' | 'coffee-chat' | 'interview-prep' | 'application-analysis' | 'mentor-match';
+  status: 'running' | 'completed' | 'error';
+  description: string;
+  result: any; // Payload for the result page or error message
+  viewed: boolean;
+  createdAt: string; // ISO string
+}

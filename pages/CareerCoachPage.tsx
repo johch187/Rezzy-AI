@@ -40,11 +40,11 @@ const CareerCoachPage: React.FC = () => {
         targetRole: string;
         isReplacing: boolean;
     } | null>(null);
-    const [isGeneratingPath, setIsGeneratingPath] = useState(false);
-
 
     if (!profileContext) return <div>Loading...</div>
-    const { profile, setProfile, documentHistory, activeProfileId } = profileContext;
+    const { profile, setProfile, documentHistory, activeProfileId, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
+
+    const isGeneratingPath = backgroundTasks.some(t => t.type === 'career-path' && t.status === 'running');
 
     useEffect(() => {
         if (profile) {
@@ -199,35 +199,29 @@ const CareerCoachPage: React.FC = () => {
         if (!careerPathPrompt || !profile) return;
         const { currentRole, targetRole } = careerPathPrompt;
 
-        setIsGeneratingPath(true);
         setCareerPathPrompt(null);
 
         setMessages(prev => [...prev, {
             role: 'system',
-            content: `Great! I've started creating your personalized career path to become a ${targetRole}. This can take a minute or two. Feel free to ask me other questions while you wait!`,
+            content: `Great! I've started creating your personalized career path to become a ${targetRole}. This will run in the background and I'll notify you when it's ready. Feel free to ask other questions while you wait!`,
             id: crypto.randomUUID(),
         }]);
 
-        // Run the generation in the background without awaiting
+        const taskId = startBackgroundTask({
+            type: 'career-path',
+            description: `Career Path to ${targetRole}`
+        });
+
         generateCareerPath(profile, currentRole, targetRole)
             .then(newPath => {
                 setProfile(prev => ({...prev, careerPath: newPath}));
-                
-                const confirmationText = `I've finished creating your career path to becoming a **${targetRole}**! You can see the full, detailed plan on the 'Career Path' page. What should we look at next?`;
-                
-                setMessages(prev => [...prev, { 
-                    role: 'model', 
-                    content: confirmationText, 
-                    id: crypto.randomUUID() 
-                }]);
+                updateBackgroundTask(taskId, { status: 'completed', result: { success: true } });
             })
             .catch(err => {
                 console.error("Failed to generate career path:", err);
-                const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again in a few moments.`;
+                updateBackgroundTask(taskId, { status: 'error', result: { message: err.message } });
+                const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again.`;
                 setMessages(prev => [...prev, { role: 'system', content: errorMessage, id: crypto.randomUUID() }]);
-            })
-            .finally(() => {
-                setIsGeneratingPath(false);
             });
     };
 

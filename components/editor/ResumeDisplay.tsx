@@ -28,7 +28,7 @@ const ResumeSummaryDisplay = memo<{
     if (!summary) return null;
     return (
         <ResumeSection title="Summary" isEditing={isEditing} onRemove={onRemove}>
-            <FormTextarea value={summary} onChange={onSummaryChange} isEditing={isEditing}/>
+            <FormTextarea value={summary} onChange={onSummaryChange} isEditing={isEditing} className="w-full"/>
         </ResumeSection>
     );
 });
@@ -46,37 +46,41 @@ const ResumeExperienceDisplay = memo<{
     return (
         <ResumeSection title="Experience" isEditing={isEditing} onRemove={onRemoveSection}>
             {experience.map((exp, i) => (
-                <div key={exp.id} className="relative group">
+                <div key={exp.id} className="relative group/item">
                     {isEditing && (
-                        <button onClick={() => onRemoveExperience(exp.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
+                        <button onClick={() => onRemoveExperience(exp.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove experience at ${exp.company}`}>
                             <TrashIcon />
                         </button>
                     )}
-                    <div className="grid grid-cols-2 gap-x-4">
-                        <FormInput value={exp.title} onChange={v => onFieldChange(i, 'title', v)} isEditing={isEditing} className="font-bold text-gray-900" />
-                        <div className="text-right text-sm text-gray-600 italic">
-                             <FormInput 
-                                 value={exp.startDate} 
-                                 onChange={v => onFieldChange(i, 'startDate', v)} 
-                                 isEditing={isEditing}
-                                 className="w-24 inline-block text-right"
-                                 placeholder="Start Date" />
-                             <span className="mx-1"> - </span>
-                             <FormInput 
-                                 value={exp.endDate} 
-                                 onChange={v => onFieldChange(i, 'endDate', v)} 
-                                 isEditing={isEditing} 
-                                 className="w-24 inline-block text-right"
-                                 placeholder="End Date" />
-                         </div>
-                        <FormInput value={exp.company} onChange={v => onFieldChange(i, 'company', v)} isEditing={isEditing} />
-                        <FormInput value={exp.location} onChange={v => onFieldChange(i, 'location', v)} isEditing={isEditing} className="text-right text-sm text-gray-500" />
-                    </div>
+                    <header className="flex justify-between items-start gap-4">
+                        <div className="flex-grow">
+                             <FormInput value={exp.title} onChange={v => onFieldChange(i, 'title', v)} isEditing={isEditing} className="font-bold text-lg w-full" placeholder="Job Title" />
+                             <FormInput value={exp.company} onChange={v => onFieldChange(i, 'company', v)} isEditing={isEditing} className="text-md w-full" placeholder="Company Name" />
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            <div className="text-sm text-gray-600 italic">
+                                <FormInput 
+                                    value={exp.startDate} 
+                                    onChange={v => onFieldChange(i, 'startDate', v)} 
+                                    isEditing={isEditing}
+                                    className="w-24 inline-block text-right"
+                                    placeholder="Start Date" />
+                                <span className="mx-1"> - </span>
+                                <FormInput 
+                                    value={exp.endDate} 
+                                    onChange={v => onFieldChange(i, 'endDate', v)} 
+                                    isEditing={isEditing} 
+                                    className="w-24 inline-block text-right"
+                                    placeholder="End Date" />
+                            </div>
+                             <FormInput value={exp.location} onChange={v => onFieldChange(i, 'location', v)} isEditing={isEditing} className="text-sm text-gray-500 text-right" placeholder="Location" />
+                        </div>
+                    </header>
                     <ul className="list-disc pl-5 mt-2 space-y-1">
                         {exp.achievements?.map((ach, j) => (
                           <li key={ach.id}>
                             <div className="flex items-center space-x-2">
-                                <FormTextarea value={ach.text} onChange={v => onAchievementChange(i, j, v)} isEditing={isEditing} rows={2}/>
+                                <FormTextarea value={ach.text} onChange={v => onAchievementChange(i, j, v)} isEditing={isEditing} rows={2} className="w-full"/>
                                 {isEditing && (
                                     <button onClick={() => onRemoveAchievement(exp.id, ach.id)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0" aria-label="Remove achievement">
                                         <XCircleIcon />
@@ -103,49 +107,57 @@ const ResumeEducationDisplay = memo<{
     return (
         <ResumeSection title="Education" isEditing={isEditing} onRemove={onRemoveSection}>
              {education.map((edu, i) => (
-                <div key={edu.id} className="relative group">
+                <div key={edu.id} className="relative group/item">
                     {isEditing && (
                         <button onClick={() => onRemoveItem(edu.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove education at ${edu.institution}`}>
                             <TrashIcon />
                         </button>
                     )}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        {/* Row 1 */}
-                        <FormInput 
-                            value={edu.degree}
-                            onChange={v => onFieldChange(i, 'degree', v)} 
-                            isEditing={isEditing} 
-                            className="font-bold"
-                            placeholder="Degree" />
-                        <div className="text-right text-sm text-gray-600 italic">
-                             <FormInput 
-                                 value={edu.startDate} 
-                                 onChange={v => onFieldChange(i, 'startDate', v)} 
-                                 isEditing={isEditing}
-                                 className="w-24 inline-block text-right"
-                                 placeholder="Start Date" />
-                             <span className="mx-1"> - </span>
-                             <FormInput 
-                                 value={edu.endDate} 
-                                 onChange={v => onFieldChange(i, 'endDate', v)} 
-                                 isEditing={isEditing} 
-                                 className="w-24 inline-block text-right"
-                                 placeholder="End Date" />
-                         </div>
-                        
-                        {/* Row 2 */}
-                        <FormInput 
-                            value={edu.institution} 
-                            onChange={v => onFieldChange(i, 'institution', v)} 
-                            isEditing={isEditing}
-                            placeholder="Institution" />
-                        <FormInput
-                             value={edu.fieldOfStudy}
-                             onChange={v => onFieldChange(i, 'fieldOfStudy', v)}
-                             isEditing={isEditing}
-                             className="text-right text-sm"
-                             placeholder="Field of Study" />
-                    </div>
+                    <header className="flex justify-between items-start gap-4">
+                        <div className="flex-grow">
+                             <div className="font-bold text-lg flex flex-wrap items-baseline gap-x-1">
+                                <FormInput 
+                                    value={edu.degree}
+                                    onChange={v => onFieldChange(i, 'degree', v)} 
+                                    isEditing={isEditing}
+                                    className="font-bold text-lg"
+                                    placeholder="Degree"
+                                />
+                                {(isEditing || (edu.degree && edu.fieldOfStudy)) && <span className="text-gray-800 font-normal">,</span>}
+                                <FormInput 
+                                    value={edu.fieldOfStudy}
+                                    onChange={v => onFieldChange(i, 'fieldOfStudy', v)}
+                                    isEditing={isEditing}
+                                    className="font-bold text-lg"
+                                    placeholder="Field of Study"
+                                />
+                             </div>
+                            <FormInput 
+                                value={edu.institution} 
+                                onChange={v => onFieldChange(i, 'institution', v)} 
+                                isEditing={isEditing}
+                                className="text-md w-full"
+                                placeholder="Institution"
+                            />
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            <div className="text-sm text-gray-600 italic">
+                                <FormInput 
+                                    value={edu.startDate} 
+                                    onChange={v => onFieldChange(i, 'startDate', v)} 
+                                    isEditing={isEditing}
+                                    className="w-24 inline-block text-right"
+                                    placeholder="Start Date" />
+                                <span className="mx-1"> - </span>
+                                <FormInput 
+                                    value={edu.endDate} 
+                                    onChange={v => onFieldChange(i, 'endDate', v)} 
+                                    isEditing={isEditing} 
+                                    className="w-24 inline-block text-right"
+                                    placeholder="End Date" />
+                            </div>
+                        </div>
+                    </header>
                 </div>
              ))}
         </ResumeSection>
@@ -163,15 +175,15 @@ const ResumeProjectsDisplay = memo<{
     return (
         <ResumeSection title="Projects" isEditing={isEditing} onRemove={onRemoveSection}>
             {projects.map((proj, i) => (
-                <div key={proj.id} className="relative group">
+                <div key={proj.id} className="relative group/item">
                      {isEditing && (
-                        <button onClick={() => onRemoveItem(proj.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
+                        <button onClick={() => onRemoveItem(proj.id)} className="absolute top-2 -right-8 text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity p-1" aria-label={`Remove project ${proj.name}`}>
                             <TrashIcon />
                         </button>
                     )}
-                    <FormInput value={proj.name} onChange={v => onFieldChange(i, 'name', v)} isEditing={isEditing} className="font-bold text-gray-900"/>
-                    <FormTextarea value={proj.description} onChange={v => onFieldChange(i, 'description', v)} isEditing={isEditing} rows={2}/>
-                    <FormInput value={proj.technologiesUsed} onChange={v => onFieldChange(i, 'technologiesUsed', v)} isEditing={isEditing} className="text-sm italic text-gray-600"/>
+                    <FormInput value={proj.name} onChange={v => onFieldChange(i, 'name', v)} isEditing={isEditing} className="font-bold text-gray-900 w-full"/>
+                    <FormTextarea value={proj.description} onChange={v => onFieldChange(i, 'description', v)} isEditing={isEditing} rows={2} className="w-full"/>
+                    <FormInput value={proj.technologiesUsed} onChange={v => onFieldChange(i, 'technologiesUsed', v)} isEditing={isEditing} className="text-sm italic text-gray-600 w-full"/>
                 </div>
             ))}
         </ResumeSection>
@@ -311,7 +323,7 @@ export const ResumeDisplay: React.FC<ResumeDisplayProps> = ({
         <div className="prose max-w-none">
             <style>{`.drag-indicator { border-top: 2px dashed #3b82f6; } .dragging { opacity: 0.5; }`}</style>
             <div className="text-center">
-                <FormInput value={formData.fullName} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, fullName: v} : null); }} isEditing={isEditing} className="text-3xl font-bold" placeholder="Full Name" />
+                <FormInput value={formData.fullName} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, fullName: v} : null); }} isEditing={isEditing} className="text-3xl font-bold w-full" placeholder="Full Name" />
                 <div className="flex justify-center flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-2">
                     <FormInput value={formData.phone} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, phone: v} : null); }} isEditing={isEditing} placeholder="Phone"/>
                     <FormInput value={formData.email} onChange={v => { recordUndoState(); setFormData(p => p ? {...p, email: v} : null); }} isEditing={isEditing} placeholder="Email"/>

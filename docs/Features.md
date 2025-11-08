@@ -7,60 +7,68 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Location:** `HomePage.tsx`, `components/ProfileForm.tsx`, `components/Sidebar.tsx`
 -   **Purpose:** To create comprehensive sources of truth for the user's professional identities. This profile context is foundational for all AI interactions.
 -   **Key Features:**
-    -   **Multi-Profile Support:** Users can create, rename, delete, and switch between multiple, distinct profiles from the sidebar, allowing them to manage different career targets (e.g., a "Software Engineer" profile and a "Product Manager" profile).
+    -   **Multi-Profile Support:** Users can create, rename, delete, and switch between multiple, distinct profiles from the sidebar.
     -   **Comprehensive Form:** A multi-section accordion form allows users to input everything from personal info and work experience to custom-defined sections for the active profile.
     -   **Resume Import:** Users can upload a `.pdf`, `.txt`, or `.md` file. The `parserService.ts` parses the file and populates the *currently active* profile form.
     -   **Autosave & Manual Save:** The profile is automatically saved to `localStorage` periodically, and a "Save Changes" bar appears for immediate manual saves.
 
-## 2. Document Generation
+## 2. Document Generation & Analysis Suite
 
+### a. Document Generation
 -   **Location:** `GeneratePage.tsx`
 -   **Purpose:** To generate resumes and cover letters that are highly tailored to a specific job application, using the currently active profile as the data source.
 -   **Workflow:**
-    1.  **Input:** The user provides a job posting URL or pastes the job description text.
-    2.  **Configuration:** The user selects which documents to generate, chooses templates, and fine-tunes options like tone, length, and technicality ("Thinking Mode").
-    3.  **Content Selection:** A `ProfileContentSelector` allows the user to cherry-pick which items from their active profile to include in this specific generation.
-    4.  **Generation:** The `generationService.ts` compiles the user's filtered profile, the job description, and all selected options into a detailed prompt and calls the Gemini API to generate the documents.
+    1.  The user provides a job description via URL or paste.
+    2.  The user selects which items from their active profile to include.
+    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents.
 
-## 3. Generation Results & Editor
-
+### b. Generation Results & Editor
 -   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
 -   **Purpose:** To allow users to review, refine, and export their AI-generated documents.
 -   **Key Features:**
     -   **Smart Parsing:** Upon receiving the generated markdown, the app uses `parserService.ts` to parse it back into a structured format for rich editing.
     -   **Rich Editing:** The document is displayed in a form-based editor where users can edit individual fields.
-    -   **Drag-and-Drop Reordering:** For resumes, users can drag and drop entire sections (e.g., move "Education" above "Experience") to customize the layout.
-    -   **Fallback to Text:** If the AI's output can't be parsed, it gracefully falls back to a standard markdown text editor.
+    -   **Drag-and-Drop Reordering:** For resumes, users can drag and drop entire sections.
     -   **Export Options:** Users can download their final document as a PDF or copy the content to paste into Google Docs.
 
-## 4. Coffee Chat Prepper
+## 3. AI Career Coach & Career Path
 
--   **Location:** `CoffeeChatPrepperPage.tsx`, `CoffeeChatResultPage.tsx`
--   **Purpose:** To help users excel at professional networking.
--   **Modes:**
-    -   **Prep Mode:** Generates a "Coffee Chat Brief" with talking points and shared connections.
-    -   **Reach Out Mode:** Generates a concise, professional outreach message for platforms like LinkedIn or email.
-
-## 5. AI Career Coach
-
+### a. AI Career Coach
 -   **Location:** `CareerCoachPage.tsx`
--   **Purpose:** To provide an interactive, conversational interface for personalized career advice.
+-   **Purpose:** To provide an interactive, conversational interface for personalized career advice and to act as a central hub for the app's tools.
 -   **Implementation:**
-    -   **Contextual Session:** `careerCoachService.ts` initializes a chat session with the Gemini API, providing a detailed system prompt that includes the user's full active profile and document history.
-    -   **Tool Calling (Function Calling):** The coach is configured with a set of tools it can use:
-        -   `updateProfessionalSummary`: Directly modifies the user's active profile.
-        -   `navigateToResumeGenerator`: Sends the user to the document generator with a pre-filled job description.
-        -   `navigateToCoffeeChat`: Sends the user to the networking tool.
-        -   `promptToCreateCareerPath`: This is the key tool for career planning. When a user asks for a career plan, the AI calls this function, which triggers a special UI prompt in the chat. The AI then waits for the user's response to this prompt.
+    -   **Contextual Session:** `careerCoachService.ts` initializes a chat session with the Gemini API, providing a detailed system prompt that includes the user's full active profile and history.
+    -   **Tool Calling (Function Calling):** The coach is configured with a wide array of tools to perform actions or navigate the user, including:
+        -   Updating the user's profile summary.
+        -   Navigating to the document generator or networking tools.
+        -   Initiating a career path generation.
+        -   Starting a mock interview session.
+        -   Providing negotiation prep.
+        -   Quantifying work experience and reframing feedback.
 
-## 6. Career Path Planner
-
+### b. Career Path Planner
 -   **Location:** `CareerPathPage.tsx`
 -   **Purpose:** To visualize the long-term career roadmap generated by the AI.
 -   **Workflow:**
     1.  The user requests a career path from the **AI Career Coach**.
     2.  The coach calls the `promptToCreateCareerPath` tool, showing a confirmation UI to the user.
-    3.  If the user agrees, the `CareerCoachPage` component initiates a background generation process via `generationService.ts`, which sends a detailed prompt and schema to `gemini-2.5-pro`.
-    4.  The result is saved to the active profile in `localStorage`.
-    5.  The `CareerPathPage` reads this data and displays it as an interactive, scroll-aware timeline.
--   **YouTube Recommendations:** To provide immediate value, the `CareerPathPage` also calls `generationService.ts` to get a list of relevant YouTube videos for the target role. It then pings a public YouTube endpoint for each video to verify its existence before displaying it, ensuring no broken links are shown.
+    3.  If the user agrees, `generationService.ts` generates a detailed, 5-year plan.
+    4.  The result is saved to the active profile, and the `CareerPathPage` displays it as an interactive, scroll-aware timeline.
+-   **YouTube Recommendations:** The page also fetches and verifies relevant YouTube videos for the target role to provide immediate learning resources.
+
+## 4. Preparation Tools
+
+### a. Interview Prep Center
+-   **Location:** `InterviewPrepPage.tsx`
+-   **Purpose:** A dedicated hub for all pre-interview preparation.
+-   **Tools:**
+    -   **Story Shaper:** Transforms a user's "brain dump" into a structured story using the STAR method.
+    -   **Rapport Builder:** Generates talking points and insightful questions based on an interviewer's bio.
+    -   **Question Bank:** Creates a list of likely interview questions from a job description.
+
+### b. Coffee Chat Prepper
+-   **Location:** `CoffeeChatPrepperPage.tsx`
+-   **Purpose:** To help users excel at professional networking.
+-   **Modes:**
+    -   **Prep Mode:** Generates a "Coffee Chat Brief" with talking points and shared connections.
+    -   **Reach Out Mode:** Generates a concise, professional outreach message.

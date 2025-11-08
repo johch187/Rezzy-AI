@@ -6,7 +6,6 @@ import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 
 const CoffeeChatPrepperPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
-    const navigate = useNavigate();
     const location = useLocation();
 
     const { initialMode, initialCounterpartInfo } = (location.state as {
@@ -16,13 +15,14 @@ const CoffeeChatPrepperPage: React.FC = () => {
 
     const [generationMode, setGenerationMode] = useState<'prep' | 'reach_out'>(initialMode || 'prep');
     const [counterpartInfo, setCounterpartInfo] = useState(initialCounterpartInfo || '');
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     if (!profileContext) return <div>Loading...</div>;
-    const { profile, tokens, setTokens } = profileContext;
+    const { profile, tokens, setTokens, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
 
-    const handleGenerate = async () => {
+    const isGenerating = backgroundTasks.some(t => t.type === 'coffee-chat' && t.status === 'running');
+
+    const handleGenerate = () => {
         if (!counterpartInfo.trim()) {
             setError("Please provide some information about the person you're meeting.");
             return;
@@ -32,27 +32,31 @@ const CoffeeChatPrepperPage: React.FC = () => {
             return;
         }
 
-        setIsLoading(true);
         setError(null);
+        setTokens(prev => prev - 1);
 
-        try {
-            const result = generationMode === 'prep'
-                ? await generateCoffeeChatBrief(profile, counterpartInfo)
-                : await generateReachOutMessage(profile, counterpartInfo);
+        const taskId = startBackgroundTask({
+            type: 'coffee-chat',
+            description: generationMode === 'prep' ? 'Coffee chat brief' : 'Reach out message',
+        });
 
-            setTokens(prev => prev - 1);
-            navigate('/coffee-chats/result', { 
-                state: { 
+        (async () => {
+            try {
+                const result = generationMode === 'prep'
+                    ? await generateCoffeeChatBrief(profile, counterpartInfo)
+                    : await generateReachOutMessage(profile, counterpartInfo);
+
+                const finalResultPayload = { 
                     content: result,
                     generationMode: generationMode,
                     counterpartInfo: counterpartInfo,
-                } 
-            });
-        } catch (e: any) {
-            setError(e.message || "An unexpected error occurred. Please try again.");
-        } finally {
-            setIsLoading(false);
-        }
+                };
+                updateBackgroundTask(taskId, { status: 'completed', result: finalResultPayload });
+            } catch (e: any) {
+                setTokens(prev => prev + 1); // Refund token
+                updateBackgroundTask(taskId, { status: 'error', result: { message: e.message || "An unexpected error occurred." } });
+            }
+        })();
     };
     
     const placeholderText = generationMode === 'prep'
@@ -115,16 +119,16 @@ const CoffeeChatPrepperPage: React.FC = () => {
                         placeholder={placeholderText}
                         value={counterpartInfo}
                         onChange={(e) => setCounterpartInfo(e.target.value)}
-                        disabled={isLoading}
+                        disabled={isGenerating}
                     />
                     <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4">
                         <p className="text-sm text-gray-600">This will cost <span className="font-bold">1 Token</span>.</p>
                         <button
                             onClick={handleGenerate}
-                            disabled={isLoading || !counterpartInfo.trim()}
+                            disabled={isGenerating || !counterpartInfo.trim()}
                             className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
-                            {isLoading ? (
+                            {isGenerating ? (
                                 <>
                                     <LoadingSpinnerIcon className="h-5 w-5 mr-3" />
                                     Generating...
