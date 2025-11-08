@@ -49,6 +49,13 @@ Effective prompt engineering is critical to the success of the application.
 -   **Goal:** To power the various tools in the Interview Prep Center and other parts of the app.
 -   **Strategy:** Each tool (e.g., `shapeInterviewStory`, `generateInterviewQuestions`) has a dedicated function with a highly specific prompt and, where necessary, a JSON schema to structure the output for easy rendering in the UI.
 
+### e. Application Analysis & Mentor Matching (`generationService.ts`)
+
+-   **Goal:** To provide specialized, structured analysis for standalone tools.
+-   **Strategy:**
+    -   **`analyzeApplicationFit`**: The prompt asks the AI to act as a career analyst, comparing a resume to a job description. A strict JSON schema with keys like `fitScore`, `gapAnalysis`, and `keywordOptimization` is used to get a structured analysis object.
+    -   **`findMentorMatch`**: The prompt instructs the AI to act as an academic advisor, comparing a thesis topic to faculty bios. It uses a JSON schema to return an array of `MentorMatch` objects, ensuring the data is correctly structured for ranking and display.
+
 ## 3. Model Selection Strategy
 
 We strategically use different Gemini models to balance cost, speed, and quality:

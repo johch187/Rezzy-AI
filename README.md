@@ -6,9 +6,9 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 
 -   **Dynamic Profile Builder**: Create comprehensive professional profiles that act as the single source of truth for the AI. Manage multiple profiles for different career targets.
 -   **Intelligent Resume Import**: Upload a PDF, TXT, or MD file to automatically parse and populate your profile in seconds.
--   **Tailored Document Generation**: Generate job-specific resumes and cover letters by combining your profile with a target job description.
--   **AI Career Coach**: Chat with an interactive AI assistant for personalized career advice, resume feedback, negotiation prep, and more. The coach can directly update your profile and guide you to other tools.
--   **Personalized Career Path**: Get a detailed, multi-year career roadmap to guide you from your current role to your dream job.
+-   **AI-Powered Application Tailoring**: Generate job-specific resumes and cover letters by combining your profile with a target job description, complete with an integrated **Application Fit Analysis**.
+-   **AI Career Coach**: Chat with an interactive AI assistant for personalized career advice. The coach can directly update your profile, start mock interviews, provide negotiation prep, and guide you to other tools.
+-   **Personalized Career Path**: Get a detailed, multi-year career roadmap to guide you from your current role to your dream job, complete with AI-curated video recommendations.
 -   **Interview Prep Center**: A full suite of tools to prepare for interviews:
     -   **Story Shaper**: Transform a "brain dump" into a clear interview story using the STAR method.
     -   **Rapport Builder**: Get talking points and questions to build rapport with your interviewer.

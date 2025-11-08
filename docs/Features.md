@@ -12,19 +12,19 @@ This document provides a detailed look at the major features of the Keju applica
     -   **Resume Import:** Users can upload a `.pdf`, `.txt`, or `.md` file. The `parserService.ts` parses the file and populates the *currently active* profile form.
     -   **Autosave & Manual Save:** The profile is automatically saved to `localStorage` periodically, and a "Save Changes" bar appears for immediate manual saves.
 
-## 2. Document Generation & Analysis Suite
+## 2. Application Tailoring & Analysis Suite
 
-### a. Document Generation
+### a. Application Tailoring
 -   **Location:** `GeneratePage.tsx`
 -   **Purpose:** To generate resumes and cover letters that are highly tailored to a specific job application, using the currently active profile as the data source.
 -   **Workflow:**
     1.  The user provides a job description via URL or paste.
     2.  The user selects which items from their active profile to include.
-    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents.
+    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents and an accompanying **Application Fit Analysis**.
 
 ### b. Generation Results & Editor
 -   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
--   **Purpose:** To allow users to review, refine, and export their AI-generated documents.
+-   **Purpose:** To allow users to review, refine, and export their AI-generated documents alongside their application analysis.
 -   **Key Features:**
     -   **Smart Parsing:** Upon receiving the generated markdown, the app uses `parserService.ts` to parse it back into a structured format for rich editing.
     -   **Rich Editing:** The document is displayed in a form-based editor where users can edit individual fields.
@@ -72,3 +72,13 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Modes:**
     -   **Prep Mode:** Generates a "Coffee Chat Brief" with talking points and shared connections.
     -   **Reach Out Mode:** Generates a concise, professional outreach message.
+
+## 5. Standalone Analysis Tools
+
+### a. Application Strength Analysis
+-   **Location:** `ApplicationAnalysisPage.tsx`
+-   **Purpose:** A standalone tool for users to compare any resume text against a job description to receive a fit score, gap analysis, and keyword optimizations.
+
+### b. Mentor Matcher
+-   **Location:** `MentorMatcherPage.tsx`
+-   **Purpose:** A specialized academic tool that helps students find the most suitable faculty mentor by analyzing their thesis topic against a list of faculty bios.
