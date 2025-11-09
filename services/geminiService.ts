@@ -2,12 +2,7 @@ import { GoogleGenAI, GenerateContentParameters } from "@google/genai";
 import { parseError } from '../utils';
 
 const API_KEY = import.meta.env.VITE_API_KEY;
-
-if (!API_KEY) {
-    throw new Error("VITE_API_KEY environment variable not set. Gemini Service cannot be initialized.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
@@ -21,6 +16,9 @@ const INITIAL_BACKOFF_MS = 1000;
  */
 // FIX: Replaced deprecated `GenerateContentRequest` with `GenerateContentParameters`.
 export const generateContentWithRetry = async (request: GenerateContentParameters): Promise<string> => {
+    if (!ai) {
+        throw new Error("Gemini API key missing. Please add VITE_API_KEY in your environment to enable AI features.");
+    }
     let lastError: Error | null = null;
 
     for (let i = 0; i < MAX_RETRIES; i++) {

@@ -16,6 +16,7 @@ const CareerCoachPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const chatSession = useRef<Chat | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const hasGeminiKey = Boolean(import.meta.env.VITE_API_KEY);
     
     const [careerPathPrompt, setCareerPathPrompt] = useState<{
         show: boolean;
@@ -31,6 +32,16 @@ const CareerCoachPage: React.FC = () => {
 
     useEffect(() => {
         if (profile) {
+            if (!hasGeminiKey) {
+                chatSession.current = null;
+                setMessages([{
+                    role: 'model',
+                    content: "The AI Career Coach requires a Gemini API key (VITE_API_KEY) to run. Add the key in your environment variables and redeploy to enable this feature.",
+                    id: crypto.randomUUID(),
+                }]);
+                return;
+            }
+
             chatSession.current = createCareerCoachSession(profile, documentHistory);
             
             const isProfileEffectivelyEmpty = (
@@ -65,7 +76,7 @@ const CareerCoachPage: React.FC = () => {
                 }]);
             }
         }
-    }, [profile, documentHistory, navigate]);
+    }, [profile, documentHistory, navigate, hasGeminiKey]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -191,7 +202,7 @@ const CareerCoachPage: React.FC = () => {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!userInput.trim() || isLoading || !chatSession.current) return;
+        if (!userInput.trim() || isLoading || !chatSession.current || !hasGeminiKey) return;
 
         const newUserMessage = { role: 'user' as const, content: userInput, id: crypto.randomUUID() };
         setMessages(prev => [...prev, newUserMessage]);
@@ -412,6 +423,11 @@ const CareerCoachPage: React.FC = () => {
                             <span>Generating your career path in the background...</span>
                         </div>
                     )}
+                    {!hasGeminiKey && (
+                        <p className="text-sm text-red-500 mb-3">
+                            AI Career Coach is disabled until you add a Gemini API key (VITE_API_KEY) and redeploy.
+                        </p>
+                    )}
                     <form onSubmit={handleSubmit} className="flex items-start gap-4">
                         <textarea
                             value={userInput}
@@ -425,9 +441,9 @@ const CareerCoachPage: React.FC = () => {
                             placeholder="Ask me anything about your career..."
                             className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-brand-blue focus:outline-none transition"
                             rows={1}
-                            disabled={isLoading}
+                            disabled={isLoading || !hasGeminiKey}
                         />
-                        <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
+                        <button type="submit" disabled={isLoading || !userInput.trim() || !hasGeminiKey} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
                             Send
                         </button>
                     </form>

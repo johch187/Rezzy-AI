@@ -2,12 +2,7 @@ import { GoogleGenAI, FunctionDeclaration, Type, Chat } from "@google/genai";
 import type { ProfileData, DocumentGeneration } from '../types';
 
 const API_KEY = import.meta.env.VITE_API_KEY;
-
-if (!API_KEY) {
-    throw new Error("VITE_API_KEY environment variable not set. Career Coach Service cannot be initialized.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 // --- Tool Definitions for Career Coach ---
 
@@ -118,6 +113,9 @@ const getNegotiationPrepDeclaration: FunctionDeclaration = {
  * @returns An initialized Chat instance.
  */
 export const createCareerCoachSession = (profile: ProfileData, documentHistory: DocumentGeneration[]): Chat => {
+  if (!ai) {
+    throw new Error("Gemini API key missing. Set VITE_API_KEY to enable the AI Career Coach.");
+  }
   const modelName = 'gemini-2.5-pro'; // Use the more advanced model for coaching
 
   const systemInstruction = `
