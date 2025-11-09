@@ -138,6 +138,7 @@ The following environment variables are required:
     ```
 4. (Optional) Configure OAuth providers (e.g., Google) under **Authentication → Providers**.
 5. Connect Supabase to Vercel following the [Vercel × Supabase integration guide](https://supabase.com/partners/integrations/vercel) so preview deployments share the same credentials.
+6. Need a copy-paste friendly version? See `docs/SUPABASE_SCHEMA.md` for the complete schema, policies, and triggers.
 
 ### Vercel Configuration
 
