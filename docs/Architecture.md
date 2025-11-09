@@ -16,11 +16,11 @@ The project is organized into a modular structure to promote separation of conce
 
 -   **`index.tsx`**: The main entry point of the application which renders the `App` component into the DOM.
 -   **`App.tsx`**: The root component that manages global state via `ProfileContext` and sets up the application's routing structure, including all pages and tools.
--   **`pages/`**: Contains top-level components that correspond to a specific URL route (e.g., `HomePage.tsx`, `GeneratePage.tsx`, `InterviewPrepPage.tsx`). These components are responsible for the overall layout and data flow of a given page.
+-   **`pages/`**: Contains top-level components that correspond to a specific URL route (e.g., `HomePage.tsx`, `GeneratePage.tsx`, `InterviewPrepPage.tsx`, `ApplicationAnalysisPage.tsx`, `MentorMatcherPage.tsx`). These components are responsible for the overall layout and data flow of a given page.
 -   **`components/`**: A collection of reusable UI components used across different pages (e.g., `Header.tsx`, `AccordionItem.tsx`, `ProfileForm.tsx`). This promotes code reuse and consistency.
 -   **`services/`**: Holds modules responsible for business logic and external API interactions. This abstracts complex operations away from the UI components.
     -   `geminiService.ts`: A low-level wrapper for the Google Gemini API, including robust error handling and retry logic.
-    -   `generationService.ts`: Contains high-level functions that build specific prompts and call the Gemini service for a wide range of tasks, from generating documents to analyzing application fit.
+    -   `generationService.ts`: Contains high-level functions that build specific prompts and call the Gemini service for a wide range of tasks, from generating documents to analyzing application fit and finding mentor matches.
     -   `parserService.ts`: Handles the logic for parsing uploaded resumes and converting generated markdown back into structured data.
     -   `careerCoachService.ts`: Manages the setup and interaction logic for the AI Career Coach chat session, including defining all available tools (function calls).
     -   `scrapingService.ts`: Handles fetching and parsing job description content from URLs.

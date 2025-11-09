@@ -20,9 +20,17 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Workflow:**
     1.  The user provides a job description via URL or paste.
     2.  The user selects which items from their active profile to include.
-    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents and an accompanying **Application Fit Analysis**.
+    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents.
 
-### b. Generation Results & Editor
+### b. Application Fit Analysis (Integrated & Standalone)
+-   **Location:** `GeneratePage.tsx` (integrated), `ApplicationAnalysisPage.tsx` (standalone)
+-   **Purpose:** To provide users with a detailed analysis of how well their resume matches a job description, offering concrete improvement suggestions.
+-   **Workflow:**
+    1.  **Integrated:** During document generation (`GeneratePage.tsx`), if a job description and a resume (either generated or uploaded) are present, `generationService.ts` will automatically perform a fit analysis.
+    2.  **Standalone:** On the `ApplicationAnalysisPage.tsx`, users can input any resume text and job description to get a dedicated analysis.
+    3.  `generationService.ts` calls the Gemini API with a specific prompt and schema (`analyzeApplicationFit`) to get a `fitScore`, `gapAnalysis`, `keywordOptimization`, and `impactEnhancer`.
+
+### c. Generation Results & Editor
 -   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
 -   **Purpose:** To allow users to review, refine, and export their AI-generated documents alongside their application analysis.
 -   **Key Features:**
@@ -75,10 +83,9 @@ This document provides a detailed look at the major features of the Keju applica
 
 ## 5. Standalone Analysis Tools
 
-### a. Application Strength Analysis
--   **Location:** `ApplicationAnalysisPage.tsx`
--   **Purpose:** A standalone tool for users to compare any resume text against a job description to receive a fit score, gap analysis, and keyword optimizations.
-
-### b. Mentor Matcher
+### a. Mentor Matcher
 -   **Location:** `MentorMatcherPage.tsx`
 -   **Purpose:** A specialized academic tool that helps students find the most suitable faculty mentor by analyzing their thesis topic against a list of faculty bios.
+-   **Workflow:**
+    1.  The user provides their thesis topic/abstract and a list of faculty with their bios.
+    2.  `generationService.ts` calls the Gemini API with a specific prompt and schema (`findMentorMatch`) to get a ranked list of potential mentors, including a match `score` and `reasoning`.

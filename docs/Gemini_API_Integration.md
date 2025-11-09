@@ -20,7 +20,7 @@ This service provides a single, robust function, `generateContentWithRetry`, tha
 This service sits on top of `geminiService.ts` and contains the business logic for specific generative tasks.
 
 -   **Purpose:** To abstract the complexities of prompt engineering away from the page components.
--   **Implementation:** Each function in this service (e.g., `generateTailoredDocuments`, `analyzeApplicationFit`) is responsible for constructing a detailed prompt, defining a `responseSchema` for structured JSON output, calling `generateContentWithRetry`, and processing the response.
+-   **Implementation:** Each function in this service (e.g., `generateTailoredDocuments`, `analyzeApplicationFit`, `findMentorMatch`) is responsible for constructing a detailed prompt, defining a `responseSchema` for structured JSON output, calling `generateContentWithRetry`, and processing the response.
 
 ## 2. Key Prompts & Schemas
 
@@ -72,4 +72,5 @@ We strategically use different Gemini models to balance cost, speed, and quality
         -   All Interview Prep tasks.
         -   Parsing *generated* documents back into structured data for the editor.
         -   Reparsing a resume from a file if the user uploads again within a 10-minute window (providing a higher-quality "second chance" parse).
+        -   All Application Strength Analysis and Mentor Matcher tasks.
     -   **Reasoning:** Its superior reasoning and instruction-following are essential for our most complex and nuanced tasks, ensuring the highest quality output where it matters most.
