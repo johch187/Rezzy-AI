@@ -8,6 +8,18 @@ This guide will help you deploy your Keju application to Vercel.
 2. A Vercel account (sign up at [vercel.com](https://vercel.com))
 3. Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
 
+## Important: Root Directory Configuration
+
+**If your project is in a subdirectory** (e.g., `Rezzy-AI/`), you **must** configure Vercel to use that directory as the root:
+
+1. Go to your Vercel project settings
+2. Navigate to "General" → "Root Directory"
+3. Set the root directory to `Rezzy-AI` (or whatever your project folder is named)
+4. Save the changes
+5. Redeploy your project
+
+This ensures Vercel builds from the correct directory where your `package.json` and source files are located.
+
 ## Quick Deployment Steps
 
 ### 1. Prepare Your Repository
