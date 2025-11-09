@@ -1,5 +1,5 @@
 import { GoogleGenAI, FunctionDeclaration, Type, Chat } from "@google/genai";
-import type { ProfileData, DocumentHistoryItem } from '../types';
+import type { ProfileData, DocumentGeneration } from '../types';
 
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable not set. Career Coach Service cannot be initialized.");
@@ -115,7 +115,7 @@ const getNegotiationPrepDeclaration: FunctionDeclaration = {
  * @param documentHistory The user's document generation history.
  * @returns An initialized Chat instance.
  */
-export const createCareerCoachSession = (profile: ProfileData, documentHistory: DocumentHistoryItem[]): Chat => {
+export const createCareerCoachSession = (profile: ProfileData, documentHistory: DocumentGeneration[]): Chat => {
   const modelName = 'gemini-2.5-pro'; // Use the more advanced model for coaching
 
   const systemInstruction = `

@@ -2,7 +2,8 @@ import React, { useContext } from 'react';
 import { ProfileContext } from '../../App';
 import type { Experience } from '../../types';
 import { TrashIcon, XCircleIcon } from '../Icons';
-import { TooltipLabel, baseInputStyles, validInputStyles } from './common';
+import Tooltip from '../Tooltip';
+import { baseInputStyles, validInputStyles } from './common';
 
 export const ExperienceSection = React.memo(() => {
     const { profile, setProfile } = useContext(ProfileContext)!;
@@ -62,15 +63,15 @@ export const ExperienceSection = React.memo(() => {
                         <TrashIcon />
                     </button>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The name of the company.">Company</TooltipLabel></label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Innovate Inc. or Sterling Bank" /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Your job title for this role.">Title</TooltipLabel></label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Software Engineer or Office Manager" /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="e.g., 'Remote' or 'City, CA'">Location</TooltipLabel></label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Remote" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="The name of the company.">Company</Tooltip></label><input value={exp.company} onChange={e => handleChange(exp.id, 'company', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Innovate Inc. or Sterling Bank" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Your job title for this role.">Title</Tooltip></label><input value={exp.title} onChange={e => handleChange(exp.id, 'title', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Software Engineer or Office Manager" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="e.g., 'Remote' or 'City, CA'">Location</Tooltip></label><input value={exp.location} onChange={e => handleChange(exp.id, 'location', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Remote" /></div>
                         <div></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Start date of employment. e.g., 'MM/YYYY' or 'YYYY'">Start Date</TooltipLabel></label><input value={exp.startDate} onChange={e => handleChange(exp.id, 'startDate', e.target.value)} placeholder="YYYY or MM/YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="End date of employment. e.g., 'MM/YYYY' or 'Present'">End Date</TooltipLabel></label><input value={exp.endDate} onChange={e => handleChange(exp.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Start date of employment. e.g., 'MM/YYYY' or 'YYYY'">Start Date</Tooltip></label><input value={exp.startDate} onChange={e => handleChange(exp.id, 'startDate', e.target.value)} placeholder="YYYY or MM/YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="End date of employment. e.g., 'MM/YYYY' or 'Present'">End Date</Tooltip></label><input value={exp.endDate} onChange={e => handleChange(exp.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
                     </div>
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1"><TooltipLabel text="List your accomplishments with strong action verbs and quantifiable results where possible.">Achievements / Responsibilities</TooltipLabel></label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1"><Tooltip text="List your accomplishments with strong action verbs and quantifiable results where possible.">Achievements / Responsibilities</Tooltip></label>
                         <div className="space-y-2 mt-1">
                             {exp.achievements.map(ach => (
                                 <div key={ach.id} className="flex items-center space-x-2">

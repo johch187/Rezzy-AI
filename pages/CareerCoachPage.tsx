@@ -1,34 +1,17 @@
-
 import React, { useState, useEffect, useContext, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { createCareerCoachSession } from '../services/careerCoachService';
-import { generateCareerPath } from '../services/generationService';
+import { generateCareerPath, getVideosForMilestone } from '../services/generationService';
 import { LoadingSpinnerIcon, UserIcon } from '../components/Icons';
-import type { Chat, GenerateContentResponse, Part } from '@google/genai';
-
-// Simple markdown parser for bold text and lists
-const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
-    // A simple regex to check if there are list items to avoid wrapping single lines in <ul>
-    const hasListItems = /^- .*/m.test(text);
-
-    let html = text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^- (.*$)/gm, '<li class="list-disc ml-6">$1</li>');
-        
-    if(hasListItems) {
-      html = html.replace(/(<li.*<\/li>)/gs, '<ul>$1</ul>');
-    }
-    
-    html = html.replace(/\n/g, '<br />');
-
-    return <div dangerouslySetInnerHTML={{ __html: html }} />;
-};
+import type { Chat, GenerateContentResponse, Part, FunctionCall } from '@google/genai';
+import type { YouTubeVideo } from '../types';
+import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
 const CareerCoachPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
     const navigate = useNavigate();
-    const [messages, setMessages] = useState<{ role: 'user' | 'model' | 'system'; content: string; id: string }[]>([]);
+    const [messages, setMessages] = useState<{ role: 'user' | 'model' | 'system'; content: string; id: string; action?: React.ReactNode }[]>([]);
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const chatSession = useRef<Chat | null>(null);
@@ -42,33 +25,59 @@ const CareerCoachPage: React.FC = () => {
     } | null>(null);
 
     if (!profileContext) return <div>Loading...</div>
-    const { profile, setProfile, documentHistory, activeProfileId, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
+    const { profile, setProfile, documentHistory, careerChatHistory, addCareerChatSummary, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
 
     const isGeneratingPath = backgroundTasks.some(t => t.type === 'career-path' && t.status === 'running');
 
     useEffect(() => {
         if (profile) {
             chatSession.current = createCareerCoachSession(profile, documentHistory);
-            setMessages([{
-                role: 'model',
-                content: `Hi! I'm your Keju AI Career Coach. I've reviewed your "${profile.name}" profile and am ready to help. How can I assist you today?`,
-                id: crypto.randomUUID()
-            }]);
+            
+            const isProfileEffectivelyEmpty = (
+                !profile.summary.trim() &&
+                profile.experience.length === 0 &&
+                profile.education.length === 0 &&
+                !profile.jobTitle.trim()
+            );
+
+            if (isProfileEffectivelyEmpty) {
+                const initialMessage = `Hi! I'm your Keju AI Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
+                const actionButton = (
+                    <button
+                        onClick={() => navigate('/builder')}
+                        className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-white text-brand-blue font-semibold rounded-lg shadow-sm border border-brand-blue/30 hover:bg-brand-blue/10 transition-colors"
+                    >
+                        Go to My Profile
+                    </button>
+                );
+                setMessages([{
+                    role: 'model',
+                    content: initialMessage,
+                    id: crypto.randomUUID(),
+                    action: actionButton,
+                }]);
+            } else {
+                const initialMessage = `Hi! I'm your Keju AI Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
+                 setMessages([{
+                    role: 'model',
+                    content: initialMessage,
+                    id: crypto.randomUUID()
+                }]);
+            }
         }
-    }, [profile, documentHistory, activeProfileId]);
+    }, [profile, documentHistory, navigate]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, careerPathPrompt]);
+    }, [messages, careerPathPrompt, isLoading]);
 
-    const handleFunctionCall = async (response: GenerateContentResponse): Promise<GenerateContentResponse | null> => {
-        const functionCalls = response.functionCalls;
+    const handleFunctionCall = async (functionCalls: FunctionCall[]): Promise<void> => {
         if (!functionCalls || functionCalls.length === 0 || !profile) {
-            return null; // No function call to handle
+            setIsLoading(false);
+            return;
         }
     
         const functionResponses: Part[] = [];
-        // Defer state updates until after the API call to avoid race conditions
         const postSendActions: (() => void)[] = [];
         let shouldNavigate = false;
     
@@ -80,7 +89,7 @@ const CareerCoachPage: React.FC = () => {
                     const { newSummary } = call.args;
                     functionExecutionResult = { result: "The user's professional summary was successfully updated." };
                     postSendActions.push(() => {
-                        setProfile(prev => ({ ...prev, summary: newSummary as string }));
+                        setProfile(prev => prev ? ({ ...prev, summary: newSummary as string }) : null);
                         setMessages(prev => [...prev, {
                             role: 'system',
                             content: "Success! I've updated your professional summary on your Profile page.",
@@ -149,15 +158,35 @@ const CareerCoachPage: React.FC = () => {
                 },
             });
         }
+        
+        postSendActions.forEach(action => action());
     
         if (chatSession.current && functionResponses.length > 0) {
-            const modelResponse = await chatSession.current.sendMessage({ message: functionResponses });
-            // After the API call is complete, execute all deferred state updates.
-            postSendActions.forEach(action => action());
-            return modelResponse;
+            const stream = await chatSession.current.sendMessageStream({ message: functionResponses });
+            
+            let fullText = "";
+            const modelMessageId = crypto.randomUUID();
+            setMessages(prev => [...prev, { role: 'model', content: '', id: modelMessageId }]);
+            let functionCallInFollowUp = false;
+
+            for await (const chunk of stream) {
+                if (chunk.text) {
+                    fullText += chunk.text;
+                    setMessages(prev => prev.map(m => m.id === modelMessageId ? { ...m, content: fullText } : m));
+                }
+                if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+                    functionCallInFollowUp = true;
+                    await handleFunctionCall(chunk.functionCalls);
+                    break;
+                }
+            }
+
+            if (!functionCallInFollowUp) {
+                setIsLoading(false);
+            }
+        } else {
+            setIsLoading(false);
         }
-    
-        return null;
     };
 
     const handleSubmit = async (e: FormEvent) => {
@@ -169,28 +198,43 @@ const CareerCoachPage: React.FC = () => {
         const currentInput = userInput;
         setUserInput('');
         setIsLoading(true);
-        setCareerPathPrompt(null); // Hide any open prompts when user types something new
+        setCareerPathPrompt(null);
 
         try {
-            let response = await chatSession.current.sendMessage({ message: currentInput });
+            const stream = await chatSession.current.sendMessageStream({ message: currentInput });
             
-            if (response && response.text) {
-                const modelResponse = { role: 'model' as const, content: response.text, id: crypto.randomUUID() };
-                setMessages(prev => [...prev, modelResponse]);
+            let fullText = "";
+            const modelMessageId = crypto.randomUUID();
+            setMessages(prev => [...prev, { role: 'model', content: '', id: modelMessageId }]);
+            
+            const responseChunks: GenerateContentResponse[] = [];
+            for await (const chunk of stream) {
+                responseChunks.push(chunk);
+                if (chunk.text) {
+                    fullText += chunk.text;
+                    setMessages(prev => prev.map(m => m.id === modelMessageId ? { ...m, content: fullText } : m));
+                }
             }
-            
-            const functionCallFollowUpResponse = await handleFunctionCall(response);
 
-            if (functionCallFollowUpResponse && functionCallFollowUpResponse.text) {
-                const modelResponse = { role: 'model' as const, content: functionCallFollowUpResponse.text, id: crypto.randomUUID() };
-                setMessages(prev => [...prev, modelResponse]);
+            // After a full user-model interaction, add a summary to career chat history
+            addCareerChatSummary({
+                id: crypto.randomUUID(),
+                title: currentInput.substring(0, 50) + (currentInput.length > 50 ? '...' : ''), // Take first 50 chars as title
+                timestamp: new Date().toISOString(),
+            });
+
+            const aggregatedFunctionCalls = responseChunks.flatMap(chunk => chunk.functionCalls || []);
+
+            if (aggregatedFunctionCalls.length > 0) {
+                await handleFunctionCall(aggregatedFunctionCalls);
+            } else {
+                setIsLoading(false);
             }
 
         } catch (error) {
             console.error("Error chatting with coach:", error);
             const errorMessage = { role: 'system' as const, content: 'Sorry, I encountered an error. Please try again.', id: crypto.randomUUID() };
             setMessages(prev => [...prev, errorMessage]);
-        } finally {
             setIsLoading(false);
         }
     };
@@ -212,17 +256,48 @@ const CareerCoachPage: React.FC = () => {
             description: `Career Path to ${targetRole}`
         });
 
-        generateCareerPath(profile, currentRole, targetRole)
-            .then(newPath => {
-                setProfile(prev => ({...prev, careerPath: newPath}));
+        (async () => {
+            try {
+                const newPath = await generateCareerPath(profile, currentRole, targetRole);
+
+                // Pre-fetch videos for each milestone
+                const pathWithVideos = await Promise.all(
+                    newPath.path.map(async (milestone) => {
+                        try {
+                            const videos = await getVideosForMilestone(newPath.targetRole, milestone);
+                            
+                            // Verify videos exist to prevent broken links
+                            const verificationPromises = videos.map(video => 
+                                fetch(`https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v=${video.videoId}&format=json`)
+                                    .then(response => ({ video, exists: response.ok }))
+                            );
+                            
+                            const verificationResults = await Promise.allSettled(verificationPromises);
+    
+                            const validVideos = verificationResults
+                                .filter((result): result is PromiseFulfilledResult<{ video: YouTubeVideo; exists: boolean; }> => result.status === 'fulfilled' && result.value.exists)
+                                .map(result => result.value.video);
+
+                            return { ...milestone, recommendedVideos: validVideos };
+                        } catch (videoError) {
+                            console.error(`Failed to fetch videos for milestone: ${milestone.milestoneTitle}`, videoError);
+                            return { ...milestone, recommendedVideos: [] }; // Return milestone with empty array on error
+                        }
+                    })
+                );
+
+                const finalPathWithVideos = { ...newPath, path: pathWithVideos };
+
+                setProfile(prev => prev ? ({...prev, careerPath: finalPathWithVideos}) : null);
                 updateBackgroundTask(taskId, { status: 'completed', result: { success: true } });
-            })
-            .catch(err => {
+
+            } catch (err: any) {
                 console.error("Failed to generate career path:", err);
                 updateBackgroundTask(taskId, { status: 'error', result: { message: err.message } });
-                const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try asking again.`;
+                const errorMessage = `I'm sorry, I ran into an issue while creating your career path: ${err.message}. Please try again.`;
                 setMessages(prev => [...prev, { role: 'system', content: errorMessage, id: crypto.randomUUID() }]);
-            });
+            }
+        })();
     };
 
     const handleDeclinePath = () => {
@@ -248,9 +323,7 @@ const CareerCoachPage: React.FC = () => {
 
     const ModelIcon: React.FC = () => (
         <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-brand-blue" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 4a1 1 0 00-.526.92V15a1 1 0 00.526.92l7 4a1 1 0 00.788 0l7-4a1 1 0 00.526-.92V6.994a1 1 0 00-.526-.92l-7-4zM10 18.341L3.5 14.5v-7.842L10 10.341v8zM16.5 14.5L10 18.341v-8L16.5 6.658v7.842zM10 3.659l6.5 3.714-6.5 3.715L3.5 7.373 10 3.659z" />
-            </svg>
+            {/* Logo removed as per user request */}
         </div>
     );
     
@@ -264,7 +337,7 @@ const CareerCoachPage: React.FC = () => {
         return (
              <div className="flex items-start gap-4">
                 <ModelIcon />
-                <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-indigo-50 text-slate-800 rounded-bl-none border border-indigo-200">
+                <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-indigo-50 text-slate-800 border border-indigo-200">
                     <p className="font-medium">{promptText}</p>
                     <div className="mt-4 flex items-center gap-3">
                         <button
@@ -295,7 +368,7 @@ const CareerCoachPage: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] bg-base-200">
+        <div className="flex flex-col flex-grow bg-base-200">
             {/* Messages */}
             <div className="flex-grow overflow-y-auto">
                 <div className="pt-8 pb-28">
@@ -309,20 +382,20 @@ const CareerCoachPage: React.FC = () => {
                                 {msg.role === 'model' && <ModelIcon />}
                                 {msg.role === 'user' && <div className="order-2 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0"><UserIcon /></div>}
                                 
-                                <div className={`max-w-xl p-4 rounded-xl shadow-sm ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-br-none' : msg.role === 'model' ? 'bg-white text-slate-800 rounded-bl-none border border-slate-200' : 'bg-yellow-100 text-yellow-800 w-full text-center'}`}>
+                                <div className={`max-w-xl p-4 rounded-xl ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-br-none shadow-sm' : msg.role === 'model' ? 'text-slate-800' : 'bg-yellow-100 text-yellow-800 w-full text-center'}`}>
                                     <SimpleMarkdown text={msg.content} />
+                                    {msg.action && <div className="mt-2">{msg.action}</div>}
                                 </div>
                             </div>
                         ))}
 
                         {renderCareerPathPrompt()}
                         
-                        {isLoading && (
+                        {isLoading && messages.length > 0 && messages[messages.length-1].role !== 'user' && (
                             <div className="flex items-start gap-4">
                                 <ModelIcon />
-                                <div className="max-w-xl p-4 rounded-xl bg-white text-slate-800 rounded-bl-none border border-slate-200 flex items-center shadow-sm">
+                                <div className="max-w-xl p-4 rounded-xl text-slate-800 flex items-center">
                                     <LoadingSpinnerIcon className="h-5 w-5 mr-3" />
-                                    <span>Thinking...</span>
                                 </div>
                             </div>
                         )}
@@ -351,7 +424,7 @@ const CareerCoachPage: React.FC = () => {
                             }}
                             placeholder="Ask me anything about your career..."
                             className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-brand-blue focus:outline-none transition"
-                            rows={2}
+                            rows={1}
                             disabled={isLoading}
                         />
                         <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">

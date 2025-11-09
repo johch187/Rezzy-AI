@@ -5,14 +5,7 @@ import type { ProfileData, GeneratedContent, ParsedCoverLetter, ApplicationAnaly
 import EditableDocument from '../components/EditableDocument';
 import { XCircleIcon } from '../components/Icons';
 import ApplicationAnalysisWidget from '../components/ApplicationAnalysisWidget';
-
-function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
-  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
-}
-
-function isParsedResume(content: any): content is Partial<ProfileData> {
-  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
-}
+import { isParsedCoverLetter, isParsedResume } from '../utils';
 
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();

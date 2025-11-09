@@ -37,6 +37,20 @@ const VibeFocusSelector: React.FC = () => {
                         />
                     </div>
                     <div>
+                        <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                            Company Name
+                        </label>
+                        <input
+                            type="text"
+                            id="companyName"
+                            name="companyName"
+                            value={profile.companyName}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm"
+                            placeholder="e.g., Google, Goldman Sachs"
+                        />
+                    </div>
+                    <div>
                         <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700">
                             Seniority
                         </label>

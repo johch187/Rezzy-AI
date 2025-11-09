@@ -3,20 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { shapeInterviewStory, generateInterviewQuestions, generateCoffeeChatBrief } from '../services/generationService';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
+import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
 type Tool = 'story' | 'rapport' | 'questions';
-
-const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
-    const createMarkup = (markdown: string) => {
-        return markdown
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^## (.*$)/gm, '<h3 class="text-xl font-bold text-slate-800 mt-4 mb-2">$1</h3>')
-            .replace(/^- (.*$)/gm, '<li class="list-disc ml-5">$1</li>')
-            .replace(/(<li.*<\/li>)/gs, '<ul>$1</ul>')
-            .replace(/\n/g, '<br />');
-    };
-    return <div className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: createMarkup(text) }} />;
-};
 
 const InterviewPrepPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
@@ -140,7 +129,7 @@ const InterviewPrepPage: React.FC = () => {
     }
 
     return (
-        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
+        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Interview Prep Center</h1>

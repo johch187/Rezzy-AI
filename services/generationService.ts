@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Import MentorMatch type to be used in the new findMentorMatch function.
-import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouTubeVideo, ApplicationAnalysisResult, MentorMatch } from '../types';
-import { parseError } from '../utils';
+import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouTubeVideo, ApplicationAnalysisResult, MentorMatch, CareerMilestone } from '../types';
 import { generateContentWithRetry } from './geminiService';
 import { profileToMarkdown } from '../components/editor/markdownConverter';
 
@@ -394,7 +392,7 @@ export const generateCareerPath = async (
                 items: {
                     type: Type.OBJECT,
                     properties: {
-                        timeframe: { type: Type.STRING, description: "The general timeframe for this milestone (e.g., 'Year 1', 'Year 2')." },
+                        timeframe: { type: Type.STRING, description: "The general timeframe for this milestone (e.g., 'First 6 months', 'Year 1', 'Years 2-3')." },
                         milestoneTitle: { type: Type.STRING, description: "A concise, motivating title for this stage of the career path." },
                         milestoneDescription: { type: Type.STRING, description: "A brief 1-2 sentence summary of the goal for this milestone, potentially highlighting the quarterly focus." },
                         actionItems: {
@@ -423,7 +421,7 @@ export const generateCareerPath = async (
     };
 
     const prompt = `
-        You are a world-class career strategist and mentor AI. Your task is to create an exceptionally detailed, actionable, and realistic 5-year career path for a user.
+        You are a world-class career strategist and mentor AI. Your task is to create an exceptionally detailed, actionable, and realistic career path for a user.
 
         **CONTEXT:**
 
@@ -436,11 +434,11 @@ export const generateCareerPath = async (
 
         **YOUR DIRECTIVE:**
 
-        Create a comprehensive 5-year career path, structured as exactly 5 chronological milestones (one for each year). The path must be ambitious yet achievable, with a strong focus on granular, quarterly actions.
+        Create a comprehensive, actionable, and realistic career path. The duration of the path should be appropriate for the transition from their current role to their target role (e.g., 1-2 years for a small step up, 3-5+ years for a major career change).
 
         1.  **Analyze the Gap:** Deeply analyze the user's profile against the requirements of the target role. Identify critical gaps in skills, experience, projects, and network.
-        2.  **Define 5 Yearly Milestones:** Structure the entire path into 5 milestones with the timeframes "Year 1", "Year 2", "Year 3", "Year 4", and "Year 5". Each milestone should represent a major phase of development (e.g., "Year 1: Foundational Skills & Immersion", "Year 3: Specialization & Leadership").
-        3.  **Create Granular Quarterly Action Items:** For EACH of the 5 yearly milestones, you MUST provide a detailed list of action items.
+        2.  **Define Milestones:** Structure the path into a logical sequence of chronological milestones. The timeframes can be flexible (e.g., "First 6 Months", "Year 1", "Years 2-3"). The total number of milestones should reflect the complexity of the goal, typically between 2 and 5.
+        3.  **Create Granular Quarterly Action Items:** For EACH milestone, you MUST provide a detailed list of action items.
             *   **Quarterly Focus:** Each action item's title MUST be prefixed with the quarter it should be focused on (e.g., "Q1:", "Q2:", "Q3:", "Q4:").
             *   **Leverage Existing Skills:** Your suggestions must be tailored. If the user already has a skill (e.g., Python), suggest an advanced application of it rather than learning it from scratch. Reference their profile to make these connections.
             *   **Comprehensive & Diverse Categories:** Ensure the action items for each year cover a diverse range of categories like Skills, Projects, Networking, Certifications, and Extracurriculars.
@@ -451,14 +449,7 @@ export const generateCareerPath = async (
                 *   **Extracurriculars:** Suggest relevant volunteer work, hackathons, or competitions that build relevant experience and network. For example, "Q1: Participate in a weekend hackathon focused on FinTech solutions."
             *   **Actionable Descriptions:** The description for each action item must be specific and practical. Instead of "Learn Python," suggest "Complete the 'Python for Everybody' specialization on Coursera and apply skills to a small data analysis project."
 
-        **EXAMPLE SCENARIO (for a Junior Developer -> Senior Developer path):**
-        A "Year 2" milestone might have action items like:
-        - "Q1: Skills: Master containerization with Docker and Kubernetes."
-        - "Q2: Projects: Lead a feature development from design to deployment."
-        - "Q3: Networking: Mentor a junior engineer or intern on the team."
-        - "Q4: Extracurriculars: Contribute to a popular open-source library relevant to your tech stack."
-
-        Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema. The path array must contain exactly 5 milestone objects.
+        Your final output MUST be a single, valid JSON object that strictly adheres to the provided schema. The path array must contain a number of milestone objects appropriate for the career transition.
     `;
     
     const jsonText = await generateContentWithRetry({
@@ -480,47 +471,55 @@ export const generateCareerPath = async (
     };
 };
 
-export const getYouTubeRecommendations = async (targetRole: string): Promise<YouTubeVideo[]> => {
+export const getVideosForMilestone = async (targetRole: string, milestone: CareerMilestone): Promise<YouTubeVideo[]> => {
     if (!process.env.API_KEY) {
-        // Mock data for development
         return Promise.resolve([
-            { title: "Day in the Life of a Product Manager", channel: "Exponent", description: "An inside look at the daily responsibilities of a PM at a top tech company.", videoId: "i9lV7c_I-gA" },
-            { title: "How to Become a Product Manager in 2024", channel: "Product School", description: "A comprehensive guide on the skills and steps needed to break into product management.", videoId: "Z5x_gK-kg_4" },
-            { title: "Cracking the PM Interview: The Product Sense Question", channel: "A Product Manager's Journey", description: "Learn how to tackle the most common type of product management interview question.", videoId: "wih43Y2_v2w" },
-            { title: "What is Product Management?", channel: "Aha!", description: "A foundational video explaining the core concepts of product management.", videoId: "S0N-k1a7i-c" },
-            { title: "The Product Manager Career Path", channel: "Lenny Rachitsky", description: "Lenny explores the different levels and growth trajectories for product managers.", videoId: "hEDRcn5h5_4" },
-            { title: "Google Product Manager Mock Interview", channel: "Case Interview Prep", description: "Watch a mock interview to understand the types of questions asked for a Google PM role.", videoId: "g9I_6Kj24yA" },
-            { title: "Product Strategy Explained", channel: "ProductPlan", description: "Understand the fundamentals of creating a successful product strategy.", videoId: "g_c91Y8s4sM" }
+            { title: "How to Learn Any New Skill Fast", channel: "Productivity Channel", description: "A guide to mastering new skills.", videoId: "i9lV7c_I-gA" },
+            { title: "Effective Networking for Beginners", channel: "Career Advice", description: "Learn how to build your professional network.", videoId: "Z5x_gK-kg_4" },
+            { title: "DCF Model Tutorial", channel: "Finance Gurus", description: "Step by step DCF modeling.", videoId: "3-hY3b_KkNE" }
         ]);
     }
+    const actionItemsText = milestone.actionItems.map(item => `- ${item.category}: ${item.title} (${item.description})`).join('\n');
 
     const prompt = `
-        You are an expert career development content curator.
-        **TASK:** Use Google Search to find 6-8 highly relevant, popular, and insightful YouTube videos for someone aspiring to become a "${targetRole}".
+        You are a hyper-focused career development content curator. Your task is to use Google Search to find a diverse set of highly relevant YouTube videos for a user's career milestone.
 
-        **INSTRUCTIONS:**
-        1.  **Analyze and Generalize the Role:** Before searching, analyze the user's target role: "${targetRole}".
-            -   If the role is specific to a company (e.g., "Product Manager at Google"), your search should prioritize general videos about the role (e.g., "Product Management skills", "Product Manager interview tips") over company-specific content. You can include 1-2 company-specific videos if they are highly relevant.
-            -   If the role is in a specific industry like finance (e.g., "Analyst at JP Morgan"), infer the broader role type (e.g., "Investment Banking Analyst") and find videos for that general career path.
-            -   The goal is to provide a broad, helpful overview of the profession, not just the specific company.
+        **CONTEXT:**
+        - **User's Target Role:** "${targetRole}"
+        - **Current Milestone Title:** "${milestone.milestoneTitle}"
+        - **Milestone Timeframe:** "${milestone.timeframe}"
+        - **Action Items for this milestone:**
+        ${actionItemsText}
 
-        2.  **Use Search:** You MUST use your search tool to find real, current YouTube videos based on your generalized understanding of the role.
-        3.  **Relevance is Key:** The videos must be directly related to the skills, interview process, "day in the life", or career path for the generalized role.
-        4.  **Quality over Quantity:** Prioritize videos from reputable channels (e.g., industry experts, well-known educational channels, official company channels).
-        5.  **Extract Data:** For each video found, you MUST extract the following information:
+        **INSTRUCTIONS (Follow these steps precisely):**
+
+        1.  **Be Creative with Search Terms:** Don't just use literal keywords from the action items. Think broadly about the user's target role and this milestone's theme. Include searches for conceptual advice, "day in the life" videos, and foundational skill tutorials relevant to the user's journey. For example, for a "Financial Analyst" role, besides "DCF model", also search for "investment banking career advice", or "excel tips for finance".
+
+        2.  **Keyword Extraction:** Analyze the milestone title and EACH action item. For each item, extract the most important keywords and technical terms.
+            -   Example: If an action item is "Q1: Skills: Learn Python basics for data analysis", your keywords should be "Python for data analysis tutorial", "Python basics for beginners", "data analysis projects".
+            -   Example: For an analyst role, if an item is "Master Financial Modeling", keywords should be "DCF model excel tutorial", "three statement model guide", "LBO modeling for beginners".
+
+        3.  **Targeted YouTube Search:** For each key action item or extracted keyword group, perform targeted Google searches to find relevant YouTube videos. Try to find 2-3 relevant videos for each major action item. Aim for a total of 6-8 unique videos for the entire milestone. Vary your search queries to find different types of content.
+
+        4.  **Quality & Relevance Filters:**
+            -   **Relevance:** The video MUST directly teach a skill, explain a concept, or provide career insight related to the action items.
+            -   **Quality:** Prioritize videos from reputable, expert channels (e.g., established educational creators, industry professionals, official company channels). Avoid clickbait or low-quality content.
+            -   **Uniqueness:** Ensure the final list does not contain duplicate videos.
+
+        5.  **Data Extraction:** For each selected video, you MUST extract the following information:
             -   The official \`title\`.
             -   The \`channel\` name.
-            -   A brief, one-sentence \`description\` summarizing the video's value.
-            -   The unique 11-character \`videoId\` from the video's URL.
+            -   A brief, one-sentence \`description\` summarizing WHY this video is valuable for this specific milestone.
+            -   The unique 11-character \`videoId\` from the video's URL (e.g., the "v" parameter).
 
         **OUTPUT FORMAT:**
-        Your final output MUST be a single, valid JSON array of objects. Do not include any other text or markdown formatting.
+        Your final output MUST be a single, valid JSON array of objects. Do not include any other text or markdown formatting. The array should contain between 4 and 8 video objects.
         \`\`\`json
         [
           {
             "title": "The video title",
             "channel": "The channel name",
-            "description": "A brief summary.",
+            "description": "A brief summary connecting it to the user's goals.",
             "videoId": "ABC123defgh"
           }
         ]
@@ -528,23 +527,20 @@ export const getYouTubeRecommendations = async (targetRole: string): Promise<You
     `;
 
     const response = await generateContentWithRetry({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-pro',
         contents: prompt,
         config: {
             tools: [{ googleSearch: {} }],
+            thinkingConfig: { thinkingBudget: 32768 }
         }
     });
 
     try {
-        // The response from a grounded model can include conversational text.
-        // We need to robustly extract the JSON content.
-        // First, try to find a markdown code block.
         const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             return JSON.parse(jsonMatch[1]);
         }
         
-        // If no markdown block, find the raw JSON array.
         const jsonStartIndex = response.indexOf('[');
         const jsonEndIndex = response.lastIndexOf(']');
 
@@ -555,9 +551,8 @@ export const getYouTubeRecommendations = async (targetRole: string): Promise<You
         const jsonString = response.substring(jsonStartIndex, jsonEndIndex + 1);
         return JSON.parse(jsonString);
     } catch (e) {
-        console.error("Failed to parse YouTube recommendations JSON from Gemini:", response, e);
-        // Throw a user-friendly error to be caught by the calling component.
-        throw new Error("The AI was unable to find relevant videos at this time. This may be a temporary issue.");
+        console.error("Failed to parse milestone videos JSON from Gemini:", response, e);
+        throw new Error("The AI was unable to find relevant videos for this milestone.");
     }
 };
 
@@ -603,7 +598,6 @@ export const analyzeApplicationFit = async (resumeText: string, jobDescription: 
     return JSON.parse(jsonText);
 };
 
-// FIX: Add findMentorMatch function to resolve missing export error.
 export const findMentorMatch = async (thesisTopic: string, facultyList: string): Promise<MentorMatch[]> => {
     const prompt = `
     You are an expert academic advisor AI. Your task is to analyze a student's thesis topic and a list of faculty members to find the best potential mentors.

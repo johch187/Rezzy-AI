@@ -1,18 +1,4 @@
 import React from 'react';
-import { QuestionMarkCircleIcon } from '../Icons';
-
-export const TooltipLabel: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => (
-    <span className="inline-flex items-center">
-        {children}
-        <span className="relative group/tooltip cursor-help">
-            <QuestionMarkCircleIcon />
-            <span className="absolute bottom-full left-0 mb-2 w-max max-w-xs p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-center">
-            {text}
-            <svg className="absolute text-gray-800 h-2 w-4 left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" ><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
-            </span>
-        </span>
-    </span>
-);
 
 export const ErrorMessage: React.FC<{ message?: string; id: string }> = ({ message, id }) => {
     if (!message) return null;

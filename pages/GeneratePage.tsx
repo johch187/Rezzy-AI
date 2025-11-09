@@ -4,28 +4,14 @@ import { ProfileContext } from '../App';
 import { generateTailoredDocuments } from '../services/generationService';
 import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
 import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
-import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter } from '../types';
+import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
-import { ThinkingIcon, ArrowIcon, XCircleIcon, QuestionMarkCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
+import { ThinkingIcon, ArrowIcon, XCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
 import ContentAccordion from '../components/ContentAccordion';
 import TemplateSelector from '../components/TemplateSelector';
 import ProfileContentSelector from '../components/ProfileContentSelector';
-
-const TooltipLabel: React.FC<{ htmlFor: string; text: string; children: React.ReactNode }> = ({ htmlFor, text, children }) => (
-  <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
-    <span className="inline-flex items-center">
-        {children}
-        <span className="relative group/tooltip cursor-help">
-            <QuestionMarkCircleIcon />
-            <span className="absolute bottom-full left-0 mb-2 w-72 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-300 pointer-events-none z-50 text-center">
-                {text}
-                <svg className="absolute text-gray-800 h-2 w-4 left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
-            </span>
-        </span>
-    </span>
-  </label>
-);
+import Tooltip from '../components/Tooltip';
 
 const TextAreaSkeleton: React.FC = () => (
   <div className="mt-1 block w-full rounded-md border border-gray-200 bg-white p-3 space-y-3 animate-pulse" style={{ minHeight: '340px' }}>
@@ -214,19 +200,16 @@ const GeneratePage: React.FC = () => {
               }
           }
 
-          if (result.documents.resume) {
-              addDocumentToHistory({
-                  name: `Resume for ${profile.targetJobTitle || 'Untitled Role'}`,
-                  type: 'resume',
-                  content: result.documents.resume,
-              });
-          }
-          if (result.documents.coverLetter) {
-              addDocumentToHistory({
-                  name: `Cover Letter for ${profile.targetJobTitle || 'Untitled Role'}`,
-                  type: 'coverLetter',
-                  content: result.documents.coverLetter,
-              });
+          if (result.documents.resume || result.documents.coverLetter) {
+            addDocumentToHistory({
+              jobTitle: profile.targetJobTitle || 'Untitled Role',
+              companyName: profile.companyName || '',
+              resumeContent: result.documents.resume,
+              coverLetterContent: result.documents.coverLetter,
+              analysisResult: result.analysis,
+              parsedResume,
+              parsedCoverLetter,
+            });
           }
           
           const finalResultPayload = { 
@@ -479,9 +462,11 @@ const GeneratePage: React.FC = () => {
                         <ContentAccordion title="Style & Tone" initiallyOpen={true}>
                             <div className="space-y-6">
                                 <div>
-                                <TooltipLabel htmlFor="tone-selector" text="Select the overall tone for your documents. 'Formal' is traditional and corporate. 'Friendly' is approachable and modern. 'Persuasive' is confident and action-oriented.">
-                                    Application Tone
-                                </TooltipLabel>
+                                <label htmlFor="tone-selector" className="block text-sm font-medium text-gray-700">
+                                    <Tooltip text="Select the overall tone for your documents. 'Formal' is traditional and corporate. 'Friendly' is approachable and modern. 'Persuasive' is confident and action-oriented.">
+                                        Application Tone
+                                    </Tooltip>
+                                </label>
                                 <select 
                                     id="tone-selector" 
                                     value={options.tone} 
@@ -494,9 +479,11 @@ const GeneratePage: React.FC = () => {
                                 </select>
                                 </div>
                                 <div>
-                                <TooltipLabel htmlFor="technicality-slider" text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'General' for non-technical roles and 'Technical' for expert audiences.">
-                                    Language Style
-                                </TooltipLabel>
+                                <label htmlFor="technicality-slider" className="block text-sm font-medium text-gray-700">
+                                    <Tooltip text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'General' for non-technical roles and 'Technical' for expert audiences.">
+                                        Language Style
+                                    </Tooltip>
+                                </label>
                                 <div className="flex items-center space-x-4 mt-2">
                                     <span className="text-xs text-gray-500">General</span>
                                     <input id="technicality-slider" type="range" min="0" max="100" value={options.technicality} onChange={(e) => setOptions(o => ({...o, technicality: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
@@ -509,15 +496,16 @@ const GeneratePage: React.FC = () => {
                         <ContentAccordion title="Advanced Generation Settings" initiallyOpen={true}>
                             <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-200">
                                 <div className="pr-4">
-                                    <TooltipLabel
-                                    htmlFor="thinking-mode"
-                                    text="Activates a more advanced AI model (gemini-2.5-pro) that excels at complex reasoning. This produces higher-quality, more nuanced documents but will take noticeably longer to generate."
-                                    >
-                                    <div className="flex items-center text-gray-800 font-medium">
-                                        <ThinkingIcon />
-                                        Thinking Mode
-                                    </div>
-                                    </TooltipLabel>
+                                    <label htmlFor="thinking-mode" className="block text-sm font-medium text-gray-700">
+                                        <Tooltip
+                                        text="Activates a more advanced AI model (gemini-2.5-pro) that excels at complex reasoning. This produces higher-quality, more nuanced documents but will take noticeably longer to generate."
+                                        >
+                                        <div className="flex items-center text-gray-800 font-medium">
+                                            <ThinkingIcon />
+                                            Thinking Mode
+                                        </div>
+                                        </Tooltip>
+                                    </label>
                                     <p id="thinking-mode-description" className="text-xs text-gray-600">Ideal for senior roles or competitive applications where quality is paramount.</p>
                                 </div>
                                 <div className="flex-shrink-0 flex items-center space-x-3">

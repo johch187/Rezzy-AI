@@ -17,7 +17,7 @@ const LandingPage: React.FC = () => {
                     </p>
                     <div className="mt-10">
                         <Link
-                            to="/builder"
+                            to="/career-coach"
                             className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-brand-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-transform transform hover:scale-105"
                         >
                             Start Your Journey for Free

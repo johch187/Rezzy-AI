@@ -94,6 +94,7 @@ export interface ProfileData {
   selectedCoverLetterTemplate: string;
   sectionOrder?: string[];
   targetJobTitle: string;
+  companyName: string;
   companyKeywords: string;
   keySkillsToHighlight: string;
   careerPath: CareerPath | null;
@@ -133,12 +134,16 @@ export interface GeneratedContent {
   coverLetter: string | null;
 }
 
-export interface DocumentHistoryItem {
+export interface DocumentGeneration {
   id: string;
-  name: string;
-  type: 'resume' | 'coverLetter';
-  generatedAt: string; // ISO Date string
-  content: string; // The markdown content
+  jobTitle: string;
+  companyName: string;
+  generatedAt: string; // ISO date string
+  resumeContent: string | null;
+  coverLetterContent: string | null;
+  analysisResult: ApplicationAnalysisResult | null;
+  parsedResume: Partial<ProfileData> | null;
+  parsedCoverLetter: ParsedCoverLetter | null;
 }
 
 export interface IncludedProfileSelections {
@@ -169,6 +174,7 @@ export interface CareerMilestone {
   milestoneTitle: string;
   milestoneDescription: string;
   actionItems: ActionItem[];
+  recommendedVideos?: YouTubeVideo[];
 }
 
 export interface YouTubeVideo {
@@ -208,4 +214,10 @@ export interface BackgroundTask {
   result: any; // Payload for the result page or error message
   viewed: boolean;
   createdAt: string; // ISO string
+}
+
+export interface CareerChatSummary {
+  id: string;
+  title: string;
+  timestamp: string; // ISO date string
 }

@@ -66,7 +66,7 @@ const CoffeeChatPrepperPage: React.FC = () => {
     const buttonText = generationMode === 'prep' ? 'Generate Brief' : 'Generate Message';
 
     return (
-        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
+        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
                 <div className="text-center mb-12">
                     <div className="flex justify-center mb-6">

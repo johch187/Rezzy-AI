@@ -9,7 +9,7 @@ import GDPRPage from './pages/GDPRPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
-import type { ProfileData, DocumentHistoryItem, CareerPath, BackgroundTask } from './types';
+import type { ProfileData, DocumentGeneration, CareerPath, BackgroundTask, ApplicationAnalysisResult, ParsedCoverLetter, CareerChatSummary } from './types';
 import { importAndParseResume } from './services/parserService';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -20,7 +20,9 @@ import CoffeeChatResultPage from './pages/CoffeeChatResultPage';
 import CareerCoachPage from './pages/CareerCoachPage';
 import CareerPathPage from './pages/CareerPathPage';
 import InterviewPrepPage from './pages/InterviewPrepPage';
+import GeneratedDocumentsPage from './pages/GeneratedDocumentsPage';
 import ToastNotification from './components/ToastNotification';
+import { HamburgerIcon } from './components/Icons';
 
 const createNewProfile = (name: string): ProfileData => {
   const newId = crypto.randomUUID();
@@ -53,6 +55,7 @@ const createNewProfile = (name: string): ProfileData => {
     selectedResumeTemplate: 'classic',
     selectedCoverLetterTemplate: 'professional',
     targetJobTitle: '',
+    companyName: '',
     companyKeywords: '',
     keySkillsToHighlight: '',
     careerPath: null,
@@ -61,21 +64,17 @@ const createNewProfile = (name: string): ProfileData => {
 
 export const ProfileContext = createContext<{
   profile: ProfileData | null;
-  setProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
+  setProfile: React.Dispatch<React.SetStateAction<ProfileData | null>>;
   saveProfile: () => boolean;
   lastSavedProfile: ProfileData | null;
-  profiles: Record<string, ProfileData>;
-  activeProfileId: string | null;
-  switchProfile: (id: string) => void;
-  addProfile: (name: string) => void;
-  deleteProfile: (id: string) => void;
-  renameProfile: (id: string, newName: string) => void;
   tokens: number;
   setTokens: React.Dispatch<React.SetStateAction<number>>;
   isFetchingUrl: boolean;
   setIsFetchingUrl: React.Dispatch<React.SetStateAction<boolean>>;
-  documentHistory: DocumentHistoryItem[];
-  addDocumentToHistory: (doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => void;
+  documentHistory: DocumentGeneration[];
+  addDocumentToHistory: (generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => void;
+  careerChatHistory: CareerChatSummary[];
+  addCareerChatSummary: (summary: CareerChatSummary) => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isSidebarCollapsed: boolean;
@@ -96,18 +95,32 @@ const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
 const AppContent: React.FC = () => {
     const location = useLocation();
     const isAppPage = !['/', '/login'].includes(location.pathname);
-    const { isSidebarCollapsed } = useContext(ProfileContext)!;
+    const { isSidebarCollapsed, setIsSidebarOpen } = useContext(ProfileContext)!;
+
+    const showFooter = location.pathname === '/' || location.pathname === '/account';
+    const showHeader = location.pathname === '/';
 
     return (
         <div className="relative min-h-screen">
             {isAppPage && <Sidebar />}
-            <div className={`flex flex-col min-h-screen bg-base-200 transition-all duration-300 ease-out ${isAppPage ? (isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72') : ''}`}>
-                <Header />
-                <main className="flex-grow">
+            {isAppPage && (
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="fixed top-4 left-4 z-30 p-2 rounded-full bg-white/80 backdrop-blur-md text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue lg:hidden"
+                aria-label="Open navigation menu"
+              >
+                <HamburgerIcon />
+              </button>
+            )}
+            <div className={`flex flex-col bg-slate-100 transition-all duration-300 ease-out 
+                ${isAppPage ? (isSidebarCollapsed ? 'lg:ml-20 min-h-screen' : 'lg:ml-64 min-h-screen') : 'min-h-screen'}`}>
+                {showHeader && <Header />}
+                <main className={`flex-grow flex flex-col ${showHeader ? 'min-h-[calc(100vh-65px)]' : 'min-h-screen'}`}>
                     <Routes>
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/builder" element={<HomePage />} />
                         <Route path="/generate" element={<GeneratePage />} />
+                        <Route path="/generated-documents" element={<GeneratedDocumentsPage />} />
                         <Route path="/generate/results" element={<GenerationResultPage />} />
                         <Route path="/subscription" element={<SubscriptionPage />} />
                         <Route path="/account" element={<ManageSubscriptionPage />} />
@@ -122,86 +135,71 @@ const AppContent: React.FC = () => {
                         <Route path="/interview-prep" element={<InterviewPrepPage />} />
                     </Routes>
                 </main>
-                <Footer />
+                {showFooter && <Footer />}
             </div>
         </div>
     );
 };
 
 const App: React.FC = () => {
-  const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-  const [lastSavedProfiles, setLastSavedProfiles] = useState<Record<string, ProfileData>>({});
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData | null>(null);
   
   useEffect(() => {
     try {
-        let loadedProfiles: Record<string, ProfileData> | null = null;
-        let loadedActiveId: string | null = null;
-
-        const savedProfilesJSON = localStorage.getItem('userProfiles');
-        if (savedProfilesJSON) {
-            loadedProfiles = JSON.parse(savedProfilesJSON);
-            const savedActiveId = localStorage.getItem('activeProfileId');
-            if (savedActiveId && loadedProfiles && loadedProfiles[savedActiveId]) {
-                loadedActiveId = savedActiveId;
-            }
-        } else {
-            // Attempt to migrate from old single-profile format
-            const oldProfileJSON = localStorage.getItem('userProfile');
-            if (oldProfileJSON) {
-                const parsedOldProfile = JSON.parse(oldProfileJSON);
-                const newId = crypto.randomUUID();
-                const migratedProfile: ProfileData = {
-                    ...createNewProfile("Default Profile"),
-                    ...parsedOldProfile,
-                    id: newId,
-                    name: "Default Profile",
-                };
-                loadedProfiles = { [newId]: migratedProfile };
-                loadedActiveId = newId;
-                localStorage.removeItem('userProfile'); // Clean up old key
-            }
-        }
-
-        if (loadedProfiles && Object.keys(loadedProfiles).length > 0) {
-            setProfiles(loadedProfiles);
-            setLastSavedProfiles(loadedProfiles);
-            // If activeId is invalid, pick the first available one
-            setActiveProfileId(loadedActiveId || Object.keys(loadedProfiles)[0]);
+        const savedProfileJSON = localStorage.getItem('userProfile');
+        if (savedProfileJSON) {
+            const loadedProfile = JSON.parse(savedProfileJSON);
+            setProfile(loadedProfile);
+            setLastSavedProfile(loadedProfile);
         } else {
             // Fresh start if no data is found
             const firstProfile = createNewProfile("My First Profile");
-            setProfiles({ [firstProfile.id]: firstProfile });
-            setActiveProfileId(firstProfile.id);
-            setLastSavedProfiles({ [firstProfile.id]: firstProfile });
+            setProfile(firstProfile);
+            setLastSavedProfile(firstProfile);
         }
     } catch (error) {
-        console.error("Failed to initialize profiles from localStorage, starting fresh.", error);
+        console.error("Failed to load profile from localStorage, starting fresh.", error);
         const firstProfile = createNewProfile("My First Profile");
-        setProfiles({ [firstProfile.id]: firstProfile });
-        setActiveProfileId(firstProfile.id);
+        setProfile(firstProfile);
     }
   }, []);
 
-  const activeProfile = useMemo(() => {
-    if (!activeProfileId || !profiles[activeProfileId]) {
-      return null;
-    }
-    return profiles[activeProfileId];
-  }, [activeProfileId, profiles]);
-
   const [tokens, setTokens] = useState(65);
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
-  const [documentHistory, setDocumentHistory] = useState<DocumentHistoryItem[]>(() => {
+  const [documentHistory, setDocumentHistory] = useState<DocumentGeneration[]>(() => {
     try {
-      const savedHistory = localStorage.getItem('documentHistory');
-      return savedHistory ? JSON.parse(savedHistory) : [];
+        const savedHistoryJSON = localStorage.getItem('documentHistory');
+        if (!savedHistoryJSON) return [];
+        
+        const savedHistory = JSON.parse(savedHistoryJSON);
+        
+        // Simple migration: if the first item has a 'type' property, it's the old format.
+        // In that case, we clear the history to avoid runtime errors with the new structure.
+        if (Array.isArray(savedHistory) && savedHistory.length > 0 && savedHistory[0].hasOwnProperty('type')) {
+            console.log("Old document history format detected. Clearing for upgrade.");
+            localStorage.removeItem('documentHistory');
+            return [];
+        }
+
+        return Array.isArray(savedHistory) ? savedHistory : [];
     } catch (error) {
-      console.error("Failed to parse document history from localStorage", error);
-      return [];
+        console.error("Failed to parse document history from localStorage", error);
+        localStorage.removeItem('documentHistory'); // Clear corrupted data
+        return [];
     }
   });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [careerChatHistory, setCareerChatHistory] = useState<CareerChatSummary[]>(() => {
+    try {
+        const savedHistoryJSON = localStorage.getItem('careerChatHistory');
+        return savedHistoryJSON ? JSON.parse(savedHistoryJSON) : [];
+    } catch (error) {
+        console.error("Failed to parse career chat history from localStorage", error);
+        localStorage.removeItem('careerChatHistory');
+        return [];
+    }
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [parsingError, setParsingError] = useState<string | null>(null);
@@ -222,79 +220,27 @@ const App: React.FC = () => {
     localStorage.setItem('backgroundTasks', JSON.stringify(backgroundTasks));
   }, [backgroundTasks]);
 
-  const saveProfiles = useCallback(() => {
+  const saveProfile = useCallback(() => {
+    if (!profile) return false;
     try {
-        localStorage.setItem('userProfiles', JSON.stringify(profiles));
-        if (activeProfileId) {
-            localStorage.setItem('activeProfileId', activeProfileId);
-        }
-        setLastSavedProfiles(profiles);
-        console.log("Profiles saved to localStorage.");
+        localStorage.setItem('userProfile', JSON.stringify(profile));
+        setLastSavedProfile(profile);
+        console.log("Profile saved to localStorage.");
         return true;
     } catch (error) {
-        console.error("Failed to save profiles to localStorage", error);
+        console.error("Failed to save profile to localStorage", error);
         return false;
     }
-  }, [profiles, activeProfileId]);
+  }, [profile]);
 
-  const updateActiveProfile = useCallback((updater: React.SetStateAction<ProfileData>) => {
-    if (!activeProfileId) return;
-
-    setProfiles(prevProfiles => {
-      const currentActiveProfile = prevProfiles[activeProfileId];
-      if (!currentActiveProfile) return prevProfiles;
-
-      const newActiveProfile = typeof updater === 'function'
-        ? updater(currentActiveProfile)
-        : updater;
-
-      return {
-        ...prevProfiles,
-        [activeProfileId]: newActiveProfile,
-      };
-    });
-  }, [activeProfileId]);
-  
-  const switchProfile = useCallback((id: string) => {
-    if (profiles[id]) {
-        setActiveProfileId(id);
-    }
-  }, [profiles]);
-
-  const addProfile = useCallback((name: string) => {
-    const newProfile = createNewProfile(name);
-    setProfiles(prev => ({...prev, [newProfile.id]: newProfile}));
-    setActiveProfileId(newProfile.id);
-  }, []);
-  
-  const deleteProfile = useCallback((id: string) => {
-    setProfiles(prev => {
-        const newProfiles = {...prev};
-        delete newProfiles[id];
-        return newProfiles;
-    });
-    if (activeProfileId === id) {
-        const remainingIds = Object.keys(profiles).filter(pId => pId !== id);
-        setActiveProfileId(remainingIds.length > 0 ? remainingIds[0] : null);
-    }
-  }, [activeProfileId, profiles]);
-
-  const renameProfile = useCallback((id: string, newName: string) => {
-    setProfiles(prev => {
-        if (!prev[id]) return prev;
-        const updatedProfile = { ...prev[id], name: newName };
-        return { ...prev, [id]: updatedProfile };
-    });
-  }, []);
-
-  const addDocumentToHistory = useCallback((doc: Omit<DocumentHistoryItem, 'id' | 'generatedAt'>) => {
+  const addDocumentToHistory = useCallback((generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => {
     setDocumentHistory(prevHistory => {
-        const newDoc: DocumentHistoryItem = {
-            ...doc,
+        const newGeneration: DocumentGeneration = {
+            ...generation,
             id: crypto.randomUUID(),
             generatedAt: new Date().toISOString(),
         };
-        const updatedHistory = [newDoc, ...prevHistory].slice(0, 20);
+        const updatedHistory = [newGeneration, ...prevHistory].slice(0, 20); // keep up to 20 generations
         try {
             localStorage.setItem('documentHistory', JSON.stringify(updatedHistory));
         } catch (error) {
@@ -304,8 +250,20 @@ const App: React.FC = () => {
     });
   }, []);
   
+  const addCareerChatSummary = useCallback((summary: CareerChatSummary) => {
+    setCareerChatHistory(prevHistory => {
+        const updatedHistory = [summary, ...prevHistory].slice(0, 20); // Keep up to 20 summaries
+        try {
+            localStorage.setItem('careerChatHistory', JSON.stringify(updatedHistory));
+        } catch (error) {
+            console.error("Failed to save career chat history to localStorage", error);
+        }
+        return updatedHistory;
+    });
+  }, []);
+
   const parseResumeInBackground = useCallback((file: File) => {
-    if (!file || !activeProfileId) return;
+    if (!file || !profile) return;
 
     setIsParsing(true);
     setParsingError(null);
@@ -331,7 +289,8 @@ const App: React.FC = () => {
         try {
             const parsedData = await importAndParseResume(file);
             
-            updateActiveProfile(currentProfile => {
+            setProfile(currentProfile => {
+                if (!currentProfile) return null;
                 const newProfileData: Partial<ProfileData> = {
                     ...parsedData,
                     // Preserve key settings from the current profile
@@ -349,7 +308,7 @@ const App: React.FC = () => {
             setIsParsing(false);
         }
     })();
-  }, [activeProfileId, updateActiveProfile]);
+  }, [profile]);
 
   const startBackgroundTask = useCallback((taskInfo: Omit<BackgroundTask, 'id' | 'status' | 'result' | 'viewed' | 'createdAt'>): string => {
     const taskId = crypto.randomUUID();
@@ -386,31 +345,26 @@ const App: React.FC = () => {
   // Autosave effect
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (JSON.stringify(profiles) !== JSON.stringify(lastSavedProfiles)) {
-          saveProfiles();
+      if (profile && JSON.stringify(profile) !== JSON.stringify(lastSavedProfile)) {
+          saveProfile();
       }
     }, AUTOSAVE_INTERVAL);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [profiles, lastSavedProfiles, saveProfiles]);
+  }, [profile, lastSavedProfile, saveProfile]);
 
   const contextValue = useMemo(() => ({ 
-      profile: activeProfile, 
-      setProfile: updateActiveProfile as React.Dispatch<React.SetStateAction<ProfileData>>,
-      saveProfile: saveProfiles, 
-      lastSavedProfile: activeProfileId ? lastSavedProfiles[activeProfileId] : null,
-      profiles,
-      activeProfileId,
-      switchProfile,
-      addProfile,
-      deleteProfile,
-      renameProfile,
+      profile, 
+      setProfile,
+      saveProfile, 
+      lastSavedProfile,
       tokens, setTokens, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
       isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
+      careerChatHistory, addCareerChatSummary,
       isParsing,
       parsingError,
       parseResumeInBackground,
@@ -421,16 +375,17 @@ const App: React.FC = () => {
       markTaskAsViewed,
       clearAllNotifications,
    }), [
-      activeProfile, updateActiveProfile, saveProfiles, lastSavedProfiles, profiles, activeProfileId, switchProfile, addProfile, deleteProfile, renameProfile,
+      profile, setProfile, saveProfile, lastSavedProfile,
       tokens, setTokens, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
       isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
+      careerChatHistory, addCareerChatSummary,
       isParsing, parsingError, parseResumeInBackground,
       backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications
     ]);
 
-  if (!activeProfile) {
+  if (!profile) {
     // Render a loading state or a skeleton screen while the profile is being initialized
     return <div className="flex items-center justify-center min-h-screen bg-base-200">Loading Profile...</div>;
   }

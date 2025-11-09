@@ -5,15 +5,7 @@ import { DownloadIcon, EditIcon, SaveIcon, CheckIcon, GoogleDocsIcon, Subscripti
 import { coverLetterToMarkdown, profileToMarkdown, formatContentForDisplay } from './editor/markdownConverter';
 import { ResumeDisplay } from './editor/ResumeDisplay';
 import { CoverLetterDisplay } from './editor/CoverLetterDisplay';
-
-// --- Type Guards ---
-function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
-  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
-}
-
-function isParsedResume(content: any): content is Partial<ProfileData> {
-  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
-}
+import { isParsedCoverLetter, isParsedResume } from '../utils';
 
 interface EditableDocumentProps {
   documentType: 'resume' | 'cover-letter';

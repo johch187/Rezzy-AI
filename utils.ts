@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 // Import TextItem and PDFPageProxy types directly from pdfjs-dist/types/src/display/api
 import type { TextItem, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import type { ParsedCoverLetter, ProfileData } from './types';
 
 // Set up the PDF.js worker. This is crucial for PDF parsing to work in a web environment.
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
@@ -344,3 +345,12 @@ export const downloadFile = (content: string, filename: string, mimeType: string
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+// --- Type Guards ---
+export function isParsedCoverLetter(content: any): content is ParsedCoverLetter {
+  return content && typeof content === 'object' && 'recipientName' in content && 'salutation' in content;
+}
+
+export function isParsedResume(content: any): content is Partial<ProfileData> {
+  return content && typeof content === 'object' && ('experience' in content || 'education' in content);
+}

@@ -1,17 +1,7 @@
 import React from 'react';
 import { ApplicationAnalysisResult } from '../types';
 import ContentAccordion from './ContentAccordion';
-
-const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
-    const createMarkup = (markdown: string) => {
-        return markdown
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^- (.*$)/gm, '<li class="list-disc ml-5">$1</li>')
-            .replace(/(<li.*<\/li>)/gs, '<ul>$1</ul>')
-            .replace(/\n/g, '<br />');
-    };
-    return <div className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: createMarkup(text) }} />;
-};
+import { SimpleMarkdown } from './SimpleMarkdown';
 
 const ApplicationAnalysisWidget: React.FC<{ analysis: ApplicationAnalysisResult }> = ({ analysis }) => {
     return (

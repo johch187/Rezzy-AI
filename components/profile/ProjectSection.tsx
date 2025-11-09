@@ -2,7 +2,8 @@ import React, { useContext } from 'react';
 import { ProfileContext } from '../../App';
 import type { Project } from '../../types';
 import { TrashIcon } from '../Icons';
-import { TooltipLabel, baseInputStyles, validInputStyles } from './common';
+import Tooltip from '../Tooltip';
+import { baseInputStyles, validInputStyles } from './common';
 
 export const ProjectSection = React.memo(() => {
     const { profile, setProfile } = useContext(ProfileContext)!;
@@ -36,12 +37,12 @@ export const ProjectSection = React.memo(() => {
                         <TrashIcon />
                     </button>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="The official name of your project.">Project Name</TooltipLabel></label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Q3 Budget Forecast or Portfolio Website" /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Link to the live project or its repository (e.g., GitHub).">Project URL</TooltipLabel></label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="yourprojectlink.com" /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year the project started. e.g., '2023'">Start Date</TooltipLabel></label><input value={proj.startDate} onChange={e => handleChange(proj.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Year the project ended or 'Present'.">End Date</TooltipLabel></label><input value={proj.endDate} onChange={e => handleChange(proj.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Comma-separated list of key technologies. e.g., 'React, Node.js, PostgreSQL'">Technologies Used</TooltipLabel></label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="Python, Pandas, Excel, React, MS Office Suite" className={`${baseInputStyles} ${validInputStyles}`} /></div>
-                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><TooltipLabel text="Briefly describe the project's purpose and your role.">Description</TooltipLabel></label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Coordinated a 50-person company offsite event." /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="The official name of your project.">Project Name</Tooltip></label><input value={proj.name} onChange={e => handleChange(proj.id, 'name', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Q3 Budget Forecast or Portfolio Website" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Link to the live project or its repository (e.g., GitHub).">Project URL</Tooltip></label><input value={proj.url} onChange={e => handleChange(proj.id, 'url', e.target.value)} className={`${baseInputStyles} ${validInputStyles}`} placeholder="yourprojectlink.com" /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Year the project started. e.g., '2023'">Start Date</Tooltip></label><input value={proj.startDate} onChange={e => handleChange(proj.id, 'startDate', e.target.value)} placeholder="YYYY" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Year the project ended or 'Present'.">End Date</Tooltip></label><input value={proj.endDate} onChange={e => handleChange(proj.id, 'endDate', e.target.value)} placeholder="YYYY or Present" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Comma-separated list of key technologies. e.g., 'React, Node.js, PostgreSQL'">Technologies Used</Tooltip></label><input value={proj.technologiesUsed} onChange={e => handleChange(proj.id, 'technologiesUsed', e.target.value)} placeholder="Python, Pandas, Excel, React, MS Office Suite" className={`${baseInputStyles} ${validInputStyles}`} /></div>
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-600 mb-1"><Tooltip text="Briefly describe the project's purpose and your role.">Description</Tooltip></label><textarea value={proj.description} onChange={e => handleChange(proj.id, 'description', e.target.value)} rows={3} className={`${baseInputStyles} ${validInputStyles}`} placeholder="Coordinated a 50-person company offsite event." /></div>
                     </div>
                 </div>
             ))}

@@ -6,6 +6,7 @@ import { analyzeApplicationFit } from '../services/generationService';
 import { readFileContent } from '../utils';
 import { LoadingSpinnerIcon, XCircleIcon, UploadIcon, SparklesIcon } from '../components/Icons';
 import { profileToMarkdown } from '../components/editor/markdownConverter';
+import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
 const ResultCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
@@ -13,17 +14,6 @@ const ResultCard: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
         <div className="prose prose-slate max-w-none">{children}</div>
     </div>
 );
-
-const SimpleMarkdown: React.FC<{ text: string }> = ({ text }) => {
-    const createMarkup = (markdown: string) => {
-        return markdown
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^- (.*$)/gm, '<li class="list-disc ml-5">$1</li>')
-            .replace(/(<li.*<\/li>)/gs, '<ul>$1</ul>')
-            .replace(/\n/g, '<br />');
-    };
-    return <div dangerouslySetInnerHTML={{ __html: createMarkup(text) }} />;
-};
 
 const ApplicationAnalysisPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
