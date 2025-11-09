@@ -41,7 +41,9 @@ export const generateTailoredDocuments = async (
   options: GenerationOptions
 ): Promise<GeneratedContent> => {
 
-  if (!process.env.API_KEY) {
+  const API_KEY = import.meta.env.VITE_API_KEY;
+  
+  if (!API_KEY) {
       return new Promise(resolve => setTimeout(() => resolve(MOCK_RESPONSE), 1500));
   }
 
@@ -143,7 +145,9 @@ export const generateCoffeeChatBrief = async (
   profile: ProfileData,
   counterpartInfo: string
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const API_KEY = import.meta.env.VITE_API_KEY;
+  
+  if (!API_KEY) {
     // Return a mock response for development without an API key.
     return Promise.resolve(`
 ## Quick Overview

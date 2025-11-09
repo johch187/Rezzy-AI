@@ -19,6 +19,7 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 ## 🛠️ Tech Stack
 
 -   **Frontend**: [React](https://reactjs.org/) with [TypeScript](https://www.typescriptlang.org/)
+-   **Build Tool**: [Vite](https://vitejs.dev/)
 -   **AI Engine**: [Google Gemini API](https://ai.google.dev/gemini-api) (`@google/genai`)
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 -   **Routing**: [React Router](https://reactrouter.com/) (using `HashRouter`)
@@ -26,7 +27,12 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 
 ## 🚀 Getting Started
 
-This is a static web application with no build step required.
+### Prerequisites
+
+- Node.js >= 18.0.0
+- npm or yarn
+
+### Local Development
 
 1.  Clone the repository:
     ```bash
@@ -34,13 +40,81 @@ This is a static web application with no build step required.
     ```
 2.  Navigate to the project directory:
     ```bash
-    cd keju
+    cd keju/Rezzy-AI
     ```
-3.  Open the `index.html` file in your favorite web browser.
+3.  Install dependencies:
+    ```bash
+    npm install
+    ```
+4.  Create a `.env` file in the root directory:
+    ```bash
+    VITE_API_KEY=your_google_gemini_api_key_here
+    ```
+   Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+5.  Start the development server:
+    ```bash
+    npm run dev
+    ```
+6.  Open your browser and navigate to the URL shown in the terminal (typically `http://localhost:5173`)
 
-That's it! The application will run locally.
+### Building for Production
 
-*Note: For the AI features to work, you will need to provide a Google Gemini API key. This project is configured to read the key from a `process.env.API_KEY` variable, which is typically handled by the hosting environment.*
+```bash
+npm run build
+```
+
+The built files will be in the `dist` directory.
+
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## 🚀 Deployment to Vercel
+
+This project is configured for easy deployment to Vercel.
+
+### Option 1: Deploy via Vercel CLI
+
+1. Install the Vercel CLI:
+   ```bash
+   npm i -g vercel
+   ```
+
+2. Deploy:
+   ```bash
+   vercel
+   ```
+
+3. Add your environment variable:
+   - Go to your project settings on Vercel
+   - Navigate to "Environment Variables"
+   - Add `VITE_API_KEY` with your Google Gemini API key
+
+### Option 2: Deploy via GitHub Integration
+
+1. Push your code to GitHub
+2. Import your repository in Vercel
+3. Vercel will automatically detect the Vite configuration
+4. Add the `VITE_API_KEY` environment variable in your project settings
+5. Deploy!
+
+### Environment Variables
+
+The following environment variable is required:
+
+- `VITE_API_KEY`: Your Google Gemini API key (get it from [Google AI Studio](https://aistudio.google.com/app/apikey))
+
+**⚠️ Security Note**: The API key will be exposed in the client-side bundle. For production applications, consider using a backend proxy to keep your API key secure.
+
+### Vercel Configuration
+
+The project includes a `vercel.json` file with the following configuration:
+- Build command: `npm run build`
+- Output directory: `dist`
+- Framework: Vite
+- Routing: Configured to handle client-side routing with HashRouter
 
 ## 📂 Project Structure
 

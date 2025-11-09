@@ -4,6 +4,7 @@ import type { TextItem, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import type { ParsedCoverLetter, ProfileData } from './types';
 
 // Set up the PDF.js worker. This is crucial for PDF parsing to work in a web environment.
+// Use CDN for worker to ensure compatibility across different build environments
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
 
 /**

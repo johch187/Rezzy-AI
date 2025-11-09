@@ -1,11 +1,13 @@
 import { GoogleGenAI, FunctionDeclaration, Type, Chat } from "@google/genai";
 import type { ProfileData, DocumentGeneration } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set. Career Coach Service cannot be initialized.");
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+if (!API_KEY) {
+    throw new Error("VITE_API_KEY environment variable not set. Career Coach Service cannot be initialized.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // --- Tool Definitions for Career Coach ---
 

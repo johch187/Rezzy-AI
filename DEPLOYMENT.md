@@ -1,0 +1,134 @@
+# Deployment Guide for Vercel
+
+This guide will help you deploy your Keju application to Vercel.
+
+## Prerequisites
+
+1. A Google Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. A Vercel account (sign up at [vercel.com](https://vercel.com))
+3. Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
+
+## Quick Deployment Steps
+
+### 1. Prepare Your Repository
+
+Make sure your code is committed and pushed to your Git repository.
+
+### 2. Deploy to Vercel
+
+#### Option A: Deploy via Vercel Dashboard (Recommended)
+
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "Add New Project"
+3. Import your Git repository
+4. Vercel will auto-detect your Vite configuration
+5. Configure the project:
+   - **Framework Preset**: Vite (should be auto-detected)
+   - **Root Directory**: `Rezzy-AI` (if your project is in a subdirectory)
+   - **Build Command**: `npm run build` (should be auto-detected)
+   - **Output Directory**: `dist` (should be auto-detected)
+6. Add Environment Variable:
+   - Click "Environment Variables"
+   - Add `VITE_API_KEY` with your Google Gemini API key
+   - Select all environments (Production, Preview, Development)
+7. Click "Deploy"
+
+#### Option B: Deploy via Vercel CLI
+
+1. Install Vercel CLI:
+   ```bash
+   npm i -g vercel
+   ```
+
+2. Login to Vercel:
+   ```bash
+   vercel login
+   ```
+
+3. Deploy:
+   ```bash
+   cd Rezzy-AI
+   vercel
+   ```
+
+4. Follow the prompts to configure your project
+
+5. Add environment variable:
+   ```bash
+   vercel env add VITE_API_KEY
+   ```
+   Enter your API key when prompted.
+
+6. Redeploy to apply the environment variable:
+   ```bash
+   vercel --prod
+   ```
+
+## Environment Variables
+
+### Required Variables
+
+- `VITE_API_KEY`: Your Google Gemini API key
+
+### Setting Environment Variables in Vercel
+
+1. Go to your project settings on Vercel
+2. Navigate to "Environment Variables"
+3. Add each variable:
+   - **Name**: `VITE_API_KEY`
+   - **Value**: Your API key
+   - **Environments**: Select all (Production, Preview, Development)
+4. Click "Save"
+5. Redeploy your project for the changes to take effect
+
+## Post-Deployment
+
+After deployment:
+
+1. Your app will be available at `https://your-project.vercel.app`
+2. Test all features to ensure the API key is working
+3. Set up a custom domain (optional) in your Vercel project settings
+
+## Troubleshooting
+
+### Build Fails
+
+- Check that all dependencies are listed in `package.json`
+- Ensure Node.js version is >= 18.0.0 (specified in `package.json`)
+- Check the build logs in Vercel for specific error messages
+
+### API Key Not Working
+
+- Verify the environment variable is set correctly in Vercel
+- Ensure the variable name is exactly `VITE_API_KEY` (case-sensitive)
+- Check that the environment variable is set for the correct environment (Production/Preview/Development)
+- Redeploy after adding/changing environment variables
+
+### Routing Issues
+
+- This project uses HashRouter, so all routes are handled client-side
+- No server-side configuration is needed for routing
+- If you experience routing issues, clear your browser cache
+
+## Security Considerations
+
+⚠️ **Important**: The `VITE_API_KEY` will be exposed in the client-side bundle. This means anyone can view your API key in the browser's developer tools.
+
+For production applications, consider:
+1. Using a backend proxy to keep your API key secure
+2. Implementing API key restrictions in Google Cloud Console
+3. Setting up rate limiting and usage quotas
+4. Using environment-specific API keys with different quotas
+
+## Continuous Deployment
+
+Vercel automatically deploys your app when you push to your Git repository:
+- Push to `main`/`master` → Production deployment
+- Push to other branches → Preview deployment
+- Create a pull request → Preview deployment
+
+## Additional Resources
+
+- [Vercel Documentation](https://vercel.com/docs)
+- [Vite Documentation](https://vitejs.dev/)
+- [Google Gemini API Documentation](https://ai.google.dev/docs)

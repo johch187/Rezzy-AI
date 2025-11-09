@@ -1,11 +1,13 @@
 import { GoogleGenAI, GenerateContentParameters } from "@google/genai";
 import { parseError } from '../utils';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set. Gemini Service cannot be initialized.");
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+if (!API_KEY) {
+    throw new Error("VITE_API_KEY environment variable not set. Gemini Service cannot be initialized.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;

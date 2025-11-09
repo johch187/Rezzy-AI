@@ -3,11 +3,13 @@ import type { ProfileData, GenerationOptions, GeneratedContent, CareerPath, YouT
 import { generateContentWithRetry } from './geminiService';
 import { profileToMarkdown } from '../components/editor/markdownConverter';
 
-if (!process.env.API_KEY) {
-    console.warn("API_KEY environment variable not set. Some features will be disabled or mocked.");
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+if (!API_KEY) {
+    console.warn("VITE_API_KEY environment variable not set. Some features will be disabled or mocked.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
 
 const MOCK_RESPONSE: GeneratedContent = {
   resume: `# Alex Doe
@@ -48,7 +50,7 @@ export const generateTailoredDocuments = async (
   options: GenerationOptions
 ): Promise<{ documents: GeneratedContent; analysis: ApplicationAnalysisResult | null }> => {
 
-  if (!process.env.API_KEY) {
+  if (!API_KEY) {
       const mockAnalysis: ApplicationAnalysisResult = {
           fitScore: 85,
           gapAnalysis: "- Experience with Python is mentioned, but the job requires Go.",
@@ -183,7 +185,7 @@ export const generateCoffeeChatBrief = async (
   profile: ProfileData,
   counterpartInfo: string
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
+  if (!API_KEY) {
     // Return a mock response for development without an API key.
     return Promise.resolve(`
 ## Quick Overview
@@ -282,7 +284,7 @@ export const generateReachOutMessage = async (
   profile: ProfileData,
   counterpartInfo: string
 ): Promise<string> => {
-    if (!process.env.API_KEY) {
+    if (!API_KEY) {
         return Promise.resolve(`Hi Sarah,
 
 My name is Alex Doe, and I came across your profile while exploring careers in Product Management. I was really inspired by your journey from engineering to your current role at Innovate Inc.
@@ -356,7 +358,7 @@ export const generateCareerPath = async (
   targetRole: string
 ): Promise<CareerPath> => {
     
-    if (!process.env.API_KEY) {
+    if (!API_KEY) {
         return Promise.resolve({
             currentRole,
             targetRole,
@@ -472,7 +474,7 @@ export const generateCareerPath = async (
 };
 
 export const getVideosForMilestone = async (targetRole: string, milestone: CareerMilestone): Promise<YouTubeVideo[]> => {
-    if (!process.env.API_KEY) {
+    if (!API_KEY) {
         return Promise.resolve([
             { title: "How to Learn Any New Skill Fast", channel: "Productivity Channel", description: "A guide to mastering new skills.", videoId: "i9lV7c_I-gA" },
             { title: "Effective Networking for Beginners", channel: "Career Advice", description: "Learn how to build your professional network.", videoId: "Z5x_gK-kg_4" },
