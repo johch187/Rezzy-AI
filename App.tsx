@@ -1,5 +1,6 @@
 import React, { useState, createContext, useMemo, useEffect, useCallback, useContext } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import type { User } from '@supabase/supabase-js';
 import HomePage from './pages/HomePage';
 import GeneratePage from './pages/GeneratePage';
 import GenerationResultPage from './pages/GenerationResultPage';
@@ -23,6 +24,7 @@ import InterviewPrepPage from './pages/InterviewPrepPage';
 import GeneratedDocumentsPage from './pages/GeneratedDocumentsPage';
 import ToastNotification from './components/ToastNotification';
 import { HamburgerIcon } from './components/Icons';
+import { supabase, isSupabaseEnabled } from './services/supabaseClient';
 
 const createNewProfile = (name: string): ProfileData => {
   const newId = crypto.randomUUID();
@@ -65,7 +67,7 @@ const createNewProfile = (name: string): ProfileData => {
 export const ProfileContext = createContext<{
   profile: ProfileData | null;
   setProfile: React.Dispatch<React.SetStateAction<ProfileData | null>>;
-  saveProfile: () => boolean;
+  saveProfile: () => Promise<boolean>;
   lastSavedProfile: ProfileData | null;
   tokens: number;
   setTokens: React.Dispatch<React.SetStateAction<number>>;
@@ -88,9 +90,21 @@ export const ProfileContext = createContext<{
   updateBackgroundTask: (taskId: string, updates: Partial<Omit<BackgroundTask, 'id'>>) => void;
   markTaskAsViewed: (taskId: string) => void;
   clearAllNotifications: () => void;
+  currentUser: User | null;
+  authReady: boolean;
+  isSupabaseEnabled: boolean;
+  isSyncingProfile: boolean;
+  signOut: () => Promise<void>;
 } | null>(null);
 
 const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
+
+type PersistedWorkspace = {
+  profile: ProfileData | null;
+  documentHistory: DocumentGeneration[];
+  careerChatHistory: CareerChatSummary[];
+  tokens: number;
+};
 
 const AppContent: React.FC = () => {
     const location = useLocation();
@@ -141,11 +155,18 @@ const AppContent: React.FC = () => {
     );
 };
 
+const DEFAULT_TOKEN_BALANCE = 65;
+
 const App: React.FC = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData | null>(null);
-  
-  useEffect(() => {
+  const [tokens, setTokens] = useState(DEFAULT_TOKEN_BALANCE);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseEnabled);
+  const [isSyncingProfile, setIsSyncingProfile] = useState(false);
+  const [hasLoadedLocalProfile, setHasLoadedLocalProfile] = useState(false);
+
+  const loadProfileFromLocalStorage = useCallback(() => {
     try {
         const savedProfileJSON = localStorage.getItem('userProfile');
         if (savedProfileJSON) {
@@ -153,7 +174,6 @@ const App: React.FC = () => {
             setProfile(loadedProfile);
             setLastSavedProfile(loadedProfile);
         } else {
-            // Fresh start if no data is found
             const firstProfile = createNewProfile("My First Profile");
             setProfile(firstProfile);
             setLastSavedProfile(firstProfile);
@@ -162,10 +182,51 @@ const App: React.FC = () => {
         console.error("Failed to load profile from localStorage, starting fresh.", error);
         const firstProfile = createNewProfile("My First Profile");
         setProfile(firstProfile);
+        setLastSavedProfile(firstProfile);
     }
   }, []);
 
-  const [tokens, setTokens] = useState(65);
+  useEffect(() => {
+    if (currentUser) return;
+    if (hasLoadedLocalProfile) return;
+    if (isSupabaseEnabled && !authReady) return;
+    loadProfileFromLocalStorage();
+    setHasLoadedLocalProfile(true);
+  }, [authReady, currentUser, hasLoadedLocalProfile, loadProfileFromLocalStorage]);
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !supabase) {
+        setAuthReady(true);
+        return;
+    }
+
+    let isMounted = true;
+
+    const initSession = async () => {
+        try {
+            const { data } = await supabase.auth.getSession();
+            if (!isMounted) return;
+            setCurrentUser(data.session?.user ?? null);
+        } catch (error) {
+            console.error("Failed to initialize Supabase auth session", error);
+        } finally {
+            if (isMounted) {
+                setAuthReady(true);
+            }
+        }
+    };
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+        setCurrentUser(session?.user ?? null);
+    });
+
+    initSession();
+
+    return () => {
+        isMounted = false;
+        subscription?.subscription.unsubscribe();
+    };
+  }, []);
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const [documentHistory, setDocumentHistory] = useState<DocumentGeneration[]>(() => {
     try {
@@ -199,6 +260,81 @@ const App: React.FC = () => {
         return [];
     }
   });
+
+  useEffect(() => {
+    if (!supabase || !currentUser) return;
+
+    let cancelled = false;
+    setIsSyncingProfile(true);
+
+    (async () => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('profile, document_history, career_chat_history, tokens')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+
+            if (cancelled) return;
+
+            if (error && error.code !== 'PGRST116') {
+                console.error("Failed to load user data from Supabase.", error);
+                return;
+            }
+
+            if (data) {
+                const storedProfile: ProfileData = data.profile ?? createNewProfile(currentUser.user_metadata?.full_name || currentUser.email || "My First Profile");
+                setProfile(storedProfile);
+                setLastSavedProfile(storedProfile);
+
+                const storedHistory = Array.isArray(data.document_history) ? data.document_history : [];
+                setDocumentHistory(storedHistory);
+                localStorage.setItem('documentHistory', JSON.stringify(storedHistory));
+
+                const storedChatHistory = Array.isArray(data.career_chat_history) ? data.career_chat_history : [];
+                setCareerChatHistory(storedChatHistory);
+                localStorage.setItem('careerChatHistory', JSON.stringify(storedChatHistory));
+
+                const storedTokens = typeof data.tokens === 'number' ? data.tokens : DEFAULT_TOKEN_BALANCE;
+                setTokens(storedTokens);
+            } else {
+                const firstProfile = createNewProfile(currentUser.user_metadata?.full_name || currentUser.email || "My First Profile");
+                setProfile(firstProfile);
+                setLastSavedProfile(firstProfile);
+                setDocumentHistory([]);
+                setCareerChatHistory([]);
+                setTokens(DEFAULT_TOKEN_BALANCE);
+
+                await supabase
+                    .from('profiles')
+                    .insert({
+                        id: currentUser.id,
+                        profile: firstProfile,
+                        document_history: [],
+                        career_chat_history: [],
+                        tokens: DEFAULT_TOKEN_BALANCE,
+                    })
+                    .select()
+                    .single()
+                    .catch((insertError) => {
+                        console.error("Failed to seed Supabase profile row.", insertError);
+                    });
+            }
+        } catch (error) {
+            if (!cancelled) {
+                console.error("Unexpected error loading Supabase profile.", error);
+            }
+        } finally {
+            if (!cancelled) {
+                setIsSyncingProfile(false);
+            }
+        }
+    })();
+
+    return () => {
+        cancelled = true;
+    };
+  }, [currentUser]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -220,8 +356,75 @@ const App: React.FC = () => {
     localStorage.setItem('backgroundTasks', JSON.stringify(backgroundTasks));
   }, [backgroundTasks]);
 
-  const saveProfile = useCallback(() => {
+  const persistUserData = useCallback(async (overrides: Partial<PersistedWorkspace> = {}) => {
+    if (!supabase || !currentUser) return;
+    const payload = {
+        id: currentUser.id,
+        profile: overrides.profile ?? profile,
+        document_history: overrides.documentHistory ?? documentHistory,
+        career_chat_history: overrides.careerChatHistory ?? careerChatHistory,
+        tokens: overrides.tokens ?? tokens,
+        updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('profiles').upsert(payload);
+    if (error) {
+        console.error("Failed to sync Supabase workspace.", error);
+        throw error;
+    }
+  }, [currentUser, profile, documentHistory, careerChatHistory, tokens]);
+
+  const enqueuePersist = useCallback((overrides?: Partial<PersistedWorkspace>) => {
+    if (!supabase || !currentUser) return;
+    persistUserData(overrides).catch(err => {
+        console.error("Supabase background sync failed.", err);
+    });
+  }, [persistUserData, currentUser]);
+  const signOut = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setProfile(null);
+    setLastSavedProfile(null);
+    setTokens(DEFAULT_TOKEN_BALANCE);
+
+    try {
+        const savedHistoryJSON = localStorage.getItem('documentHistory');
+        setDocumentHistory(savedHistoryJSON ? JSON.parse(savedHistoryJSON) : []);
+    } catch {
+        setDocumentHistory([]);
+    }
+
+    try {
+        const savedChatJSON = localStorage.getItem('careerChatHistory');
+        setCareerChatHistory(savedChatJSON ? JSON.parse(savedChatJSON) : []);
+    } catch {
+        setCareerChatHistory([]);
+    }
+
+    setHasLoadedLocalProfile(false);
+    loadProfileFromLocalStorage();
+    setHasLoadedLocalProfile(true);
+  }, [loadProfileFromLocalStorage]);
+  const setTokensWithSync = useCallback((value: React.SetStateAction<number>) => {
+    setTokens(prev => {
+        const nextValue = typeof value === 'function' ? (value as (current: number) => number)(prev) : value;
+        enqueuePersist({ tokens: nextValue });
+        return nextValue;
+    });
+  }, [enqueuePersist]);
+
+  const saveProfile = useCallback(async () => {
     if (!profile) return false;
+    if (supabase && currentUser) {
+        try {
+            await persistUserData({ profile });
+            setLastSavedProfile(profile);
+            return true;
+        } catch (error) {
+            console.error("Failed to save profile to Supabase", error);
+            return false;
+        }
+    }
     try {
         localStorage.setItem('userProfile', JSON.stringify(profile));
         setLastSavedProfile(profile);
@@ -231,7 +434,7 @@ const App: React.FC = () => {
         console.error("Failed to save profile to localStorage", error);
         return false;
     }
-  }, [profile]);
+  }, [profile, currentUser, persistUserData]);
 
   const addDocumentToHistory = useCallback((generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => {
     setDocumentHistory(prevHistory => {
@@ -246,9 +449,10 @@ const App: React.FC = () => {
         } catch (error) {
             console.error("Failed to save document history to localStorage", error);
         }
+        enqueuePersist({ documentHistory: updatedHistory });
         return updatedHistory;
     });
-  }, []);
+  }, [enqueuePersist]);
   
   const addCareerChatSummary = useCallback((summary: CareerChatSummary) => {
     setCareerChatHistory(prevHistory => {
@@ -258,9 +462,10 @@ const App: React.FC = () => {
         } catch (error) {
             console.error("Failed to save career chat history to localStorage", error);
         }
+        enqueuePersist({ careerChatHistory: updatedHistory });
         return updatedHistory;
     });
-  }, []);
+  }, [enqueuePersist]);
 
   const parseResumeInBackground = useCallback((file: File) => {
     if (!file || !profile) return;
@@ -346,7 +551,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (profile && JSON.stringify(profile) !== JSON.stringify(lastSavedProfile)) {
-          saveProfile();
+          void saveProfile();
       }
     }, AUTOSAVE_INTERVAL);
 
@@ -360,7 +565,7 @@ const App: React.FC = () => {
       setProfile,
       saveProfile, 
       lastSavedProfile,
-      tokens, setTokens, 
+      tokens, setTokens: setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
       isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
@@ -374,15 +579,21 @@ const App: React.FC = () => {
       updateBackgroundTask,
       markTaskAsViewed,
       clearAllNotifications,
+      currentUser,
+      authReady,
+      isSupabaseEnabled,
+      isSyncingProfile,
+      signOut,
    }), [
       profile, setProfile, saveProfile, lastSavedProfile,
-      tokens, setTokens, 
+      tokens, setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl, isSidebarOpen, setIsSidebarOpen, 
       isSidebarCollapsed, setIsSidebarCollapsed,
       documentHistory, addDocumentToHistory,
       careerChatHistory, addCareerChatSummary,
       isParsing, parsingError, parseResumeInBackground,
-      backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications
+      backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications,
+      currentUser, authReady, isSupabaseEnabled, isSyncingProfile, signOut
     ]);
 
   if (!profile) {

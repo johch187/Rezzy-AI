@@ -30,8 +30,9 @@ const ProfileForm: React.FC = () => {
 
   const isDirty = profile && lastSavedProfile ? JSON.stringify(profile) !== JSON.stringify(lastSavedProfile) : false;
 
-  const handleSave = () => {
-    if (saveProfile()) {
+  const handleSave = async () => {
+    const didSave = await saveProfile();
+    if (didSave) {
       setShowSaveConfirmation(true);
       setTimeout(() => setShowSaveConfirmation(false), 3000);
     }

@@ -5,8 +5,9 @@ This guide will help you deploy your Keju application to Vercel.
 ## Prerequisites
 
 1. A Google Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. A Vercel account (sign up at [vercel.com](https://vercel.com))
-3. Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
+2. A Supabase project (free tier is fine) with the `profiles` table created (see instructions below)
+3. A Vercel account (sign up at [vercel.com](https://vercel.com))
+4. Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
 
 ## Important: Root Directory Configuration
 
@@ -39,9 +40,12 @@ Make sure your code is committed and pushed to your Git repository.
    - **Root Directory**: `Rezzy-AI` (if your project is in a subdirectory)
    - **Build Command**: `npm run build` (should be auto-detected)
    - **Output Directory**: `dist` (should be auto-detected)
-6. Add Environment Variable:
+6. Add Environment Variables:
    - Click "Environment Variables"
-   - Add `VITE_API_KEY` with your Google Gemini API key
+   - Add:
+     - `VITE_API_KEY` → Google Gemini API key
+     - `VITE_SUPABASE_URL` → Supabase project URL
+     - `VITE_SUPABASE_ANON_KEY` → Supabase anon/public key
    - Select all environments (Production, Preview, Development)
 7. Click "Deploy"
 
@@ -65,13 +69,15 @@ Make sure your code is committed and pushed to your Git repository.
 
 4. Follow the prompts to configure your project
 
-5. Add environment variable:
+5. Add environment variables:
    ```bash
    vercel env add VITE_API_KEY
+   vercel env add VITE_SUPABASE_URL
+   vercel env add VITE_SUPABASE_ANON_KEY
    ```
-   Enter your API key when prompted.
+   Paste each value when prompted.
 
-6. Redeploy to apply the environment variable:
+6. Redeploy to apply the environment variables:
    ```bash
    vercel --prod
    ```
@@ -80,18 +86,48 @@ Make sure your code is committed and pushed to your Git repository.
 
 ### Required Variables
 
-- `VITE_API_KEY`: Your Google Gemini API key
+- `VITE_API_KEY`: Google Gemini API key
+- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase anon/public key
 
 ### Setting Environment Variables in Vercel
 
 1. Go to your project settings on Vercel
 2. Navigate to "Environment Variables"
 3. Add each variable:
-   - **Name**: `VITE_API_KEY`
-   - **Value**: Your API key
+   - `VITE_API_KEY` → Google Gemini API key
+   - `VITE_SUPABASE_URL` → Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` → Supabase anon/public key
    - **Environments**: Select all (Production, Preview, Development)
 4. Click "Save"
 5. Redeploy your project for the changes to take effect
+
+## Supabase Setup
+
+Follow these steps once per Supabase project:
+
+1. In the Supabase dashboard, open the SQL editor and run:
+    ```sql
+    create table if not exists public.profiles (
+      id uuid primary key references auth.users(id) on delete cascade,
+      profile jsonb,
+      document_history jsonb default '[]'::jsonb,
+      career_chat_history jsonb default '[]'::jsonb,
+      tokens integer default 65,
+      updated_at timestamptz default now()
+    );
+    ```
+2. Enable Row Level Security on `public.profiles`.
+3. Add a policy so users can only read/write their own row:
+    ```sql
+    create policy "Users manage their own profile"
+      on public.profiles
+      for all
+      using (auth.uid() = id)
+      with check (auth.uid() = id);
+    ```
+4. (Optional) Enable OAuth providers such as Google under **Authentication → Providers**.
+5. Connect Supabase to Vercel using the [official integration](https://supabase.com/partners/integrations/vercel) so preview deployments share the same credentials.
 
 ## Post-Deployment
 
@@ -144,3 +180,4 @@ Vercel automatically deploys your app when you push to your Git repository:
 - [Vercel Documentation](https://vercel.com/docs)
 - [Vite Documentation](https://vitejs.dev/)
 - [Google Gemini API Documentation](https://ai.google.dev/docs)
+- [Supabase Documentation](https://supabase.com/docs)

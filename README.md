@@ -1,6 +1,6 @@
 # Keju - Your AI-Powered Career Navigator
 
-Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a fully client-side application built with React and powered by the Google Gemini API.
+Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a React + Vite SPA powered by the Google Gemini API with Supabase-backed authentication and storage for seamless sync across devices.
 
 ## ✨ Key Features
 
@@ -14,13 +14,14 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
     -   **Rapport Builder**: Get talking points and questions to build rapport with your interviewer.
     -   **Question Bank**: Generate a list of likely interview questions based on a job description.
 -   **Networking Assistant**: Prepare for coffee chats with AI-generated briefs or craft the perfect outreach message.
--   **100% Client-Side**: All your data is stored securely in your browser's local storage. No backend, no accounts, no fuss.
+-   **Supabase Sync (Optional offline fallback)**: Authenticated users have their profile, document history, and chat summaries synced to Supabase. When Supabase is not configured, the app gracefully falls back to browser `localStorage`.
 
 ## 🛠️ Tech Stack
 
 -   **Frontend**: [React](https://reactjs.org/) with [TypeScript](https://www.typescriptlang.org/)
 -   **Build Tool**: [Vite](https://vitejs.dev/)
 -   **AI Engine**: [Google Gemini API](https://ai.google.dev/gemini-api) (`@google/genai`)
+-   **Authentication & Database**: [Supabase](https://supabase.com/) (`@supabase/supabase-js`)
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 -   **Routing**: [React Router](https://reactrouter.com/) (using `HashRouter`)
 -   **Client-Side Storage**: Browser `localStorage`
@@ -49,8 +50,11 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 4.  Create a `.env` file in the root directory:
     ```bash
     VITE_API_KEY=your_google_gemini_api_key_here
+    VITE_SUPABASE_URL=https://your-project-id.supabase.co
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
-   Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Grab the Supabase values from **Project Settings → API** inside the Supabase dashboard
 5.  Start the development server:
     ```bash
     npm run dev
@@ -87,26 +91,53 @@ This project is configured for easy deployment to Vercel.
    vercel
    ```
 
-3. Add your environment variable:
+3. Add your environment variables:
    - Go to your project settings on Vercel
    - Navigate to "Environment Variables"
-   - Add `VITE_API_KEY` with your Google Gemini API key
+   - Add `VITE_API_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`
 
 ### Option 2: Deploy via GitHub Integration
 
 1. Push your code to GitHub
 2. Import your repository in Vercel
 3. Vercel will automatically detect the Vite configuration
-4. Add the `VITE_API_KEY` environment variable in your project settings
+4. Add the `VITE_API_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` environment variables in your project settings
 5. Deploy!
 
 ### Environment Variables
 
-The following environment variable is required:
+The following environment variables are required:
 
 - `VITE_API_KEY`: Your Google Gemini API key (get it from [Google AI Studio](https://aistudio.google.com/app/apikey))
+- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase anon/public API key
 
 **⚠️ Security Note**: The API key will be exposed in the client-side bundle. For production applications, consider using a backend proxy to keep your API key secure.
+
+### Supabase Setup
+
+1. Create a Supabase project (the free tier is plenty).
+2. In the SQL editor, create the `profiles` table used by the app:
+    ```sql
+    create table if not exists public.profiles (
+      id uuid primary key references auth.users(id) on delete cascade,
+      profile jsonb,
+      document_history jsonb default '[]'::jsonb,
+      career_chat_history jsonb default '[]'::jsonb,
+      tokens integer default 65,
+      updated_at timestamptz default now()
+    );
+    ```
+3. Enable Row Level Security and add a policy such as:
+    ```sql
+    create policy "Users manage their own profile"
+      on public.profiles
+      for all
+      using (auth.uid() = id)
+      with check (auth.uid() = id);
+    ```
+4. (Optional) Configure OAuth providers (e.g., Google) under **Authentication → Providers**.
+5. Connect Supabase to Vercel following the [Vercel × Supabase integration guide](https://supabase.com/partners/integrations/vercel) so preview deployments share the same credentials.
 
 ### Vercel Configuration
 
