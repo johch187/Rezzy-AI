@@ -129,11 +129,18 @@ for each row execute procedure public.handle_new_user();
 
 ## 4. Configuring Environment Variables
 
-Set the following environment variables in your deployment platform (e.g., Google Cloud Run):
+Make sure both your local `.env` file and Cloud Run service include:
 
-- `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_ANON_KEY`: Your Supabase anon/public API key
+| Variable | Purpose | Required In |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | Supabase URL exposed to the browser | Vite build |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key used by the browser | Vite build |
+| `SUPABASE_URL` | URL used by the Node server to verify tokens | Cloud Run env / local server env |
+| `SUPABASE_ANON_KEY` | Anon key used by the server for incoming token verification | Cloud Run env / local server env |
+| `GEMINI_API_KEY` | Required for any Gemini-powered features on the server | Cloud Run env / local server env |
 
-For Cloud Run deployment, see [CLOUD_RUN_DEPLOYMENT.md](../CLOUD_RUN_DEPLOYMENT.md) for detailed instructions.
+If you deploy with `./deploy-keju.sh`, the script reads the `.env` file and forwards the values to Cloud Run automatically (you can still override them in the console if needed).
+
+For a step-by-step deployment flow, see the “Environment Variables” and “Connect Cloud Run to Supabase” sections in the [README](../README.md).
 
 That's it—every new signup now receives a pre-seeded profile row, and the frontend can safely sync documents/chats per user.

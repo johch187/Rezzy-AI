@@ -47,13 +47,20 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
     ```bash
     npm install
     ```
-4.  Create a `.env` file in the root directory:
+4.  Create a `.env` file in the root directory (this file is used locally and when you run `./deploy-keju.sh`):
    ```bash
+   # Build-time (Vite) variables embedded in the client bundle
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+   # Runtime server variables (also required locally when running the Node server)
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   GEMINI_API_KEY=your_gemini_api_key
    ```
    - Grab the Supabase values from **Project Settings → API** inside the Supabase dashboard
-   - Note: The Gemini API key is now handled server-side for security (see deployment section)
+   - Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - When deploying with `./deploy-keju.sh`, these values are read automatically and forwarded to Cloud Run
 5.  Start the development server:
     ```bash
     npm run dev
@@ -98,15 +105,16 @@ For detailed Cloud Run deployment instructions, see [CLOUD_RUN_DEPLOYMENT.md](./
 
 ### Environment Variables
 
-The following environment variables are required for Cloud Run deployment:
+Keju uses two sets of environment variables—one for the Vite build (client) and one for the Node server (runtime). Both sets can live in the same `.env` file; the deploy script automatically wires them up when publishing to Cloud Run.
 
-- `GEMINI_API_KEY`: Your Google Gemini API key (server-side, secure) - Get it from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_ANON_KEY`: Supabase anon/public API key
-- `NODE_ENV`: Set to `production` (automatically set)
-- `PORT`: Automatically set by Cloud Run (default: 8080)
+| Usage | Variables | Where They’re Needed |
+| --- | --- | --- |
+| **Build-time (client)** | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Required so the React app can call Supabase from the browser. These values are embedded into the bundle. |
+| **Runtime (server)** | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY` | Used by the Express server for Supabase token verification and Gemini requests. Inject these into Cloud Run as service env vars (or via Secret Manager). |
 
-**✅ Security Note**: API keys are stored server-side and not exposed to clients, providing better security than client-side deployments.
+Cloud Run also sets `NODE_ENV=production` and `PORT=8080` automatically—no need to manage those yourself.
+
+**✅ Security Tip:** Only the `VITE_*` values should be exposed to the client. Keep `SUPABASE_*` (non-prefixed) + `GEMINI_API_KEY` server-side by supplying them through Cloud Run env vars or Secret Manager bindings.
 
 ### Supabase Setup
 
@@ -132,6 +140,17 @@ The following environment variables are required for Cloud Run deployment:
     ```
 4. (Optional) Configure OAuth providers (e.g., Google) under **Authentication → Providers**.
 5. Need a copy-paste friendly version? See `docs/SUPABASE_SCHEMA.md` for the complete schema, policies, and triggers.
+
+### Connect Cloud Run to Supabase
+
+1. **Expose keys to Cloud Run**
+   - Add the `VITE_*` variables to `--set-build-env-vars` (or keep them in `.env` and run `./deploy-keju.sh`).
+   - Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `GEMINI_API_KEY` via `--set-env-vars` or Secret Manager bindings.
+2. **Allow your production domain**
+   - In Supabase Dashboard → Authentication → URL Configuration, add your Cloud Run URL (e.g., `https://keju-xxxxx-uc.a.run.app`) to the redirect lists so Supabase auth works end-to-end.
+3. **Send Supabase tokens with API calls**
+   - The client should include `Authorization: Bearer <access_token>` on every request to `/api/*`.
+   - The server-side `verifySupabaseUser` helper already checks tokens against Supabase, so once the env vars are set nothing else is required.
 
 ## 📂 Project Structure
 
