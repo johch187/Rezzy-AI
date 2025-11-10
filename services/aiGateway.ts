@@ -12,7 +12,6 @@ import type {
   CareerChatSummary,
 } from '../types';
 import { supabase } from './supabaseClient';
-import type { CareerChatSummary } from '../types';
 
 type RequestWithAuthOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
