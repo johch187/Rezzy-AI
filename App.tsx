@@ -70,6 +70,83 @@ type PersistedWorkspace = {
   tokens: number;
 };
 
+type TodoRecord = {
+  id?: string | number;
+  title?: string;
+  name?: string;
+  description?: string;
+  [key: string]: unknown;
+};
+
+const TodosPage: React.FC = () => {
+  const [todos, setTodos] = useState<TodoRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const getTodos = async () => {
+      try {
+        const { data, error } = await supabase.from('todos').select('*');
+        if (!isMounted) return;
+        if (error) {
+          throw error;
+        }
+        setTodos(data ?? []);
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error('Failed to fetch todos from Supabase', err);
+        setError(err.message ?? 'Failed to fetch todos.');
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void getTodos();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!isSupabaseEnabled) {
+    return (
+      <div className="p-6">
+        <p>Supabase integration is disabled.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Todos</h1>
+      {loading && <p>Loading todos...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+      {!loading && !error && (
+        <ul className="list-disc pl-5 space-y-1">
+          {todos.length === 0 ? (
+            <li>No todos found.</li>
+          ) : (
+            todos.map((todo, index) => (
+              <li key={String(todo.id ?? todo.title ?? index)}>
+                {todo.title ?? todo.name ?? JSON.stringify(todo)}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
     const location = useLocation();
     const isAppPage = !['/', '/login'].includes(location.pathname);
@@ -111,6 +188,7 @@ const AppContent: React.FC = () => {
                         <Route path="/career-coach" element={<CareerCoachPage />} />
                         <Route path="/career-path" element={<CareerPathPage />} />
                         <Route path="/interview-prep" element={<InterviewPrepPage />} />
+                        <Route path="/todos" element={<TodosPage />} />
                     </Routes>
                 </main>
                 {showFooter && <Footer />}

@@ -31,7 +31,8 @@ fi
 
 # Check if environment variables are set
 if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ] || \
-   [ -z "$GEMINI_API_KEY" ] || [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+   [ -z "$GEMINI_API_KEY" ] || [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || \
+   [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
     echo "⚠️  Environment variables not set!"
     echo ""
     echo "You can set them in two ways:"
@@ -73,7 +74,7 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances 10 \
   --timeout 300 \
   --set-build-env-vars "VITE_SUPABASE_URL=$VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY" \
-  --set-env-vars "NODE_ENV=production,GEMINI_API_KEY=$GEMINI_API_KEY,SUPABASE_URL=$SUPABASE_URL,SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+  --set-env-vars "NODE_ENV=production,GEMINI_API_KEY=$GEMINI_API_KEY,SUPABASE_URL=$SUPABASE_URL,SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
 
 echo ""
 echo "=========================================="
@@ -88,4 +89,3 @@ echo "  View logs:     gcloud run services logs read $SERVICE_NAME --region $REG
 echo "  View service:  gcloud run services describe $SERVICE_NAME --region $REGION"
 echo "  Open in browser: gcloud run services describe $SERVICE_NAME --region $REGION --format 'value(status.url)' | xargs open"
 echo ""
-
