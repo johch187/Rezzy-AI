@@ -9,10 +9,17 @@ import type {
   CareerMilestone,
   DocumentGeneration,
   ParsedCoverLetter,
+  CareerChatSummary,
 } from '../types';
 import { supabase } from './supabaseClient';
+import type { CareerChatSummary } from '../types';
 
-const postWithAuth = async <T>(path: string, payload: unknown): Promise<T> => {
+type RequestWithAuthOptions = {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: unknown;
+};
+
+const requestWithAuth = async <T>(path: string, options: RequestWithAuthOptions = {}): Promise<T> => {
   if (!supabase) {
     throw new Error('Supabase client not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   }
@@ -27,13 +34,21 @@ const postWithAuth = async <T>(path: string, payload: unknown): Promise<T> => {
     throw new Error('You must be signed in to use this feature.');
   }
 
+  const method = options.method ?? 'POST';
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+  let body: string | undefined;
+
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.body);
+  }
+
   const response = await fetch(`/api${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
+    method,
+    headers,
+    body,
   });
 
   if (!response.ok) {
@@ -63,21 +78,21 @@ export const generateDocumentsViaServer = async (
   profile: ProfileData,
   options: GenerationOptions
 ): Promise<{ documents: GeneratedContent; analysis: ApplicationAnalysisResult | null }> => {
-  return postWithAuth('/generate/documents', { profile, options });
+  return requestWithAuth('/generate/documents', { body: { profile, options } });
 };
 
 export const analyzeApplicationFitViaServer = async (
   resumeText: string,
   jobDescription: string
 ): Promise<ApplicationAnalysisResult> => {
-  return postWithAuth('/applications/analyze', { resumeText, jobDescription });
+  return requestWithAuth('/applications/analyze', { body: { resumeText, jobDescription } });
 };
 
 export const generateCoffeeChatBriefViaServer = async (
   profile: ProfileData,
   counterpartInfo: string
 ): Promise<string> => {
-  const result = await postWithAuth<{ content: string }>('/coffee-chats/brief', { profile, counterpartInfo });
+  const result = await requestWithAuth<{ content: string }>('/coffee-chats/brief', { body: { profile, counterpartInfo } });
   return result.content;
 };
 
@@ -85,17 +100,17 @@ export const generateReachOutMessageViaServer = async (
   profile: ProfileData,
   counterpartInfo: string
 ): Promise<string> => {
-  const result = await postWithAuth<{ content: string }>('/coffee-chats/outreach', { profile, counterpartInfo });
+  const result = await requestWithAuth<{ content: string }>('/coffee-chats/outreach', { body: { profile, counterpartInfo } });
   return result.content;
 };
 
 export const shapeInterviewStoryViaServer = async (brainDump: string): Promise<string> => {
-  const result = await postWithAuth<{ content: string }>('/interview/story', { brainDump });
+  const result = await requestWithAuth<{ content: string }>('/interview/story', { body: { brainDump } });
   return result.content;
 };
 
 export const generateInterviewQuestionsViaServer = async (jobDescription: string): Promise<string[]> => {
-  const result = await postWithAuth<{ questions: string[] }>('/interview/questions', { jobDescription });
+  const result = await requestWithAuth<{ questions: string[] }>('/interview/questions', { body: { jobDescription } });
   return result.questions;
 };
 
@@ -104,14 +119,14 @@ export const generateCareerPathViaServer = async (
   currentRole: string,
   targetRole: string
 ): Promise<CareerPath> => {
-  return postWithAuth('/career-path', { profile, currentRole, targetRole });
+  return requestWithAuth('/career-path', { body: { profile, currentRole, targetRole } });
 };
 
 export const getVideosForMilestoneViaServer = async (
   targetRole: string,
   milestone: CareerMilestone
 ): Promise<YouTubeVideo[]> => {
-  const result = await postWithAuth<{ videos: YouTubeVideo[] }>('/career-path/videos', { targetRole, milestone });
+  const result = await requestWithAuth<{ videos: YouTubeVideo[] }>('/career-path/videos', { body: { targetRole, milestone } });
   return result.videos;
 };
 
@@ -119,12 +134,12 @@ export const findMentorMatchViaServer = async (
   thesisTopic: string,
   facultyList: string
 ): Promise<MentorMatch[]> => {
-  const result = await postWithAuth<{ matches: MentorMatch[] }>('/mentor-match', { thesisTopic, facultyList });
+  const result = await requestWithAuth<{ matches: MentorMatch[] }>('/mentor-match', { body: { thesisTopic, facultyList } });
   return result.matches;
 };
 
 export const reframeFeedbackViaServer = async (feedbackText: string): Promise<string> => {
-  const result = await postWithAuth<{ content: string }>('/feedback/reframe', { feedbackText });
+  const result = await requestWithAuth<{ content: string }>('/feedback/reframe', { body: { feedbackText } });
   return result.content;
 };
 
@@ -132,22 +147,22 @@ export const getNegotiationPrepViaServer = async (
   jobTitle: string,
   location: string
 ): Promise<{ salaryRange: string; tips: string }> => {
-  return postWithAuth('/negotiation/prep', { jobTitle, location });
+  return requestWithAuth('/negotiation/prep', { body: { jobTitle, location } });
 };
 
 export const parseResumeViaServer = async (
   resumeText: string,
   model: 'gemini-2.5-pro' | 'gemini-2.5-flash'
 ): Promise<Partial<ProfileData>> => {
-  return postWithAuth('/parser/resume', { resumeText, model });
+  return requestWithAuth('/parser/resume', { body: { resumeText, model } });
 };
 
 export const parseCoverLetterViaServer = async (coverLetterMarkdown: string): Promise<ParsedCoverLetter> => {
-  return postWithAuth('/parser/cover-letter', { coverLetterMarkdown });
+  return requestWithAuth('/parser/cover-letter', { body: { coverLetterMarkdown } });
 };
 
 export const scrapeJobDescriptionViaServer = async (url: string): Promise<string> => {
-  const result = await postWithAuth<{ jobDescription: string }>('/scraper/job-description', { url });
+  const result = await requestWithAuth<{ jobDescription: string }>('/scraper/job-description', { body: { url } });
   return result.jobDescription;
 };
 
@@ -156,5 +171,20 @@ export const sendCoachMessageViaServer = async (
   documentHistory: DocumentGeneration[],
   messages: CoachMessagePayload[]
 ): Promise<{ message: string; functionCalls: CoachFunctionCall[] }> => {
-  return postWithAuth('/coach/message', { profile, documentHistory, messages });
+  return requestWithAuth('/coach/message', { body: { profile, documentHistory, messages } });
+};
+
+type WorkspaceSnapshot = {
+  profile: ProfileData | null;
+  documentHistory: DocumentGeneration[];
+  careerChatHistory: CareerChatSummary[];
+  tokens: number;
+};
+
+export const fetchWorkspaceViaServer = async (): Promise<WorkspaceSnapshot> => {
+  return requestWithAuth('/workspace', { method: 'GET' });
+};
+
+export const persistWorkspaceViaServer = async (payload: WorkspaceSnapshot): Promise<void> => {
+  await requestWithAuth('/workspace', { method: 'PUT', body: payload });
 };

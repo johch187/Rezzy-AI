@@ -137,6 +137,7 @@ Make sure both your local `.env` file and Cloud Run service include:
 | `VITE_SUPABASE_ANON_KEY` | Public anon key used by the browser | Vite build |
 | `SUPABASE_URL` | URL used by the Node server to verify tokens | Cloud Run env / local server env |
 | `SUPABASE_ANON_KEY` | Anon key used by the server for incoming token verification | Cloud Run env / local server env |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key used for server-side workspace persistence | Cloud Run env / local server env (store securely, e.g., Secret Manager) |
 | `GEMINI_API_KEY` | Required for any Gemini-powered features on the server | Cloud Run env / local server env |
 
 If you deploy with `./deploy-keju.sh`, the script reads the `.env` file and forwards the values to Cloud Run automatically (you can still override them in the console if needed).

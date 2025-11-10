@@ -5,6 +5,7 @@ import { handleCoffeeChatBrief, handleReachOutMessage, handleInterviewStory, han
 import { handleResumeParsing, handleCoverLetterParsing } from './controllers/parser.js';
 import { handleJobDescriptionScrape } from './controllers/scraper.js';
 import { handleCareerCoachMessage } from './controllers/coach.js';
+import { handleGetWorkspace, handleUpsertWorkspace } from './controllers/workspace.js';
 const router = Router();
 router.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -43,4 +44,6 @@ router.post('/parser/resume', handleResumeParsing);
 router.post('/parser/cover-letter', handleCoverLetterParsing);
 router.post('/scraper/job-description', handleJobDescriptionScrape);
 router.post('/coach/message', handleCareerCoachMessage);
+router.get('/workspace', handleGetWorkspace);
+router.put('/workspace', handleUpsertWorkspace);
 export default router;

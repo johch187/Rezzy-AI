@@ -25,44 +25,8 @@ import GeneratedDocumentsPage from './pages/GeneratedDocumentsPage';
 import ToastNotification from './components/ToastNotification';
 import { HamburgerIcon } from './components/Icons';
 import { supabase, isSupabaseEnabled } from './services/supabaseClient';
-
-const createNewProfile = (name: string): ProfileData => {
-  const newId = crypto.randomUUID();
-  return {
-    id: newId,
-    name: name,
-    fullName: '',
-    jobTitle: '',
-    email: '',
-    phone: '',
-    website: '',
-    location: '',
-    linkedin: '',
-    github: '',
-    summary: '',
-    education: [],
-    experience: [],
-    projects: [],
-    technicalSkills: [],
-    softSkills: [],
-    tools: [],
-    languages: [],
-    certifications: [],
-    interests: [],
-    customSections: [],
-    additionalInformation: '',
-    industry: '',
-    experienceLevel: 'entry',
-    vibe: '',
-    selectedResumeTemplate: 'classic',
-    selectedCoverLetterTemplate: 'professional',
-    targetJobTitle: '',
-    companyName: '',
-    companyKeywords: '',
-    keySkillsToHighlight: '',
-    careerPath: null,
-  };
-};
+import { fetchWorkspaceViaServer, persistWorkspaceViaServer } from './services/aiGateway';
+import { createNewProfile, DEFAULT_TOKEN_BALANCE } from './workspaceDefaults';
 
 export const ProfileContext = createContext<{
   profile: ProfileData | null;
@@ -154,8 +118,6 @@ const AppContent: React.FC = () => {
         </div>
     );
 };
-
-const DEFAULT_TOKEN_BALANCE = 65;
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -262,67 +224,35 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!supabase || !currentUser) return;
+    if (!currentUser) return;
 
     let cancelled = false;
     setIsSyncingProfile(true);
 
     (async () => {
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('profile, document_history, career_chat_history, tokens')
-                .eq('id', currentUser.id)
-                .maybeSingle();
-
+            const workspace = await fetchWorkspaceViaServer();
             if (cancelled) return;
 
-            if (error && error.code !== 'PGRST116') {
-                console.error("Failed to load user data from Supabase.", error);
-                return;
-            }
+            const storedProfile: ProfileData =
+                workspace.profile ?? createNewProfile(currentUser.user_metadata?.full_name || currentUser.email || 'My First Profile');
 
-            if (data) {
-                const storedProfile: ProfileData = data.profile ?? createNewProfile(currentUser.user_metadata?.full_name || currentUser.email || "My First Profile");
-                setProfile(storedProfile);
-                setLastSavedProfile(storedProfile);
+            setProfile(storedProfile);
+            setLastSavedProfile(storedProfile);
 
-                const storedHistory = Array.isArray(data.document_history) ? data.document_history : [];
-                setDocumentHistory(storedHistory);
-                localStorage.setItem('documentHistory', JSON.stringify(storedHistory));
+            const storedHistory = Array.isArray(workspace.documentHistory) ? workspace.documentHistory : [];
+            setDocumentHistory(storedHistory);
+            localStorage.setItem('documentHistory', JSON.stringify(storedHistory));
 
-                const storedChatHistory = Array.isArray(data.career_chat_history) ? data.career_chat_history : [];
-                setCareerChatHistory(storedChatHistory);
-                localStorage.setItem('careerChatHistory', JSON.stringify(storedChatHistory));
+            const storedChatHistory = Array.isArray(workspace.careerChatHistory) ? workspace.careerChatHistory : [];
+            setCareerChatHistory(storedChatHistory);
+            localStorage.setItem('careerChatHistory', JSON.stringify(storedChatHistory));
 
-                const storedTokens = typeof data.tokens === 'number' ? data.tokens : DEFAULT_TOKEN_BALANCE;
-                setTokens(storedTokens);
-            } else {
-                const firstProfile = createNewProfile(currentUser.user_metadata?.full_name || currentUser.email || "My First Profile");
-                setProfile(firstProfile);
-                setLastSavedProfile(firstProfile);
-                setDocumentHistory([]);
-                setCareerChatHistory([]);
-                setTokens(DEFAULT_TOKEN_BALANCE);
-
-                await supabase
-                    .from('profiles')
-                    .insert({
-                        id: currentUser.id,
-                        profile: firstProfile,
-                        document_history: [],
-                        career_chat_history: [],
-                        tokens: DEFAULT_TOKEN_BALANCE,
-                    })
-                    .select()
-                    .single()
-                    .catch((insertError) => {
-                        console.error("Failed to seed Supabase profile row.", insertError);
-                    });
-            }
+            const storedTokens = typeof workspace.tokens === 'number' ? workspace.tokens : DEFAULT_TOKEN_BALANCE;
+            setTokens(storedTokens);
         } catch (error) {
             if (!cancelled) {
-                console.error("Unexpected error loading Supabase profile.", error);
+                console.error('Failed to load workspace from API.', error);
             }
         } finally {
             if (!cancelled) {
@@ -357,7 +287,7 @@ const App: React.FC = () => {
   }, [backgroundTasks]);
 
   const persistUserData = useCallback(async (overrides: Partial<PersistedWorkspace> = {}) => {
-    if (!supabase || !currentUser) return;
+    if (!currentUser) return;
     const payload = {
         id: currentUser.id,
         profile: overrides.profile ?? profile,
@@ -366,17 +296,18 @@ const App: React.FC = () => {
         tokens: overrides.tokens ?? tokens,
         updated_at: new Date().toISOString(),
     };
-    const { error } = await supabase.from('profiles').upsert(payload);
-    if (error) {
-        console.error("Failed to sync Supabase workspace.", error);
-        throw error;
-    }
+    await persistWorkspaceViaServer({
+        profile: payload.profile,
+        documentHistory: payload.document_history,
+        careerChatHistory: payload.career_chat_history,
+        tokens: payload.tokens,
+    });
   }, [currentUser, profile, documentHistory, careerChatHistory, tokens]);
 
   const enqueuePersist = useCallback((overrides?: Partial<PersistedWorkspace>) => {
-    if (!supabase || !currentUser) return;
+    if (!currentUser) return;
     persistUserData(overrides).catch(err => {
-        console.error("Supabase background sync failed.", err);
+        console.error("Workspace background sync failed.", err);
     });
   }, [persistUserData, currentUser]);
   const signOut = useCallback(async () => {
@@ -415,13 +346,13 @@ const App: React.FC = () => {
 
   const saveProfile = useCallback(async () => {
     if (!profile) return false;
-    if (supabase && currentUser) {
+    if (currentUser) {
         try {
             await persistUserData({ profile });
             setLastSavedProfile(profile);
             return true;
         } catch (error) {
-            console.error("Failed to save profile to Supabase", error);
+            console.error("Failed to save profile to workspace backend", error);
             return false;
         }
     }

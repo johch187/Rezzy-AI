@@ -110,7 +110,7 @@ Keju uses two sets of environment variables—one for the Vite build (client) an
 | Usage | Variables | Where They’re Needed |
 | --- | --- | --- |
 | **Build-time (client)** | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Required so the React app can call Supabase from the browser. These values are embedded into the bundle. |
-| **Runtime (server)** | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY` | Used by the Express server for Supabase token verification and Gemini requests. Inject these into Cloud Run as service env vars (or via Secret Manager). |
+| **Runtime (server)** | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Used by the Express server for Supabase token verification, workspace persistence, and Gemini requests. Inject these into Cloud Run as service env vars (or via Secret Manager). |
 
 Cloud Run also sets `NODE_ENV=production` and `PORT=8080` automatically—no need to manage those yourself.
 
@@ -145,7 +145,7 @@ Cloud Run also sets `NODE_ENV=production` and `PORT=8080` automatically—no nee
 
 1. **Expose keys to Cloud Run**
    - Add the `VITE_*` variables to `--set-build-env-vars` (or keep them in `.env` and run `./deploy-keju.sh`).
-   - Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `GEMINI_API_KEY` via `--set-env-vars` or Secret Manager bindings.
+   - Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY` via `--set-env-vars` or Secret Manager bindings. (The service-role key should only live in Secret Manager.)
 2. **Allow your production domain**
    - In Supabase Dashboard → Authentication → URL Configuration, add your Cloud Run URL (e.g., `https://keju-xxxxx-uc.a.run.app`) to the redirect lists so Supabase auth works end-to-end.
 3. **Send Supabase tokens with API calls**
