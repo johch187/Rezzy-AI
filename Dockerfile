@@ -35,6 +35,7 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/build/server ./build/server
+COPY --from=builder /app/build/workspaceDefaults.js ./build/workspaceDefaults.js
 
 # Create non-root user and set permissions
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs && \
