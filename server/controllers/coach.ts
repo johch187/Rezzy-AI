@@ -233,7 +233,7 @@ export const handleCareerCoachMessage = async (req: AuthedRequest, res: Response
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
-      systemInstruction,
+      config: { systemInstruction },
       contents: history,
       tools: [{ functionDeclarations: coachTools }],
     });

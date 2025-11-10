@@ -177,9 +177,14 @@ export const handleCareerCoachMessage = async (req, res) => {
                 parts: [{ text: message.content }],
             };
         });
+        const systemInstruction = [
+            {
+                text: buildSystemInstruction(profile, documentHistory ?? []),
+            },
+        ];
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
-            systemInstruction: buildSystemInstruction(profile, documentHistory ?? []),
+            systemInstruction,
             contents: history,
             tools: [{ functionDeclarations: coachTools }],
         });
