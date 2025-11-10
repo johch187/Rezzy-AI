@@ -1,7 +1,7 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateTailoredDocuments } from '../services/generationService';
+import { generateDocumentsViaServer } from '../services/aiGateway';
 import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
 import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
 import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
@@ -176,7 +176,7 @@ const GeneratePage: React.FC = () => {
           };
 
           const generationOptions = { ...options, jobDescription };
-          const result = await generateTailoredDocuments(filteredProfile, generationOptions);
+          const result = await generateDocumentsViaServer(filteredProfile, generationOptions);
           
           if (!result.documents.resume && !result.documents.coverLetter) {
               throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");

@@ -2,7 +2,7 @@ import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { ApplicationAnalysisResult } from '../types';
-import { analyzeApplicationFit } from '../services/generationService';
+import { analyzeApplicationFitViaServer } from '../services/aiGateway';
 import { readFileContent } from '../utils';
 import { LoadingSpinnerIcon, XCircleIcon, UploadIcon, SparklesIcon } from '../components/Icons';
 import { profileToMarkdown } from '../components/editor/markdownConverter';
@@ -76,7 +76,7 @@ const ApplicationAnalysisPage: React.FC = () => {
 
         (async () => {
             try {
-                const analysisResult = await analyzeApplicationFit(resumeText, jobDescription);
+                const analysisResult = await analyzeApplicationFitViaServer(resumeText, jobDescription);
                 setResult(analysisResult); // Show result immediately on this page
                 updateBackgroundTask(taskId, { status: 'completed', result: analysisResult });
             } catch (e: any) {
