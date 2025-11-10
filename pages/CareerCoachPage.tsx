@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useContext, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { createCareerCoachSession } from '../services/careerCoachService';
-import { generateCareerPath, getVideosForMilestone } from '../services/generationService';
+import {
+  sendCoachMessageViaServer,
+  generateCareerPathViaServer,
+  getVideosForMilestoneViaServer,
+  CoachFunctionCall,
+  CoachMessagePayload,
+} from '../services/aiGateway';
 import { LoadingSpinnerIcon, UserIcon } from '../components/Icons';
-import type { Chat, GenerateContentResponse, Part, FunctionCall } from '@google/genai';
 import type { YouTubeVideo } from '../types';
 import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
@@ -14,9 +18,8 @@ const CareerCoachPage: React.FC = () => {
     const [messages, setMessages] = useState<{ role: 'user' | 'model' | 'system'; content: string; id: string; action?: React.ReactNode }[]>([]);
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const chatSession = useRef<Chat | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const hasGeminiKey = Boolean(import.meta.env.VITE_API_KEY);
+    const conversationRef = useRef<CoachMessagePayload[]>([]);
     
     const [careerPathPrompt, setCareerPathPrompt] = useState<{
         show: boolean;
@@ -26,75 +29,69 @@ const CareerCoachPage: React.FC = () => {
     } | null>(null);
 
     if (!profileContext) return <div>Loading...</div>
-    const { profile, setProfile, documentHistory, careerChatHistory, addCareerChatSummary, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
+    const { profile, setProfile, documentHistory, addCareerChatSummary, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
 
     const isGeneratingPath = backgroundTasks.some(t => t.type === 'career-path' && t.status === 'running');
 
     useEffect(() => {
-        if (profile) {
-            if (!hasGeminiKey) {
-                chatSession.current = null;
-                setMessages([{
-                    role: 'model',
-                    content: "The AI Career Coach requires a Gemini API key (VITE_API_KEY) to run. Add the key in your environment variables and redeploy to enable this feature.",
-                    id: crypto.randomUUID(),
-                }]);
-                return;
-            }
+        if (!profile) return;
+        conversationRef.current = [];
 
-            chatSession.current = createCareerCoachSession(profile, documentHistory);
-            
-            const isProfileEffectivelyEmpty = (
-                !profile.summary.trim() &&
-                profile.experience.length === 0 &&
-                profile.education.length === 0 &&
-                !profile.jobTitle.trim()
+        const isProfileEffectivelyEmpty = (
+            !profile.summary.trim() &&
+            profile.experience.length === 0 &&
+            profile.education.length === 0 &&
+            !profile.jobTitle.trim()
+        );
+
+        if (isProfileEffectivelyEmpty) {
+            const initialMessage = `Hi! I'm your Keju AI Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
+            const actionButton = (
+                <button
+                    onClick={() => navigate('/builder')}
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-white text-brand-blue font-semibold rounded-lg shadow-sm border border-brand-blue/30 hover:bg-brand-blue/10 transition-colors"
+                >
+                    Go to My Profile
+                </button>
             );
-
-            if (isProfileEffectivelyEmpty) {
-                const initialMessage = `Hi! I'm your Keju AI Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
-                const actionButton = (
-                    <button
-                        onClick={() => navigate('/builder')}
-                        className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-white text-brand-blue font-semibold rounded-lg shadow-sm border border-brand-blue/30 hover:bg-brand-blue/10 transition-colors"
-                    >
-                        Go to My Profile
-                    </button>
-                );
-                setMessages([{
-                    role: 'model',
-                    content: initialMessage,
-                    id: crypto.randomUUID(),
-                    action: actionButton,
-                }]);
-            } else {
-                const initialMessage = `Hi! I'm your Keju AI Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
-                 setMessages([{
-                    role: 'model',
-                    content: initialMessage,
-                    id: crypto.randomUUID()
-                }]);
-            }
+            setMessages([{
+                role: 'model',
+                content: initialMessage,
+                id: crypto.randomUUID(),
+                action: actionButton,
+            }]);
+        } else {
+            const initialMessage = `Hi! I'm your Keju AI Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
+            setMessages([{
+                role: 'model',
+                content: initialMessage,
+                id: crypto.randomUUID()
+            }]);
         }
-    }, [profile, documentHistory, navigate, hasGeminiKey]);
+    }, [profile, navigate]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, careerPathPrompt, isLoading]);
 
-    const handleFunctionCall = async (functionCalls: FunctionCall[]): Promise<void> => {
+    const appendConversationEntries = (entries: CoachMessagePayload | CoachMessagePayload[]) => {
+        const payloads = Array.isArray(entries) ? entries : [entries];
+        conversationRef.current = [...conversationRef.current, ...payloads];
+    };
+
+    const handleFunctionCall = async (functionCalls: CoachFunctionCall[]): Promise<void> => {
         if (!functionCalls || functionCalls.length === 0 || !profile) {
             setIsLoading(false);
             return;
         }
-    
-        const functionResponses: Part[] = [];
+
+        const functionResponses: CoachMessagePayload[] = [];
         const postSendActions: (() => void)[] = [];
         let shouldNavigate = false;
-    
+
         for (const call of functionCalls) {
-            let functionExecutionResult: any;
-    
+            let functionExecutionResult: Record<string, unknown> | null = null;
+
             switch (call.name) {
                 case 'updateProfessionalSummary': {
                     const { newSummary } = call.args;
@@ -126,22 +123,22 @@ const CareerCoachPage: React.FC = () => {
                     });
                     break;
                 }
-                 case 'navigateToCoffeeChat': {
+                case 'navigateToCoffeeChat': {
                     if (shouldNavigate) break;
                     shouldNavigate = true;
-                     const { counterpartInfo, mode } = call.args;
-                     functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
-                     postSendActions.push(() => {
-                         const modeText = (mode as string) === 'prep' ? "prepare for your chat" : "write an outreach message";
-                         setMessages(prev => [...prev, {
+                    const { counterpartInfo, mode } = call.args;
+                    functionExecutionResult = { result: "Successfully navigated user to the coffee chat tool." };
+                    postSendActions.push(() => {
+                        const modeText = (mode as string) === 'prep' ? "prepare for your chat" : "write an outreach message";
+                        setMessages(prev => [...prev, {
                             role: 'system',
                             content: `Great idea. I can definitely help you ${modeText}. I'm taking you to the Coffee Chat tool now.`,
                             id: crypto.randomUUID()
                         }]);
-                         setTimeout(() => {
+                        setTimeout(() => {
                             navigate('/coffee-chats', { state: { initialCounterpartInfo: counterpartInfo as string, initialMode: mode as 'prep' | 'reach_out' } });
                         }, 1500);
-                     });
+                    });
                     break;
                 }
                 case 'promptToCreateCareerPath': {
@@ -159,89 +156,75 @@ const CareerCoachPage: React.FC = () => {
                 }
                 default:
                     console.warn(`Unknown function call requested by model: ${call.name}`);
-                    continue;
-            }
-            
-            functionResponses.push({
-                functionResponse: {
-                  name: call.name,
-                  response: functionExecutionResult,
-                },
-            });
-        }
-        
-        postSendActions.forEach(action => action());
-    
-        if (chatSession.current && functionResponses.length > 0) {
-            const stream = await chatSession.current.sendMessageStream({ message: functionResponses });
-            
-            let fullText = "";
-            const modelMessageId = crypto.randomUUID();
-            setMessages(prev => [...prev, { role: 'model', content: '', id: modelMessageId }]);
-            let functionCallInFollowUp = false;
-
-            for await (const chunk of stream) {
-                if (chunk.text) {
-                    fullText += chunk.text;
-                    setMessages(prev => prev.map(m => m.id === modelMessageId ? { ...m, content: fullText } : m));
-                }
-                if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-                    functionCallInFollowUp = true;
-                    await handleFunctionCall(chunk.functionCalls);
                     break;
-                }
             }
 
-            if (!functionCallInFollowUp) {
-                setIsLoading(false);
+            if (functionExecutionResult) {
+                functionResponses.push({
+                    role: 'function',
+                    name: call.name,
+                    response: functionExecutionResult,
+                });
             }
-        } else {
+        }
+
+        postSendActions.forEach(action => action());
+
+        if (functionResponses.length === 0) {
+            setIsLoading(false);
+            return;
+        }
+
+        appendConversationEntries(functionResponses);
+
+        try {
+            const followUp = await sendCoachMessageViaServer(profile, documentHistory ?? [], conversationRef.current);
+            await handleCoachResponse(followUp);
+        } catch (error) {
+            console.error("Error continuing coach conversation after function call:", error);
+            setMessages(prev => [...prev, { role: 'system', content: 'The coach encountered an error after running a tool. Please try again.', id: crypto.randomUUID() }]);
             setIsLoading(false);
         }
     };
 
+    const handleCoachResponse = async (response: { message?: string; functionCalls?: CoachFunctionCall[] }): Promise<void> => {
+        const trimmedMessage = response.message?.trim();
+        if (trimmedMessage) {
+            const modelMessage = { role: 'model' as const, content: trimmedMessage, id: crypto.randomUUID() };
+            setMessages(prev => [...prev, modelMessage]);
+            appendConversationEntries({ role: 'model', content: trimmedMessage });
+        }
+
+        const pendingFunctionCalls = response.functionCalls ?? [];
+        if (pendingFunctionCalls.length > 0) {
+            await handleFunctionCall(pendingFunctionCalls);
+            return;
+        }
+
+        setIsLoading(false);
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!userInput.trim() || isLoading || !chatSession.current || !hasGeminiKey) return;
+        if (!userInput.trim() || isLoading || !profile) return;
 
-        const newUserMessage = { role: 'user' as const, content: userInput, id: crypto.randomUUID() };
+        const currentInput = userInput.trim();
+        const newUserMessage = { role: 'user' as const, content: currentInput, id: crypto.randomUUID() };
         setMessages(prev => [...prev, newUserMessage]);
-        const currentInput = userInput;
         setUserInput('');
         setIsLoading(true);
         setCareerPathPrompt(null);
+        appendConversationEntries({ role: 'user', content: currentInput });
 
         try {
-            const stream = await chatSession.current.sendMessageStream({ message: currentInput });
-            
-            let fullText = "";
-            const modelMessageId = crypto.randomUUID();
-            setMessages(prev => [...prev, { role: 'model', content: '', id: modelMessageId }]);
-            
-            const responseChunks: GenerateContentResponse[] = [];
-            for await (const chunk of stream) {
-                responseChunks.push(chunk);
-                if (chunk.text) {
-                    fullText += chunk.text;
-                    setMessages(prev => prev.map(m => m.id === modelMessageId ? { ...m, content: fullText } : m));
-                }
-            }
+            const response = await sendCoachMessageViaServer(profile, documentHistory ?? [], conversationRef.current);
+            await handleCoachResponse(response);
 
-            // After a full user-model interaction, add a summary to career chat history
             addCareerChatSummary({
                 id: crypto.randomUUID(),
-                title: currentInput.substring(0, 50) + (currentInput.length > 50 ? '...' : ''), // Take first 50 chars as title
+                title: currentInput.substring(0, 50) + (currentInput.length > 50 ? '...' : ''),
                 timestamp: new Date().toISOString(),
             });
-
-            const aggregatedFunctionCalls = responseChunks.flatMap(chunk => chunk.functionCalls || []);
-
-            if (aggregatedFunctionCalls.length > 0) {
-                await handleFunctionCall(aggregatedFunctionCalls);
-            } else {
-                setIsLoading(false);
-            }
-
         } catch (error) {
             console.error("Error chatting with coach:", error);
             const errorMessage = { role: 'system' as const, content: 'Sorry, I encountered an error. Please try again.', id: crypto.randomUUID() };
@@ -269,13 +252,13 @@ const CareerCoachPage: React.FC = () => {
 
         (async () => {
             try {
-                const newPath = await generateCareerPath(profile, currentRole, targetRole);
+                const newPath = await generateCareerPathViaServer(profile, currentRole, targetRole);
 
                 // Pre-fetch videos for each milestone
                 const pathWithVideos = await Promise.all(
                     newPath.path.map(async (milestone) => {
                         try {
-                            const videos = await getVideosForMilestone(newPath.targetRole, milestone);
+                            const videos = await getVideosForMilestoneViaServer(newPath.targetRole, milestone);
                             
                             // Verify videos exist to prevent broken links
                             const verificationPromises = videos.map(video => 
@@ -423,11 +406,6 @@ const CareerCoachPage: React.FC = () => {
                             <span>Generating your career path in the background...</span>
                         </div>
                     )}
-                    {!hasGeminiKey && (
-                        <p className="text-sm text-red-500 mb-3">
-                            AI Career Coach is disabled until you add a Gemini API key (VITE_API_KEY) and redeploy.
-                        </p>
-                    )}
                     <form onSubmit={handleSubmit} className="flex items-start gap-4">
                         <textarea
                             value={userInput}
@@ -441,9 +419,9 @@ const CareerCoachPage: React.FC = () => {
                             placeholder="Ask me anything about your career..."
                             className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-brand-blue focus:outline-none transition"
                             rows={1}
-                            disabled={isLoading || !hasGeminiKey}
+                            disabled={isLoading}
                         />
-                        <button type="submit" disabled={isLoading || !userInput.trim() || !hasGeminiKey} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
+                        <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
                             Send
                         </button>
                     </form>

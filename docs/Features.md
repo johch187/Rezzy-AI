@@ -9,7 +9,7 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Key Features:**
     -   **Multi-Profile Support:** Users can create, rename, delete, and switch between multiple, distinct profiles from the sidebar.
     -   **Comprehensive Form:** A multi-section accordion form allows users to input everything from personal info and work experience to custom-defined sections for the active profile.
-    -   **Resume Import:** Users can upload a `.pdf`, `.txt`, or `.md` file. The `parserService.ts` parses the file and populates the *currently active* profile form.
+    -   **Resume Import:** Users can upload a `.pdf`, `.txt`, or `.md` file. The `parserService.ts` helper reads the file locally, sends the text to the secure `/api/parser/resume` endpoint via `aiGateway.ts`, and applies the parsed result to the active profile.
     -   **Autosave & Manual Save:** The profile is automatically saved to `localStorage` periodically, and a "Save Changes" bar appears for immediate manual saves.
 
 ## 2. Application Tailoring & Analysis Suite
@@ -20,21 +20,21 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Workflow:**
     1.  The user provides a job description via URL or paste.
     2.  The user selects which items from their active profile to include.
-    3.  `generationService.ts` compiles a detailed prompt and calls the Gemini API to generate the documents.
+    3.  The page calls `generateDocumentsViaServer` (from `aiGateway.ts`), which forwards the request to the Cloud Run `/api/generate/documents` endpoint where the actual Gemini call happens.
 
 ### b. Application Fit Analysis (Integrated & Standalone)
 -   **Location:** `GeneratePage.tsx` (integrated), `ApplicationAnalysisPage.tsx` (standalone)
 -   **Purpose:** To provide users with a detailed analysis of how well their resume matches a job description, offering concrete improvement suggestions.
 -   **Workflow:**
-    1.  **Integrated:** During document generation (`GeneratePage.tsx`), if a job description and a resume (either generated or uploaded) are present, `generationService.ts` will automatically perform a fit analysis.
-    2.  **Standalone:** On the `ApplicationAnalysisPage.tsx`, users can input any resume text and job description to get a dedicated analysis.
-    3.  `generationService.ts` calls the Gemini API with a specific prompt and schema (`analyzeApplicationFit`) to get a `fitScore`, `gapAnalysis`, `keywordOptimization`, and `impactEnhancer`.
+    1.  **Integrated:** During document generation (`GeneratePage.tsx`), if a job description and a resume (either generated or uploaded) are present, the client automatically calls `/api/applications/analyze` via `aiGateway.ts`.
+    2.  **Standalone:** On the `ApplicationAnalysisPage.tsx`, users can input any resume text and job description to get a dedicated analysis using the same backend endpoint.
+    3.  The Cloud Run service calls Gemini with a strict schema (`analyzeApplicationFit`) to return the `fitScore`, `gapAnalysis`, `keywordOptimization`, and `impactEnhancer`.
 
 ### c. Generation Results & Editor
 -   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
 -   **Purpose:** To allow users to review, refine, and export their AI-generated documents alongside their application analysis.
 -   **Key Features:**
-    -   **Smart Parsing:** Upon receiving the generated markdown, the app uses `parserService.ts` to parse it back into a structured format for rich editing.
+    -   **Smart Parsing:** Upon receiving the generated markdown, the app uses `parserService.ts` (which calls the backend parsing endpoint) to convert it back into structured data for rich editing.
     -   **Rich Editing:** The document is displayed in a form-based editor where users can edit individual fields.
     -   **Drag-and-Drop Reordering:** For resumes, users can drag and drop entire sections.
     -   **Export Options:** Users can download their final document as a PDF or copy the content to paste into Google Docs.
@@ -45,8 +45,8 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Location:** `CareerCoachPage.tsx`
 -   **Purpose:** To provide an interactive, conversational interface for personalized career advice and to act as a central hub for the app's tools.
 -   **Implementation:**
-    -   **Contextual Session:** `careerCoachService.ts` initializes a chat session with the Gemini API, providing a detailed system prompt that includes the user's full active profile and history.
-    -   **Tool Calling (Function Calling):** The coach is configured with a wide array of tools to perform actions or navigate the user, including:
+    -   **Contextual Session:** `CareerCoachPage.tsx` sends each user turn to `/api/coach/message` through `aiGateway.ts`, where the backend assembles the system prompt with the active profile, history, and Gemini configuration.
+    -   **Tool Calling (Function Calling):** The server instructs Gemini with the available tools, and the frontend executes the returned function calls (updating the UI or navigating) before posting the results back for a follow-up response.
         -   Updating the user's profile summary.
         -   Navigating to the document generator or networking tools.
         -   Initiating a career path generation.
@@ -60,7 +60,7 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Workflow:**
     1.  The user requests a career path from the **AI Career Coach**.
     2.  The coach calls the `promptToCreateCareerPath` tool, showing a confirmation UI to the user.
-    3.  If the user agrees, `generationService.ts` generates a detailed, 5-year plan.
+    3.  If the user agrees, the client triggers the `/api/career-path` endpoint (via `aiGateway.ts`), which generates a detailed multi-year plan on the server.
     4.  The result is saved to the active profile, and the `CareerPathPage` displays it as an interactive, scroll-aware timeline.
 -   **YouTube Recommendations:** The page also fetches and verifies relevant YouTube videos for the target role to provide immediate learning resources.
 
@@ -88,4 +88,4 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Purpose:** A specialized academic tool that helps students find the most suitable faculty mentor by analyzing their thesis topic against a list of faculty bios.
 -   **Workflow:**
     1.  The user provides their thesis topic/abstract and a list of faculty with their bios.
-    2.  `generationService.ts` calls the Gemini API with a specific prompt and schema (`findMentorMatch`) to get a ranked list of potential mentors, including a match `score` and `reasoning`.
+    2.  The page calls `/api/mentor-match` through `aiGateway.ts`; the backend invokes Gemini with the `findMentorMatch` schema to return a ranked list of potential mentors, including a match `score` and `reasoning`.

@@ -6,50 +6,48 @@ The Google Gemini API is the core engine powering all intelligent features in th
 
 Our interaction with the Gemini API is organized into two main service layers to ensure modularity and reusability.
 
-### a. `geminiService.ts` (Low-Level Wrapper)
+### a. `server/lib/genai.ts` (Low-Level Wrapper)
 
-This service provides a single, robust function, `generateContentWithRetry`, that acts as a wrapper around the `ai.models.generateContent` call.
+All direct Gemini calls now happen on the backend inside the Cloud Run container. The `server/lib/genai.ts` module exposes a single helper, `generateContentWithRetry`, that wraps `ai.models.generateContent`.
 
--   **Purpose:** To handle all direct communication with the Gemini API and manage common operational concerns.
+-   **Purpose:** Provide a hardened, server-side integration point that keeps API keys private.
 -   **Key Features:**
-    -   **Automatic Retries:** It implements an exponential backoff strategy to automatically retry API calls that fail due to transient, retryable issues.
-    -   **Centralized Error Handling:** It catches all API errors and uses the `parseError` utility to convert them into user-friendly, consistent error messages.
+    -   **Automatic Retries:** Implements exponential backoff for transient errors.
+    -   **Centralized Error Handling:** Surfaces consistent errors to the Express controllers, which in turn relay user-friendly messages to the client.
 
-### b. `generationService.ts` (High-Level Abstraction)
+### b. Feature Services + Client Gateway
 
-This service sits on top of `geminiService.ts` and contains the business logic for specific generative tasks.
-
--   **Purpose:** To abstract the complexities of prompt engineering away from the page components.
--   **Implementation:** Each function in this service (e.g., `generateTailoredDocuments`, `analyzeApplicationFit`, `findMentorMatch`) is responsible for constructing a detailed prompt, defining a `responseSchema` for structured JSON output, calling `generateContentWithRetry`, and processing the response.
+-   **Backend:** Prompt engineering lives in dedicated service files such as `server/controllers/generation.ts`, `server/services/aiTools.ts`, `server/services/parser.ts`, and `server/services/scraper.ts`. Each service builds the prompt, defines optional JSON schemas, and calls `generateContentWithRetry`.
+-   **Frontend:** The React app never touches Gemini directly. Instead, `services/aiGateway.ts` attaches the Supabase access token and calls the corresponding `/api/...` endpoint. This keeps credentials on the server while allowing the UI to stay simple.
 
 ## 2. Key Prompts & Schemas
 
 Effective prompt engineering is critical to the success of the application.
 
-### a. AI Career Coach (`careerCoachService.ts`)
+### a. AI Career Coach (`server/controllers/coach.ts`)
 
 -   **Goal:** To create a conversational agent that can provide advice and use tools to interact with the application.
--   **Prompt Strategy (System Prompt):** The system prompt defines the AI's persona and provides the user's full active profile and history for context. Crucially, it lists the tools the AI can use and provides explicit instructions on *when* and *how* to use each one.
+-   **Prompt Strategy (System Prompt):** The backend generates the system prompt using the user's active profile and history for context. Crucially, it lists the tools the AI can use and provides explicit instructions on *when* and *how* to use each one.
 -   **Tool Definitions:** Each available tool (e.g., `updateProfessionalSummary`, `startMockInterview`, `getNegotiationPrep`) is defined as a `FunctionDeclaration` with a name, description, and a parameter schema. This allows the Gemini model to understand the tool's purpose and required arguments.
 
-### b. Resume Parsing (`parserService.ts`)
+### b. Resume Parsing (`server/services/parser.ts`)
 
 -   **Goal:** To convert unstructured resume text into a structured `ProfileData` JSON object with maximum accuracy.
--   **Prompt Strategy:** The prompt instructs the AI to be a "hyper-attentive data extraction AI" with a goal of **completeness**. It enforces a multi-pass internal process to ensure all fields are filled.
+-   **Prompt Strategy:** The backend prompt instructs the AI to be a "hyper-attentive data extraction AI" with a goal of **completeness**. It enforces a multi-pass internal process to ensure all fields are filled.
 -   **Schema:** A comprehensive JSON schema (`PARSING_SCHEMA`) mirrors the `ProfileData` type, ensuring the AI's output can be directly mapped to our application's state.
 
-### c. Document Generation (`generationService.ts`)
+### c. Document Generation (`server/controllers/generation.ts`)
 
 -   **Goal:** To generate a resume and/or cover letter that is perfectly tailored to a job description.
--   **Prompt Strategy:** The prompt is structured with clear sections for the candidate's profile (as JSON), the job description, and strict "Directives & Constraints" that govern the output style and content.
+-   **Prompt Strategy:** The server-side prompt is structured with clear sections for the candidate's profile (as JSON), the job description, and strict "Directives & Constraints" that govern the output style and content.
 -   **Schema:** The `responseSchema` requires a JSON object with two keys, `resume` and `coverLetter`, whose values are either the full markdown string or `null`.
 
-### d. Interview Prep & Other Tools (`generationService.ts`)
+### d. Interview Prep & Other Tools (`server/services/aiTools.ts`)
 
 -   **Goal:** To power the various tools in the Interview Prep Center and other parts of the app.
--   **Strategy:** Each tool (e.g., `shapeInterviewStory`, `generateInterviewQuestions`) has a dedicated function with a highly specific prompt and, where necessary, a JSON schema to structure the output for easy rendering in the UI.
+-   **Strategy:** Each tool (e.g., `shapeInterviewStory`, `generateInterviewQuestions`) has a dedicated backend function with a highly specific prompt and, where necessary, a JSON schema to structure the output for easy rendering in the UI.
 
-### e. Application Analysis & Mentor Matching (`generationService.ts`)
+### e. Application Analysis & Mentor Matching (`server/controllers/generation.ts`)
 
 -   **Goal:** To provide specialized, structured analysis for standalone tools.
 -   **Strategy:**

@@ -15,8 +15,16 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
  * @returns An object with a user-friendly `message` and a boolean `isRetryable`.
  */
 export const parseError = (error: any): { message: string, isRetryable: boolean } => {
-    const errorMessage = String(error?.message || error).toLowerCase();
-    const errorCode = (error as any).code;
+    const rawMessage = String(error?.message || error);
+    const errorMessage = rawMessage.toLowerCase();
+    let errorCode = (error as any).code;
+
+    if (!errorCode) {
+        const scrapingMatch = rawMessage.match(/scraping failed with code:\s*([A-Z_]+)/i);
+        if (scrapingMatch) {
+            errorCode = scrapingMatch[1].toUpperCase();
+        }
+    }
 
     // --- Scraping-specific errors (from fetchJobDescriptionFromUrl) ---
     if (errorCode === 'NOT_FOUND') {
@@ -65,7 +73,7 @@ export const parseError = (error: any): { message: string, isRetryable: boolean 
     
     // Default/Unknown Errors
     console.error("Unhandled API Error:", error);
-    const displayMessage = `An unexpected error occurred. Please try again. Details: ${error.message || 'No additional details available.'}`;
+    const displayMessage = `An unexpected error occurred. Please try again. Details: ${rawMessage || 'No additional details available.'}`;
     return { message: displayMessage, isRetryable: false };
 };
 

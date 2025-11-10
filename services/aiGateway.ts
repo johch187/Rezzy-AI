@@ -57,7 +57,7 @@ export type CoachFunctionCall = {
 
 export type CoachMessagePayload =
   | { role: 'user' | 'model'; content: string }
-  | { role: 'function'; name: string; response: unknown };
+  | { role: 'function'; name: string; response: Record<string, unknown> | null };
 
 export const generateDocumentsViaServer = async (
   profile: ProfileData,

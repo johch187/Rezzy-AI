@@ -1,8 +1,7 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateDocumentsViaServer } from '../services/aiGateway';
-import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
+import { generateDocumentsViaServer, scrapeJobDescriptionViaServer } from '../services/aiGateway';
 import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
 import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import { templates } from '../components/TemplateSelector';
@@ -118,7 +117,7 @@ const GeneratePage: React.FC = () => {
     setIsFetchingUrl(true);
     setError(null);
     try {
-      const description = await fetchJobDescriptionFromUrl(jobUrl);
+      const description = await scrapeJobDescriptionViaServer(jobUrl);
       setJobDescription(description);
     } catch (e: any) {
       setError(e.message || "An unknown error occurred while fetching the URL. Please paste the description manually.");

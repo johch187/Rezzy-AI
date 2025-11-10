@@ -19,11 +19,8 @@ The project is organized into a modular structure to promote separation of conce
 -   **`pages/`**: Contains top-level components that correspond to a specific URL route (e.g., `HomePage.tsx`, `GeneratePage.tsx`, `InterviewPrepPage.tsx`, `ApplicationAnalysisPage.tsx`, `MentorMatcherPage.tsx`). These components are responsible for the overall layout and data flow of a given page.
 -   **`components/`**: A collection of reusable UI components used across different pages (e.g., `Header.tsx`, `AccordionItem.tsx`, `ProfileForm.tsx`). This promotes code reuse and consistency.
 -   **`services/`**: Holds modules responsible for business logic and external API interactions. This abstracts complex operations away from the UI components.
-    -   `geminiService.ts`: A low-level wrapper for the Google Gemini API, including robust error handling and retry logic.
-    -   `generationService.ts`: Contains high-level functions that build specific prompts and call the Gemini service for a wide range of tasks, from generating documents to analyzing application fit and finding mentor matches.
-    -   `parserService.ts`: Handles the logic for parsing uploaded resumes and converting generated markdown back into structured data.
-    -   `careerCoachService.ts`: Manages the setup and interaction logic for the AI Career Coach chat session, including defining all available tools (function calls).
-    -   `scrapingService.ts`: Handles fetching and parsing job description content from URLs.
+    -   `aiGateway.ts`: A single client-side gateway that attaches Supabase auth tokens and proxies requests to the secure Express API hosted on Cloud Run.
+    -   `parserService.ts`: Wraps local file reading/validation before delegating parsing work to the backend parsing endpoints.
 -   **`types.ts`**: A central file for all TypeScript type and interface definitions, providing a single source of truth for the application's data models.
 -   **`utils.ts`**: A collection of helper functions, such as error parsing and file utilities, used throughout the application.
 
