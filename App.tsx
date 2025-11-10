@@ -27,6 +27,7 @@ import { HamburgerIcon } from './components/Icons';
 import { supabase, isSupabaseEnabled } from './services/supabaseClient';
 import { fetchWorkspaceViaServer, persistWorkspaceViaServer } from './services/aiGateway';
 import { createNewProfile, DEFAULT_TOKEN_BALANCE } from './workspaceDefaults';
+import type { TodoRow } from './types/supabase';
 
 export const ProfileContext = createContext<{
   profile: ProfileData | null;
@@ -70,18 +71,14 @@ type PersistedWorkspace = {
   tokens: number;
 };
 
-type TodoRecord = {
-  id?: string | number;
-  title?: string;
-  name?: string;
-  description?: string;
-  [key: string]: unknown;
-};
+type TodoRecord = TodoRow;
 
 const TodosPage: React.FC = () => {
   const [todos, setTodos] = useState<TodoRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [newTodo, setNewTodo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -112,32 +109,107 @@ const TodosPage: React.FC = () => {
 
     void getTodos();
 
+    const channel = supabase
+      .channel('public:todos')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'todos' },
+        (payload) => {
+          setTodos((current) => {
+            if (!payload.eventType) return current;
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const next = payload.new as TodoRecord;
+              if (!next?.id) return current;
+              const exists = current.some(todo => todo.id === next.id);
+              return exists
+                ? current.map(todo => (todo.id === next.id ? next : todo))
+                : [next, ...current];
+            }
+            if (payload.eventType === 'DELETE') {
+              const previous = payload.old as TodoRecord;
+              if (!previous?.id) return current;
+              return current.filter(todo => todo.id !== previous.id);
+            }
+            return current;
+          });
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      channel.unsubscribe();
     };
   }, []);
 
   if (!isSupabaseEnabled) {
     return (
       <div className="p-6">
-        <p>Supabase integration is disabled.</p>
+        <p className="mb-2 font-medium">Supabase integration is disabled.</p>
+        <p>
+          Copy <code>.env.example</code> to <code>.env</code>, add your Supabase keys, and restart the dev server.
+        </p>
       </div>
     );
   }
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) return;
+    const task = newTodo.trim();
+    if (!task) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const { error: insertError } = await supabase.from('todos').insert({ task });
+      if (insertError) {
+        throw insertError;
+      }
+      setNewTodo('');
+    } catch (err: any) {
+      console.error('Failed to insert todo', err);
+      setError(err.message ?? 'Failed to add todo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Todos</h1>
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={newTodo}
+          onChange={(event) => setNewTodo(event.target.value)}
+          placeholder="Add a new task"
+          className="flex-1 rounded border border-slate-300 px-3 py-2"
+          disabled={isSubmitting}
+        />
+        <button
+          type="submit"
+          disabled={isSubmitting || !newTodo.trim()}
+          className="rounded bg-brand-blue px-4 py-2 text-white disabled:opacity-50"
+        >
+          {isSubmitting ? 'Saving...' : 'Add'}
+        </button>
+      </form>
       {loading && <p>Loading todos...</p>}
       {error && <p className="text-red-600">{error}</p>}
       {!loading && !error && (
-        <ul className="list-disc pl-5 space-y-1">
+        <ul className="space-y-2">
           {todos.length === 0 ? (
             <li>No todos found.</li>
           ) : (
-            todos.map((todo, index) => (
-              <li key={String(todo.id ?? todo.title ?? index)}>
-                {todo.title ?? todo.name ?? JSON.stringify(todo)}
+            todos.map((todo) => (
+              <li
+                key={todo.id}
+                className="flex items-center justify-between rounded border border-slate-200 px-3 py-2"
+              >
+                <span>{todo.task ?? 'Untitled task'}</span>
+                <span className="text-sm text-slate-500">
+                  {todo.is_complete ? 'Complete' : 'Pending'}
+                </span>
               </li>
             ))
           )}
