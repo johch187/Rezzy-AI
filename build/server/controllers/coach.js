@@ -184,9 +184,11 @@ export const handleCareerCoachMessage = async (req, res) => {
         ];
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
-            systemInstruction,
+            config: {
+                systemInstruction,
+                tools: [{ functionDeclarations: coachTools }],
+            },
             contents: history,
-            tools: [{ functionDeclarations: coachTools }],
         });
         const candidates = response.candidates ?? [];
         const combinedText = candidates
