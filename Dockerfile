@@ -12,7 +12,8 @@ ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci
+# Install dependencies (using npm install since package-lock.json may not exist)
+RUN npm install
 
 # Copy source files and build
 COPY . .
@@ -28,7 +29,8 @@ ENV PORT=8080
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# Install production dependencies only
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
