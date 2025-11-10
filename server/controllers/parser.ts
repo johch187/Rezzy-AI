@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { parseResumeText, parseCoverLetterMarkdown } from '../services/parser';
+import { parseResumeText, parseCoverLetterMarkdown } from '../services/parser.js';
 
 export const handleResumeParsing = async (req: Request, res: Response) => {
   try {

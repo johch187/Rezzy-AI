@@ -1,6 +1,6 @@
 import { Type } from '@google/genai';
-import type { ParsedCoverLetter, ProfileData } from '../../types';
-import { generateContentWithRetry, hasGeminiKey } from '../lib/genai';
+import type { ParsedCoverLetter, ProfileData } from '../../types.js';
+import { generateContentWithRetry, hasGeminiKey } from '../lib/genai.js';
 
 const PARSING_PROMPT_DETAILS = `
     **Primary Directive:** You are a hyper-attentive data extraction AI. Your primary goal is **completeness**. You will receive raw, unfiltered resume text in any language. Your task is to analyze this text and meticulously populate every field in the provided JSON schema.

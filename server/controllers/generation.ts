@@ -5,10 +5,10 @@ import type {
   GenerationOptions,
   GeneratedContent,
   ApplicationAnalysisResult,
-} from '../../types';
-import { generateContentWithRetry, hasGeminiKey } from '../lib/genai';
-import { profileToMarkdown } from '../utils/profileToMarkdown';
-import type { AuthedRequest } from '../routes';
+} from '../../types.js';
+import { generateContentWithRetry, hasGeminiKey } from '../lib/genai.js';
+import { profileToMarkdown } from '../utils/profileToMarkdown.js';
+import type { AuthedRequest } from '../routes.js';
 
 const MOCK_RESPONSE: GeneratedContent = {
   resume: `# Alex Doe

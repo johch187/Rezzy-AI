@@ -3,13 +3,14 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "build/server",
-    "rootDir": "server",
+    "outDir": "build",
+    "rootDir": ".",
     "noEmit": false,
+    "allowImportingTsExtensions": false,
     "types": ["node"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["server/**/*.ts"]
+  "include": ["server/**/*.ts", "types.ts"]
 }

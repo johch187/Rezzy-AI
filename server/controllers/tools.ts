@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import type {
   ProfileData,
   CareerMilestone,
-} from '../../types';
+} from '../../types.js';
 import {
   generateCoffeeChatBrief,
   generateReachOutMessage,
@@ -13,7 +13,7 @@ import {
   findMentorMatch,
   reframeFeedback,
   getNegotiationPrep,
-} from '../services/aiTools';
+} from '../services/aiTools.js';
 
 export const handleCoffeeChatBrief = async (req: Request, res: Response) => {
   try {

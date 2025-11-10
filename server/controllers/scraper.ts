@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { fetchJobDescriptionFromUrl } from '../services/scraper';
+import { fetchJobDescriptionFromUrl } from '../services/scraper.js';
 
 export const handleJobDescriptionScrape = async (req: Request, res: Response) => {
   try {

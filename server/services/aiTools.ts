@@ -5,8 +5,8 @@ import type {
   YouTubeVideo,
   MentorMatch,
   CareerMilestone,
-} from '../../types';
-import { generateContentWithRetry, hasGeminiKey } from '../lib/genai';
+} from '../../types.js';
+import { generateContentWithRetry, hasGeminiKey } from '../lib/genai.js';
 
 const COFFEE_CHAT_BRIEF_FALLBACK = `
 ## Quick Overview

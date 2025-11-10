@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { FunctionDeclaration, Type } from '@google/genai';
-import type { ProfileData, DocumentGeneration } from '../../types';
-import type { AuthedRequest } from '../routes';
-import { requireGeminiClient } from '../lib/genai';
+import type { Content, ContentUnion } from '@google/genai';
+import type { ProfileData, DocumentGeneration } from '../../types.js';
+import type { AuthedRequest } from '../routes.js';
+import { requireGeminiClient } from '../lib/genai.js';
 
 type CoachMessage =
   | {
@@ -10,10 +11,10 @@ type CoachMessage =
       content: string;
     }
   | {
-    role: 'function';
-    name: string;
-    response: unknown;
-  };
+      role: 'function';
+      name: string;
+      response: Record<string, unknown> | null | undefined;
+    };
 
 const updateSummaryFunctionDeclaration: FunctionDeclaration = {
   name: 'updateProfessionalSummary',
@@ -199,15 +200,20 @@ export const handleCareerCoachMessage = async (req: AuthedRequest, res: Response
     }
 
     const ai = requireGeminiClient();
-    const history = messages.slice(-20).map(message => {
+    const history: Content[] = messages.slice(-20).map(message => {
       if (message.role === 'function') {
+        const responsePayload: Record<string, unknown> =
+          message.response && typeof message.response === 'object'
+            ? message.response
+            : { output: message.response ?? null };
+
         return {
           role: 'function',
           parts: [
             {
               functionResponse: {
                 name: message.name,
-                response: message.response,
+                response: responsePayload,
               },
             },
           ],
@@ -219,14 +225,20 @@ export const handleCareerCoachMessage = async (req: AuthedRequest, res: Response
       };
     });
 
+    const systemInstruction: ContentUnion = [
+      {
+        text: buildSystemInstruction(profile, documentHistory ?? []),
+      },
+    ];
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
-      systemInstruction: buildSystemInstruction(profile, documentHistory ?? []),
+      systemInstruction,
       contents: history,
       tools: [{ functionDeclarations: coachTools }],
     });
 
-    const candidates = response.response?.candidates ?? [];
+    const candidates = response.candidates ?? [];
     const combinedText = candidates
       .map(candidate => candidate.content?.parts?.map(part => part.text ?? '').join('') ?? '')
       .join('\n')

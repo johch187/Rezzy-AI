@@ -1,4 +1,4 @@
-import { generateContentWithRetry, hasGeminiKey } from '../lib/genai';
+import { generateContentWithRetry, hasGeminiKey } from '../lib/genai.js';
 
 const FETCH_TIMEOUT_MS = 15000;
 const PROTECTED_SITES = ['linkedin.com', 'indeed.com', 'glassdoor.com', 'ziprecruiter.com'];

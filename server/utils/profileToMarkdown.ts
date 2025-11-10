@@ -1,4 +1,4 @@
-import type { ProfileData } from '../../types';
+import type { ProfileData } from '../../types.js';
 
 export const profileToMarkdown = (data: Partial<ProfileData>, order: string[]): string => {
   if (!data) return '';
