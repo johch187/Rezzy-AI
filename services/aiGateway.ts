@@ -18,6 +18,36 @@ type RequestWithAuthOptions = {
   body?: unknown;
 };
 
+const requestWithoutAuth = async <T>(path: string, options: RequestWithAuthOptions = {}): Promise<T> => {
+  const method = options.method ?? 'POST';
+  const headers: Record<string, string> = {};
+  let body: string | undefined;
+
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(`/api${path}`, {
+    method,
+    headers,
+    body,
+  });
+
+  if (!response.ok) {
+    let message = 'Request failed';
+    try {
+      const result = await response.json();
+      message = result.error || message;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+};
+
 const requestWithAuth = async <T>(path: string, options: RequestWithAuthOptions = {}): Promise<T> => {
   if (!supabase) {
     throw new Error('Supabase client not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -153,11 +183,11 @@ export const parseResumeViaServer = async (
   resumeText: string,
   model: 'gemini-2.5-pro' | 'gemini-2.5-flash'
 ): Promise<Partial<ProfileData>> => {
-  return requestWithAuth('/parser/resume', { body: { resumeText, model } });
+  return requestWithoutAuth('/parser/resume', { body: { resumeText, model } });
 };
 
 export const parseCoverLetterViaServer = async (coverLetterMarkdown: string): Promise<ParsedCoverLetter> => {
-  return requestWithAuth('/parser/cover-letter', { body: { coverLetterMarkdown } });
+  return requestWithoutAuth('/parser/cover-letter', { body: { coverLetterMarkdown } });
 };
 
 export const scrapeJobDescriptionViaServer = async (url: string): Promise<string> => {
