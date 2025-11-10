@@ -27,8 +27,10 @@ router.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+const allowAnonymousPaths = new Set(['/health', '/parser/resume', '/parser/cover-letter']);
+
 router.use(async (req: AuthedRequest, res: Response, next: NextFunction) => {
-  if (req.path === '/health') {
+  if (allowAnonymousPaths.has(req.path)) {
     return next();
   }
 
