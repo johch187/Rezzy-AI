@@ -22,10 +22,10 @@ const apiLimiter = rateLimit({
 
 app.use('/api', apiLimiter, apiRouter);
 
-// Serve the Vite build output.
+// Serve the Vite build output. Works for both ts-node (src) and compiled builds.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distPath = path.resolve(__dirname, '../dist');
+const distPath = path.resolve(process.cwd(), 'dist');
 
 app.use(express.static(distPath));
 app.get('*', (_req, res) => {
@@ -33,7 +33,8 @@ app.get('*', (_req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  // Cloud Run requires binding to 0.0.0.0 to accept connections
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
   });
 }

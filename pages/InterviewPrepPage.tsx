@@ -1,7 +1,11 @@
 import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { shapeInterviewStory, generateInterviewQuestions, generateCoffeeChatBrief } from '../services/generationService';
+import {
+    shapeInterviewStoryViaServer,
+    generateInterviewQuestionsViaServer,
+    generateCoffeeChatBriefViaServer,
+} from '../services/aiGateway';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 import { SimpleMarkdown } from '../components/SimpleMarkdown';
 
@@ -53,13 +57,13 @@ const InterviewPrepPage: React.FC = () => {
                 let result: string | string[];
                 switch (activeTool) {
                     case 'story':
-                        result = await shapeInterviewStory(inputs.story);
+                        result = await shapeInterviewStoryViaServer(inputs.story);
                         break;
                     case 'rapport':
-                        result = await generateCoffeeChatBrief(profile, inputs.rapport);
+                        result = await generateCoffeeChatBriefViaServer(profile, inputs.rapport);
                         break;
                     case 'questions':
-                        result = await generateInterviewQuestions(inputs.questions);
+                        result = await generateInterviewQuestionsViaServer(inputs.questions);
                         break;
                 }
                 setResults(prev => ({ ...prev, [activeTool]: result }));

@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateCoffeeChatBrief, generateReachOutMessage } from '../services/generationService';
+import { generateCoffeeChatBriefViaServer, generateReachOutMessageViaServer } from '../services/aiGateway';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 
 const CoffeeChatPrepperPage: React.FC = () => {
@@ -43,8 +43,8 @@ const CoffeeChatPrepperPage: React.FC = () => {
         (async () => {
             try {
                 const result = generationMode === 'prep'
-                    ? await generateCoffeeChatBrief(profile, counterpartInfo)
-                    : await generateReachOutMessage(profile, counterpartInfo);
+                    ? await generateCoffeeChatBriefViaServer(profile, counterpartInfo)
+                    : await generateReachOutMessageViaServer(profile, counterpartInfo);
 
                 const finalResultPayload = { 
                     content: result,

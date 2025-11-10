@@ -2,7 +2,7 @@ import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { MentorMatch } from '../types';
-import { findMentorMatch } from '../services/generationService';
+import { findMentorMatchViaServer } from '../services/aiGateway';
 import { readFileContent } from '../utils';
 import { LoadingSpinnerIcon, XCircleIcon, UploadIcon } from '../components/Icons';
 
@@ -58,7 +58,7 @@ const MentorMatcherPage: React.FC = () => {
 
         (async () => {
             try {
-                const analysisResult = await findMentorMatch(thesisTopic, facultyList);
+                const analysisResult = await findMentorMatchViaServer(thesisTopic, facultyList);
                 setResult(analysisResult);
                 updateBackgroundTask(taskId, { status: 'completed', result: analysisResult });
             } catch (e: any) {

@@ -5,7 +5,7 @@ import type { TextItem, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import type { ParsedCoverLetter, ProfileData } from './types';
 
 // Set up the PDF.js worker. Using a bundled worker URL avoids cross-origin/module
-// mismatches when running on Vercel or other hosts.
+// mismatches when running in production environments.
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 /**

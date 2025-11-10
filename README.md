@@ -48,13 +48,12 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
     npm install
     ```
 4.  Create a `.env` file in the root directory:
-    ```bash
-    VITE_API_KEY=your_google_gemini_api_key_here
-    VITE_SUPABASE_URL=https://your-project-id.supabase.co
-    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-    ```
-   - Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   ```bash
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
    - Grab the Supabase values from **Project Settings → API** inside the Supabase dashboard
+   - Note: The Gemini API key is now handled server-side for security (see deployment section)
 5.  Start the development server:
     ```bash
     npm run dev
@@ -75,44 +74,39 @@ The built files will be in the `dist` directory.
 npm run preview
 ```
 
-## 🚀 Deployment to Vercel
+## 🚀 Deployment
 
-This project is configured for easy deployment to Vercel.
+This project is configured for Google Cloud Run deployment with Docker containerization.
 
-### Option 1: Deploy via Vercel CLI
+**Quick Deploy:**
+```bash
+# Make sure you have gcloud CLI installed and authenticated
+./deploy-cloud-run.sh
+```
 
-1. Install the Vercel CLI:
-   ```bash
-   npm i -g vercel
-   ```
+**Manual Deploy:**
+```bash
+gcloud run deploy rezzy-ai \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars "GEMINI_API_KEY=your-key,SUPABASE_URL=your-url,SUPABASE_ANON_KEY=your-key"
+```
 
-2. Deploy:
-   ```bash
-   vercel
-   ```
-
-3. Add your environment variables:
-   - Go to your project settings on Vercel
-   - Navigate to "Environment Variables"
-   - Add `VITE_API_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`
-
-### Option 2: Deploy via GitHub Integration
-
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Vercel will automatically detect the Vite configuration
-4. Add the `VITE_API_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` environment variables in your project settings
-5. Deploy!
+For detailed Cloud Run deployment instructions, see [CLOUD_RUN_DEPLOYMENT.md](./CLOUD_RUN_DEPLOYMENT.md).
 
 ### Environment Variables
 
-The following environment variables are required:
+The following environment variables are required for Cloud Run deployment:
 
-- `VITE_API_KEY`: Your Google Gemini API key (get it from [Google AI Studio](https://aistudio.google.com/app/apikey))
-- `VITE_SUPABASE_URL`: Supabase project URL
-- `VITE_SUPABASE_ANON_KEY`: Supabase anon/public API key
+- `GEMINI_API_KEY`: Your Google Gemini API key (server-side, secure) - Get it from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anon/public API key
+- `NODE_ENV`: Set to `production` (automatically set)
+- `PORT`: Automatically set by Cloud Run (default: 8080)
 
-**⚠️ Security Note**: The API key will be exposed in the client-side bundle. For production applications, consider using a backend proxy to keep your API key secure.
+**✅ Security Note**: API keys are stored server-side and not exposed to clients, providing better security than client-side deployments.
 
 ### Supabase Setup
 
@@ -137,16 +131,7 @@ The following environment variables are required:
       with check (auth.uid() = id);
     ```
 4. (Optional) Configure OAuth providers (e.g., Google) under **Authentication → Providers**.
-5. Connect Supabase to Vercel following the [Vercel × Supabase integration guide](https://supabase.com/partners/integrations/vercel) so preview deployments share the same credentials.
-6. Need a copy-paste friendly version? See `docs/SUPABASE_SCHEMA.md` for the complete schema, policies, and triggers.
-
-### Vercel Configuration
-
-The project includes a `vercel.json` file with the following configuration:
-- Build command: `npm run build`
-- Output directory: `dist`
-- Framework: Vite
-- Routing: Configured to handle client-side routing with HashRouter
+5. Need a copy-paste friendly version? See `docs/SUPABASE_SCHEMA.md` for the complete schema, policies, and triggers.
 
 ## 📂 Project Structure
 

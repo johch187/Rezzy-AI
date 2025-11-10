@@ -42,3 +42,10 @@ export const generateContentWithRetry = async (request: GenerateContentParameter
 };
 
 export const hasGeminiKey = Boolean(GEMINI_API_KEY);
+
+export const requireGeminiClient = (): GoogleGenAI => {
+  if (!ai) {
+    throw new Error('Gemini API not configured.');
+  }
+  return ai;
+};

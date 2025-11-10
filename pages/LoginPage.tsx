@@ -63,10 +63,10 @@ const LoginPage: React.FC = () => {
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl mb-4">Enable Supabase</h1>
           <p className="text-lg text-gray-600">
-            This project now expects Supabase credentials. Add <code className="font-mono bg-slate-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="font-mono bg-slate-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> to your Vercel environment (and local <code>.env</code>) to unlock authentication and cloud sync.
+            This project requires Supabase credentials. Add <code className="font-mono bg-slate-100 px-1 rounded">SUPABASE_URL</code> and <code className="font-mono bg-slate-100 px-1 rounded">SUPABASE_ANON_KEY</code> to your environment variables (and local <code>.env</code>) to unlock authentication and cloud sync.
           </p>
           <p className="mt-4 text-gray-500">
-            Follow the “Deploy to Vercel with Supabase” steps in <code className="font-mono bg-slate-100 px-1 rounded">DEPLOYMENT.md</code>.
+            For deployment instructions, see <code className="font-mono bg-slate-100 px-1 rounded">CLOUD_RUN_DEPLOYMENT.md</code>.
           </p>
         </div>
       </div>

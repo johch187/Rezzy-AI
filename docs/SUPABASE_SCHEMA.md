@@ -127,12 +127,13 @@ for each row execute procedure public.handle_new_user();
 
 ---
 
-## 4. Connecting to Vercel
+## 4. Configuring Environment Variables
 
-1. In Supabase → **Organization → Integrations**, link the project to Vercel so preview and production deployments share the same credentials.
-2. In Vercel, set the environment vars:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-3. Redeploy the app. Existing users will automatically pull their `profile`, `document_history`, `career_chat_history`, and `tokens` from Supabase.
+Set the following environment variables in your deployment platform (e.g., Google Cloud Run):
 
-That’s it—every new signup now receives a pre-seeded profile row, and the frontend can safely sync documents/chats per user.***
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_ANON_KEY`: Your Supabase anon/public API key
+
+For Cloud Run deployment, see [CLOUD_RUN_DEPLOYMENT.md](../CLOUD_RUN_DEPLOYMENT.md) for detailed instructions.
+
+That's it—every new signup now receives a pre-seeded profile row, and the frontend can safely sync documents/chats per user.
