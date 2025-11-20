@@ -5,7 +5,13 @@ import { Chat, FunctionDeclaration, Tool, Type } from "@google/genai";
  * Calls should go through backend LLM endpoints.
  */
 const getGenAI = () => {
-  throw new Error("Frontend Gemini client is disabled. Use backend LLM endpoints.");
+  return {
+    chats: {
+      create: () => {
+        throw new Error("Frontend Gemini client is disabled. Use backend LLM endpoints.");
+      },
+    },
+  } as any;
 };
 
 export type ToolExecutor = (args: any, context: any) => Promise<any> | any;
@@ -31,7 +37,7 @@ export interface AgentConfig {
  * Model -> Function Call -> Execute -> Function Response -> Model -> Text
  */
 export class Agent {
-    private chatSession: Chat;
+    private chatSession: Chat | any;
     private tools: Map<string, ToolExecutor>;
     private config: AgentConfig;
 
