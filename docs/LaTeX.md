@@ -6,11 +6,10 @@ The backend exposes `POST /api/latex/compile` to render a small markdown payload
 - Accepts JSON: `{ "content": "<markdown>", "filename": "resume.pdf" }`.
 - Responds with `application/pdf` and a download filename.
 
-### Local setup
+### Installation
 
-1. Install the backend dependency: `pip install -r backend/requirements.txt` (includes `tectonic`).
-2. Ensure the `tectonic` binary is available on `PATH` (the PyPI package installs it).
-3. Run the FastAPI app; set `ALLOWED_ORIGINS` and Supabase keys in `backend/.env`.
+- Local: install the Tectonic binary via your OS package manager (e.g., `apt-get install tectonic`). It is not installed from `requirements.txt`.
+- Docker: the provided Dockerfile installs Tectonic via `apt-get`.
 
 ### Frontend usage
 
