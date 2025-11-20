@@ -2,7 +2,7 @@
 import { Type } from '@google/genai';
 import type { ProfileData, ParsedCoverLetter } from '../types';
 import { readFileContent } from '../utils';
-import { generateContentWithRetry } from './geminiService';
+import { postJson } from './apiClient';
 
 // 1. The Agentic System Instruction
 // This defines the persona and the multi-step reasoning process the model must follow.
@@ -207,25 +207,8 @@ export const importAndParseResume = async (file: File): Promise<Partial<ProfileD
       ---
     `;
 
-    const jsonText = await generateContentWithRetry({
-        model: 'gemini-3-pro-preview',
-        contents: prompt,
-        config: {
-            systemInstruction: PARSING_SYSTEM_INSTRUCTION,
-            responseMimeType: "application/json",
-            responseSchema: PARSING_SCHEMA,
-            // High thinking budget to allow for the 3-pass internal process
-            thinkingConfig: { thinkingBudget: 32768 } 
-        }
-    });
-
-    try {
-        const parsedJson = JSON.parse(jsonText);
-        return transformApiResponseToProfile(parsedJson);
-    } catch (e) {
-        console.error("Failed to parse JSON response from Gemini:", jsonText);
-        throw new Error("The AI returned a malformed response. Please check the document content and try again.");
-    }
+    const parsedJson = await postJson<any>("/api/parse/resume", { text: prompt });
+    return transformApiResponseToProfile(parsedJson);
 };
 
 /**
@@ -243,39 +226,27 @@ export const parseGeneratedResume = async (resumeMarkdown: string): Promise<Part
       ---
     `;
 
-    const jsonText = await generateContentWithRetry({
-        model: 'gemini-3-pro-preview',
-        contents: prompt,
-        config: {
-            systemInstruction: PARSING_SYSTEM_INSTRUCTION, // Use the same powerful parser
-            responseMimeType: "application/json",
-            responseSchema: PARSING_SCHEMA,
-            thinkingConfig: { thinkingBudget: 16000 } // Slightly lower budget for cleaner markdown inputs
-        }
-    });
-
-    try {
-        const parsedJson = JSON.parse(jsonText);
-        return transformApiResponseToProfile(parsedJson);
-    } catch (e) {
-        console.error("Failed to parse JSON response from Gemini:", jsonText);
-        throw new Error("The AI returned a malformed response.");
-    }
+    const parsedJson = await postJson<any>("/api/parse/resume", { text: prompt });
+    return transformApiResponseToProfile(parsedJson);
 };
 
 export const parseGeneratedCoverLetter = async (coverLetterMarkdown: string): Promise<ParsedCoverLetter> => {
     if (!coverLetterMarkdown || coverLetterMarkdown.trim().length < 20) {
         throw new Error("The generated cover letter content is too short to parse.");
     }
-    const jsonText = await generateContentWithRetry({
-        model: 'gemini-3-pro-preview',
-        contents: `Parse this cover letter into the schema:\n\n${coverLetterMarkdown}`,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: coverLetterSchema,
-            thinkingConfig: { thinkingBudget: 2048 }
-        }
-    });
-    
-    return JSON.parse(jsonText);
+    // Backend does not yet expose a dedicated cover letter parser; return a basic stub.
+    return {
+        senderName: '',
+        senderAddress: '',
+        senderContact: '',
+        date: '',
+        recipientName: '',
+        recipientTitle: '',
+        companyName: '',
+        companyAddress: '',
+        salutation: '',
+        body: coverLetterMarkdown,
+        closing: '',
+        signature: ''
+    };
 };

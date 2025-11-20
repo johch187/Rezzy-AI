@@ -1,14 +1,17 @@
 import { GoogleGenAI, GenerateContentResponse, GenerateContentParameters } from "@google/genai";
 
-let ai: GoogleGenAI;
+const env = (import.meta as any).env || {};
+const GEMINI_API_KEY = env.VITE_GEMINI_API_KEY as string | undefined;
+
+let ai: GoogleGenAI | null = null;
 
 // Initialize the GoogleGenAI instance.
 const getGenAI = (): GoogleGenAI => {
   if (!ai) {
-    if (!process.env.API_KEY) {
-      console.warn("API_KEY is not set. AI features will rely on mock data where available.");
+    if (!GEMINI_API_KEY) {
+      throw new Error("VITE_GEMINI_API_KEY is not set. Frontend access is disabled; route Gemini calls through the backend.");
     }
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   }
   return ai;
 };

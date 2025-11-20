@@ -103,9 +103,10 @@ const MentorMatcherPage: React.FC = () => {
                             <p className="text-gray-500 mt-1 mb-4 text-sm">
                                 Paste the list of faculty members and their bios, or upload a file.
                             </p>
-                            <Button onClick={() => document.getElementById('faculty-upload')?.click()} leftIcon={<UploadIcon />}>
+                            <Button onClick={() => document.getElementById('faculty-upload')?.click()} leftIcon={<UploadIcon />} type="button">
                                 Upload File
                             </Button>
+                            <label htmlFor="faculty-upload" className="sr-only">Upload faculty list</label>
                             <input type="file" id="faculty-upload" className="hidden" onChange={handleFileChange} accept=".pdf,.txt,.md" />
                             <textarea
                                 rows={15}

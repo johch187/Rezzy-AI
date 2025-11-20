@@ -1,14 +1,17 @@
 import { GoogleGenAI, Chat, FunctionDeclaration, Tool, Type } from "@google/genai";
 
+const env = (import.meta as any).env || {};
+const GEMINI_API_KEY = env.VITE_GEMINI_API_KEY as string | undefined;
+
 // Initialize the GoogleGenAI instance (Singleton pattern)
 let genAIInstance: GoogleGenAI | null = null;
 
 const getGenAI = (): GoogleGenAI => {
   if (!genAIInstance) {
-    if (!process.env.API_KEY) {
-      console.warn("API_KEY is not set. Agent features will rely on mock data where available.");
+    if (!GEMINI_API_KEY) {
+      throw new Error("VITE_GEMINI_API_KEY is not set. Frontend access is disabled; route Gemini calls through the backend.");
     }
-    genAIInstance = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    genAIInstance = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   }
   return genAIInstance;
 };

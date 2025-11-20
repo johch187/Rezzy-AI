@@ -392,7 +392,8 @@ const GeneratePage: React.FC = () => {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <input type="file" accept=".txt,.md,.pdf" ref={resumeInputRef} onChange={(e) => handleFileChange(e, 'resume')} className="hidden" />
+                                <label htmlFor="inspiration-resume" className="sr-only">Upload inspiration resume</label>
+                                <input id="inspiration-resume" type="file" accept=".txt,.md,.pdf" ref={resumeInputRef} onChange={(e) => handleFileChange(e, 'resume')} className="hidden" />
                                 {resumeFile ? (
                                     <div className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 pl-3 pr-2 py-2 text-sm">
                                         <span className="font-medium text-gray-700 truncate">{resumeFile.name}</span>

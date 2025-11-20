@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ProfileData, DocumentGeneration, BackgroundTask, ApplicationAnalysisResult, ParsedCoverLetter, CareerChatSummary } from '../types';
 import { importAndParseResume } from '../services/parserService';
+import { fetchWorkspace, persistWorkspace } from '../services/workspaceService';
+import { supabase } from '../services/supabaseClient';
 
 const createNewProfile = (name: string): ProfileData => {
   const newId = crypto.randomUUID();
@@ -71,7 +73,29 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
   const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData | null>(null);
   
   useEffect(() => {
-    try {
+    const init = async () => {
+      try {
+        const session = await supabase?.auth.getSession();
+        const hasSession = !!session?.data.session;
+        if (hasSession) {
+          try {
+            const workspace = await fetchWorkspace();
+            if (workspace.profile) {
+              setProfile(workspace.profile);
+              setLastSavedProfile(workspace.profile);
+            } else {
+              const firstProfile = createNewProfile("My First Profile");
+              setProfile(firstProfile);
+              setLastSavedProfile(firstProfile);
+            }
+            setDocumentHistory(Array.isArray(workspace.documentHistory) ? workspace.documentHistory : []);
+            setCareerChatHistory(Array.isArray(workspace.careerChatHistory) ? workspace.careerChatHistory : []);
+            setTokens(typeof workspace.tokens === 'number' ? workspace.tokens : 65);
+            return;
+          } catch (e) {
+            console.warn("Workspace fetch failed, falling back to localStorage.", e);
+          }
+        }
         const savedProfileJSON = localStorage.getItem('userProfile');
         if (savedProfileJSON) {
             const loadedProfile = JSON.parse(savedProfileJSON);
@@ -82,11 +106,13 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
             setProfile(firstProfile);
             setLastSavedProfile(firstProfile);
         }
-    } catch (error) {
-        console.error("Failed to load profile from localStorage, starting fresh.", error);
-        const firstProfile = createNewProfile("My First Profile");
-        setProfile(firstProfile);
-    }
+      } catch (error) {
+          console.error("Failed to load profile, starting fresh.", error);
+          const firstProfile = createNewProfile("My First Profile");
+          setProfile(firstProfile);
+      }
+    };
+    void init();
   }, []);
 
   const [tokens, setTokens] = useState(65);
@@ -123,6 +149,29 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
   const [isParsing, setIsParsing] = useState(false);
   const [parsingError, setParsingError] = useState<string | null>(null);
 
+  const setTokensWithSync = useCallback((value: React.SetStateAction<number>) => {
+    setTokens(prev => {
+        const nextValue = typeof value === 'function' ? (value as (current: number) => number)(prev) : value;
+        localStorage.setItem('tokens', JSON.stringify(nextValue));
+        void (async () => {
+          try {
+            const session = await supabase?.auth.getSession();
+            if (session?.data.session) {
+              await persistWorkspace({
+                profile: profile ?? null,
+                documentHistory,
+                careerChatHistory,
+                tokens: nextValue,
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to sync tokens", e);
+          }
+        })();
+        return nextValue;
+    });
+  }, [profile, documentHistory, careerChatHistory]);
+
   const [backgroundTasks, setBackgroundTasks] = useState<BackgroundTask[]>(() => {
     try {
         const saved = localStorage.getItem('backgroundTasks');
@@ -142,13 +191,28 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
     try {
         localStorage.setItem('userProfile', JSON.stringify(profile));
         setLastSavedProfile(profile);
+        void (async () => {
+          try {
+            const session = await supabase?.auth.getSession();
+            if (session?.data.session) {
+              await persistWorkspace({
+                profile,
+                documentHistory,
+                careerChatHistory,
+                tokens,
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to sync workspace", e);
+          }
+        })();
         console.log("Profile saved to localStorage.");
         return true;
     } catch (error) {
-        console.error("Failed to save profile to localStorage", error);
+        console.error("Failed to save profile", error);
         return false;
     }
-  }, [profile]);
+  }, [profile, documentHistory, careerChatHistory, tokens]);
 
   const addDocumentToHistory = useCallback((generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => {
     setDocumentHistory(prevHistory => {
@@ -160,24 +224,54 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
         const updatedHistory = [newGeneration, ...prevHistory].slice(0, 20);
         try {
             localStorage.setItem('documentHistory', JSON.stringify(updatedHistory));
+            void (async () => {
+              try {
+                const session = await supabase?.auth.getSession();
+                if (session?.data.session) {
+                  await persistWorkspace({
+                    profile: profile ?? null,
+                    documentHistory: updatedHistory,
+                    careerChatHistory,
+                    tokens,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to sync document history", e);
+              }
+            })();
         } catch (error) {
             console.error("Failed to save document history to localStorage", error);
         }
         return updatedHistory;
     });
-  }, []);
+  }, [profile, careerChatHistory, tokens]);
   
   const addCareerChatSummary = useCallback((summary: CareerChatSummary) => {
     setCareerChatHistory(prevHistory => {
         const updatedHistory = [summary, ...prevHistory].slice(0, 20);
         try {
             localStorage.setItem('careerChatHistory', JSON.stringify(updatedHistory));
+            void (async () => {
+              try {
+                const session = await supabase?.auth.getSession();
+                if (session?.data.session) {
+                  await persistWorkspace({
+                    profile: profile ?? null,
+                    documentHistory,
+                    careerChatHistory: updatedHistory,
+                    tokens,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to sync chat history", e);
+              }
+            })();
         } catch (error) {
             console.error("Failed to save career chat history to localStorage", error);
         }
         return updatedHistory;
     });
-  }, []);
+  }, [profile, documentHistory, tokens]);
 
   const parseResumeInBackground = useCallback((file: File) => {
     if (!file || !profile) return;
@@ -275,7 +369,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       setProfile,
       saveProfile, 
       lastSavedProfile,
-      tokens, setTokens, 
+      tokens, setTokens: setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
       careerChatHistory, addCareerChatSummary,
@@ -290,7 +384,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       clearAllNotifications,
    }), [
       profile, setProfile, saveProfile, lastSavedProfile,
-      tokens, setTokens, 
+      tokens, setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
       careerChatHistory, addCareerChatSummary,

@@ -110,10 +110,11 @@ const ApplicationAnalysisPage: React.FC = () => {
                                 <Button onClick={handleAutofillFromProfile} leftIcon={<SparklesIcon />}>
                                     Autofill from Profile
                                 </Button>
-                                <Button onClick={() => document.getElementById('resume-upload')?.click()} leftIcon={<UploadIcon />}>
+                                <Button onClick={() => document.getElementById('resume-upload')?.click()} leftIcon={<UploadIcon />} type="button">
                                     Upload File
                                 </Button>
                             </div>
+                            <label htmlFor="resume-upload" className="sr-only">Upload resume file</label>
                             <input type="file" id="resume-upload" className="hidden" onChange={handleFileChange} accept=".pdf,.txt,.md" />
                             <textarea
                                 rows={15}

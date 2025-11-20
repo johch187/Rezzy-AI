@@ -2,8 +2,9 @@ import * as pdfjsLib from 'pdfjs-dist';
 import type { TextItem, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { createWorker } from 'tesseract.js';
 
-// Set up the PDF.js worker.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs`;
+// Set up the PDF.js worker with a version-matched URL to avoid API/worker mismatch.
+const pdfjsVersion = (pdfjsLib as any).version || '5.4.296';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
 
 function isTextItem(item: any): item is TextItem {
     return 'str' in item && typeof (item as TextItem).str === 'string';
