@@ -23,12 +23,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 ARG TECTONIC_VERSION=0.15.0
+ARG TECTONIC_ARCH=x86_64-unknown-linux-gnu
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential curl ca-certificates && \
-    curl -L -o /tmp/tectonic.deb "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic_${TECTONIC_VERSION}_amd64.deb" && \
-    apt-get install -y --no-install-recommends /tmp/tectonic.deb && \
-    rm -rf /var/lib/apt/lists/* /tmp/tectonic.deb
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -L -o /tmp/tectonic.tar.gz "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-${TECTONIC_ARCH}.tar.gz" && \
+    mkdir -p /tmp/tectonic && tar -xzf /tmp/tectonic.tar.gz -C /tmp/tectonic && \
+    find /tmp/tectonic -type f -name tectonic -exec mv {} /usr/local/bin/tectonic \; && \
+    chmod +x /usr/local/bin/tectonic && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt

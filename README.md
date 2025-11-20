@@ -1,6 +1,6 @@
 # Keju - Your AI-Powered Career Navigator
 
-Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a scalable web application with a React frontend, a Python backend, and is powered by the Google Gemini API.
+Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a scalable web application with a React frontend, a Python FastAPI backend, and is powered by the Google Gemini API.
 
 ## ✨ Key Features
 
@@ -29,19 +29,20 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 ## 🚀 Getting Started
 
 ### Frontend
+1. Clone the repository and navigate to the project directory.
+2. Install dependencies: `npm install`
+3. Start dev server: `npm run dev`
+4. Build for production: `npm run build` (outputs to `dist/`).
 
-The frontend is a static web application with a build step.
+### Backend (FastAPI)
+1. Create/activate a Python 3.11+ virtualenv.
+2. Install deps: `pip install -r backend/requirements.txt`
+3. Set environment variables (see `.env.example` for required keys such as Supabase, Gemini, BigQuery, Polar, CORS/CSP).
+4. Run locally: `uvicorn app.main:app --host 0.0.0.0 --port 8000` from the `backend` directory (PYTHONPATH should include `/app/backend` in Docker).
 
-1.  Clone the repository and navigate to the project directory.
-2.  Install dependencies: `npm install`
-3.  Run the development server: `npm run dev` (This will be added in a future step, for now you can open `index.html` directly for a preview without backend communication).
-4.  Build for production: `npm run build`. The output will be in the `dist` folder.
-
-### Backend
-
-This repository does not contain the backend code. For the application to be fully functional, it must be connected to a running instance of the Keju Python backend. The backend is responsible for all communication with the Google Gemini API.
-
-You will need to set the `VITE_BACKEND_API_URL` environment variable in a `.env` file for the frontend to connect to your backend.
+### Docker / Cloud Run
+- Multi-stage Dockerfile builds the frontend and serves it via the backend container.
+- GitHub Actions workflow (`.github/workflows/cloudrun.yml`) builds, pushes to Artifact Registry, and deploys to Cloud Run. Secrets must be provided via GitHub/Cloud Run (do not commit real env files).
 
 ## 📂 Project Structure
 
@@ -51,7 +52,7 @@ The project is organized to separate concerns and improve maintainability:
 /
 ├── .github/workflows/  # CI/CD workflows for deployment
 ├── components/         # Reusable React components
-├── docs/               # Detailed project documentation (Architecture, Deployment, etc.)
+├── docs/               # Deployment, Supabase schema/RLS, analytics, etc.
 ├── pages/              # Top-level page components for each route
 ├── services/           # Business logic and backend API communication
 ├── types.ts            # Centralized TypeScript type definitions
