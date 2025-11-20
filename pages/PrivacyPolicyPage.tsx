@@ -1,13 +1,12 @@
 import React from 'react';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
 
 const PrivacyPolicyPage: React.FC = () => {
   return (
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Privacy Policy</h1>
-            <p className="mt-4 text-xl text-slate-500">Last updated: October 26, 2025</p>
-        </div>
+      <Container className="max-w-4xl py-0">
+        <PageHeader title="Privacy Policy" subtitle="Last updated: October 26, 2025" />
         <div className="max-w-3xl mx-auto">
           <div className="prose prose-lg max-w-none prose-h2:text-slate-900 prose-a:text-brand-blue hover:prose-a:text-blue-700">
             <p>
@@ -71,7 +70,7 @@ const PrivacyPolicyPage: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

@@ -1,12 +1,12 @@
 import React from 'react';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
 
 const TermsOfServicePage: React.FC = () => {
   return (
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Terms of Service</h1>
-        </div>
+      <Container className="max-w-4xl py-0">
+        <PageHeader title="Terms of Service" />
         <div className="max-w-3xl mx-auto">
           <div className="prose prose-lg max-w-none prose-h2:text-slate-900 prose-a:text-brand-blue hover:prose-a:text-blue-700">
             <p>
@@ -64,7 +64,7 @@ const TermsOfServicePage: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

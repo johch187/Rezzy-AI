@@ -1,16 +1,18 @@
 import React, { useState, useContext, useCallback, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateDocumentsViaServer, scrapeJobDescriptionViaServer } from '../services/aiGateway';
+import { generateTailoredDocuments } from '../services/actions/documentActions';
+import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
 import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
 import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import { templates } from '../components/TemplateSelector';
 import { readFileContent } from '../utils';
-import { ThinkingIcon, ArrowIcon, XCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
+import { ThinkingIcon, XCircleIcon, LoadingSpinnerIcon } from '../components/Icons';
 import ContentAccordion from '../components/ContentAccordion';
 import TemplateSelector from '../components/TemplateSelector';
 import ProfileContentSelector from '../components/ProfileContentSelector';
 import Tooltip from '../components/Tooltip';
+import Card from '../components/Card';
 
 const TextAreaSkeleton: React.FC = () => (
   <div className="mt-1 block w-full rounded-md border border-gray-200 bg-white p-3 space-y-3 animate-pulse" style={{ minHeight: '340px' }}>
@@ -50,8 +52,6 @@ const GeneratePage: React.FC = () => {
   const [jobDescription, setJobDescription] = useState(initialJobDescription || '');
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
-  const [isGenerationOptionsCollapsed, setIsGenerationOptionsCollapsed] = useState(false);
   
   const [includedProfileSelections, setIncludedProfileSelections] = useState<IncludedProfileSelections>({
     summary: true,
@@ -117,7 +117,7 @@ const GeneratePage: React.FC = () => {
     setIsFetchingUrl(true);
     setError(null);
     try {
-      const description = await scrapeJobDescriptionViaServer(jobUrl);
+      const description = await fetchJobDescriptionFromUrl(jobUrl);
       setJobDescription(description);
     } catch (e: any) {
       setError(e.message || "An unknown error occurred while fetching the URL. Please paste the description manually.");
@@ -175,7 +175,7 @@ const GeneratePage: React.FC = () => {
           };
 
           const generationOptions = { ...options, jobDescription };
-          const result = await generateDocumentsViaServer(filteredProfile, generationOptions);
+          const result = await generateTailoredDocuments(filteredProfile, generationOptions);
           
           if (!result.documents.resume && !result.documents.coverLetter) {
               throw new Error("The AI was unable to generate documents based on the provided information. This can sometimes happen with very complex job descriptions or if the input is too short. Please try again with a more detailed job description.");
@@ -356,20 +356,14 @@ const GeneratePage: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <main className="lg:col-span-2">
-                <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-200">
-                    <div className="flex justify-between items-start cursor-pointer" onClick={() => setIsConfigCollapsed(!isConfigCollapsed)}>
-                        <div>
-                            <h1 className="text-3xl font-bold text-neutral">Tailor Your Application</h1>
-                            <p className="text-gray-500 mt-2">Start by providing the job details. The AI will use this information to customize your documents.</p>
-                        </div>
-                        <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0 ml-4" aria-label={isConfigCollapsed ? 'Expand configuration' : 'Collapse configuration'}>
-                            <ArrowIcon collapsed={isConfigCollapsed} />
-                        </button>
+            <main className="lg:col-span-2 space-y-8">
+                <Card>
+                    <div>
+                        <h1 className="text-3xl font-bold text-neutral">Tailor Your Application</h1>
+                        <p className="text-gray-500 mt-2">Start by providing the job details. The AI will use this information to customize your documents.</p>
                     </div>
 
-                    <div className={`transition-all duration-500 ease-in-out ${isConfigCollapsed ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100 mt-6'}`}>
-                        <div>
+                    <div className="mt-6">
                         <label htmlFor="job-url" className="block text-sm font-medium text-gray-700">
                             Job Posting URL (Optional)
                         </label>
@@ -379,219 +373,211 @@ const GeneratePage: React.FC = () => {
                             {fetchButtonContent}
                             </button>
                         </div>
-                        </div>
+                    </div>
 
-                        <div className="mt-4">
+                    <div className="mt-4">
                         <label htmlFor="job-description" className="block text-sm font-medium text-gray-700">
                             Job Description
                         </label>
                         {isFetchingUrl ? <TextAreaSkeleton /> : (
                             <textarea id="job-description" rows={15} className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm" placeholder="Paste the full job description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
                         )}
-                        </div>
-                        
-                        <ContentAccordion title="Inspiration Documents (Optional)" initiallyOpen={true}>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Provide your previous documents to help the AI match your unique style, tone, and formatting. This is highly recommended for best results.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <input type="file" accept=".txt,.md,.pdf" ref={resumeInputRef} onChange={(e) => handleFileChange(e, 'resume')} className="hidden" />
-                                    {resumeFile ? (
-                                        <div className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 pl-3 pr-2 py-2 text-sm">
-                                            <span className="font-medium text-gray-700 truncate">{resumeFile.name}</span>
-                                            <button onClick={() => clearFile('resume')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
-                                        </div>
-                                    ) : (
-                                        <div onClick={() => resumeInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
-                                            <div>
-                                                <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                                    <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
-                                                </svg>
-                                                <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
-                                                    <span className="font-semibold text-primary">Upload a resume</span>
-                                                </div>
-                                                <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                    <div>
-                                    <input type="file" accept=".txt,.md,.pdf" ref={coverLetterInputRef} onChange={(e) => handleFileChange(e, 'coverLetter')} className="hidden" />
-                                    {coverLetterFile ? (
-                                            <div className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 pl-3 pr-2 py-2 text-sm">
-                                            <span className="font-medium text-gray-700 truncate">{coverLetterFile.name}</span>
-                                            <button onClick={() => clearFile('coverLetter')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
-                                        </div>
-                                    ) : (
-                                        <div onClick={() => coverLetterInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
-                                            <div>
-                                                <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                                    <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
-                                                </svg>
-                                                <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
-                                                    <span className="font-semibold text-primary">Upload a cover letter</span>
-                                                </div>
-                                                <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            {fileError && (
-                            <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
-                                <div>
-                                <p className="font-bold">File Error</p>
-                                <p>{fileError}</p>
-                                </div>
-                                <button onClick={() => setFileError(null)} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close file error">
-                                <XCircleIcon className="h-6 w-6" />
-                                </button>
-                            </div>
-                            )}
-                        </ContentAccordion>
-
-                        <ContentAccordion title="Templates" initiallyOpen={true}>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Select the templates you'd like to use for your generated documents. Double-click any template to see a larger preview.
-                            </p>
-                            <TemplateSelector />
-                        </ContentAccordion>
-
-                        <ContentAccordion title="Style & Tone" initiallyOpen={true}>
-                            <div className="space-y-6">
-                                <div>
-                                <label htmlFor="tone-selector" className="block text-sm font-medium text-gray-700">
-                                    <Tooltip text="Select the overall tone for your documents. 'Formal' is traditional and corporate. 'Friendly' is approachable and modern. 'Persuasive' is confident and action-oriented.">
-                                        Application Tone
-                                    </Tooltip>
-                                </label>
-                                <select 
-                                    id="tone-selector" 
-                                    value={options.tone} 
-                                    onChange={(e) => setOptions(o => ({...o, tone: e.target.value as any}))} 
-                                    className="mt-2 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm"
-                                >
-                                    <option value="formal">Formal</option>
-                                    <option value="friendly">Friendly</option>
-                                    <option value="persuasive">Persuasive</option>
-                                </select>
-                                </div>
-                                <div>
-                                <label htmlFor="technicality-slider" className="block text-sm font-medium text-gray-700">
-                                    <Tooltip text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'General' for non-technical roles and 'Technical' for expert audiences.">
-                                        Language Style
-                                    </Tooltip>
-                                </label>
-                                <div className="flex items-center space-x-4 mt-2">
-                                    <span className="text-xs text-gray-500">General</span>
-                                    <input id="technicality-slider" type="range" min="0" max="100" value={options.technicality} onChange={(e) => setOptions(o => ({...o, technicality: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
-                                    <span className="text-xs text-gray-500">Technical</span>
-                                </div>
-                                </div>
-                            </div>
-                        </ContentAccordion>
-                        
-                        <ContentAccordion title="Advanced Generation Settings" initiallyOpen={true}>
-                            <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-200">
-                                <div className="pr-4">
-                                    <label htmlFor="thinking-mode" className="block text-sm font-medium text-gray-700">
-                                        <Tooltip
-                                        text="Activates a more advanced AI model (gemini-2.5-pro) that excels at complex reasoning. This produces higher-quality, more nuanced documents but will take noticeably longer to generate."
-                                        >
-                                        <div className="flex items-center text-gray-800 font-medium">
-                                            <ThinkingIcon />
-                                            Thinking Mode
-                                        </div>
-                                        </Tooltip>
-                                    </label>
-                                    <p id="thinking-mode-description" className="text-xs text-gray-600">Ideal for senior roles or competitive applications where quality is paramount.</p>
-                                </div>
-                                <div className="flex-shrink-0 flex items-center space-x-3">
-                                    <span className="text-sm font-bold text-purple-700 bg-purple-200 px-2.5 py-1 rounded-full">
-                                        +10 Tokens
-                                    </span>
-                                    <label htmlFor="thinking-mode" className="inline-flex relative items-center cursor-pointer">
-                                    <input type="checkbox" id="thinking-mode" className="sr-only peer" checked={options.thinkingMode} onChange={(e) => setOptions(o => ({ ...o, thinkingMode: e.target.checked }))} aria-describedby="thinking-mode-description" />
-                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-purple-50 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                    </label>
-                                </div>
-                            </div>
-                        </ContentAccordion>
                     </div>
-                </div>
-                {/* Mobile-only Generate Button */}
+                </Card>
+
+                <Card>
+                    <ContentAccordion title="Inspiration Documents (Optional)" initiallyOpen={true}>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Provide your previous documents to help the AI match your unique style, tone, and formatting. This is highly recommended for best results.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <input type="file" accept=".txt,.md,.pdf" ref={resumeInputRef} onChange={(e) => handleFileChange(e, 'resume')} className="hidden" />
+                                {resumeFile ? (
+                                    <div className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 pl-3 pr-2 py-2 text-sm">
+                                        <span className="font-medium text-gray-700 truncate">{resumeFile.name}</span>
+                                        <button onClick={() => clearFile('resume')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
+                                    </div>
+                                ) : (
+                                    <div onClick={() => resumeInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
+                                        <div>
+                                            <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+                                            </svg>
+                                            <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
+                                                <span className="font-semibold text-primary">Upload a resume</span>
+                                            </div>
+                                            <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                                <div>
+                                <input type="file" accept=".txt,.md,.pdf" ref={coverLetterInputRef} onChange={(e) => handleFileChange(e, 'coverLetter')} className="hidden" />
+                                {coverLetterFile ? (
+                                        <div className="flex items-center justify-between rounded-md border border-gray-300 bg-gray-50 pl-3 pr-2 py-2 text-sm">
+                                        <span className="font-medium text-gray-700 truncate">{coverLetterFile.name}</span>
+                                        <button onClick={() => clearFile('coverLetter')} className="ml-2 text-gray-400 hover:text-gray-600"><XCircleIcon /></button>
+                                    </div>
+                                ) : (
+                                    <div onClick={() => coverLetterInputRef.current?.click()} className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-center cursor-pointer hover:border-primary">
+                                        <div>
+                                            <svg className="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12A2.25 2.25 0 0120.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+                                            </svg>
+                                            <div className="mt-4 flex justify-center text-sm leading-6 text-gray-600">
+                                                <span className="font-semibold text-primary">Upload a cover letter</span>
+                                            </div>
+                                            <p className="text-xs leading-5 text-gray-600">.txt, .md, .pdf up to 2MB</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {fileError && (
+                        <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
+                            <div>
+                            <p className="font-bold">File Error</p>
+                            <p>{fileError}</p>
+                            </div>
+                            <button onClick={() => setFileError(null)} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close file error">
+                            <XCircleIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        )}
+                    </ContentAccordion>
+
+                    <ContentAccordion title="Templates" initiallyOpen={false}>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Select the templates you'd like to use for your generated documents. Double-click any template to see a larger preview.
+                        </p>
+                        <TemplateSelector />
+                    </ContentAccordion>
+
+                    <ContentAccordion title="Style & Tone" initiallyOpen={false}>
+                        <div className="space-y-6">
+                            <div>
+                            <label htmlFor="tone-selector" className="block text-sm font-medium text-gray-700">
+                                <Tooltip text="Select the overall tone for your documents. 'Formal' is traditional and corporate. 'Friendly' is approachable and modern. 'Persuasive' is confident and action-oriented.">
+                                    Application Tone
+                                </Tooltip>
+                            </label>
+                            <select 
+                                id="tone-selector" 
+                                value={options.tone} 
+                                onChange={(e) => setOptions(o => ({...o, tone: e.target.value as any}))} 
+                                className="mt-2 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm"
+                            >
+                                <option value="formal">Formal</option>
+                                <option value="friendly">Friendly</option>
+                                <option value="persuasive">Persuasive</option>
+                            </select>
+                            </div>
+                            <div>
+                            <label htmlFor="technicality-slider" className="block text-sm font-medium text-gray-700">
+                                <Tooltip text="Controls the technicality of the language, ranging from jargon-filled to general. Use 'General' for non-technical roles and 'Technical' for expert audiences.">
+                                    Language Style
+                                </Tooltip>
+                            </label>
+                            <div className="flex items-center space-x-4 mt-2">
+                                <span className="text-xs text-gray-500">General</span>
+                                <input id="technicality-slider" type="range" min="0" max="100" value={options.technicality} onChange={(e) => setOptions(o => ({...o, technicality: Number(e.target.value)}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                                <span className="text-xs text-gray-500">Technical</span>
+                            </div>
+                            </div>
+                        </div>
+                    </ContentAccordion>
+                    
+                    <ContentAccordion title="Advanced Generation Settings" initiallyOpen={false}>
+                        <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-200">
+                            <div className="pr-4">
+                                <label htmlFor="thinking-mode" className="block text-sm font-medium text-gray-700">
+                                    <Tooltip
+                                    text="Activates enhanced reasoning (Thinking Budget). Ideal for complex tasks, enabling the model to think extensively before generating. Produces higher-quality, more nuanced documents, but takes noticeably longer."
+                                    >
+                                    <div className="flex items-center text-gray-800 font-medium">
+                                        <ThinkingIcon />
+                                        Thinking Mode
+                                    </div>
+                                    </Tooltip>
+                                </label>
+                                <p id="thinking-mode-description" className="text-xs text-gray-600">Ideal for senior roles or competitive applications where quality is paramount.</p>
+                            </div>
+                            <div className="flex-shrink-0 flex items-center space-x-3">
+                                <span className="text-sm font-bold text-purple-700 bg-purple-200 px-2.5 py-1 rounded-full">
+                                    +10 Tokens
+                                </span>
+                                <label htmlFor="thinking-mode" className="inline-flex relative items-center cursor-pointer">
+                                <input type="checkbox" id="thinking-mode" className="sr-only peer" checked={options.thinkingMode} onChange={(e) => setOptions(o => ({ ...o, thinkingMode: e.target.checked }))} aria-describedby="thinking-mode-description" />
+                                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-purple-50 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </ContentAccordion>
+                </Card>
                 <div className="mt-6 lg:hidden">
                 {generateButton}
                 </div>
             </main>
             
             <aside className="lg:col-span-1 sticky top-24 space-y-8">
-                {/* Desktop-only Generate Button */}
                 <div className="w-full hidden lg:block">
                     {generateButton}
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
-                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsGenerationOptionsCollapsed(!isGenerationOptionsCollapsed)}>
-                        <h2 className="text-xl font-bold text-neutral border-b border-gray-200 pb-4 mb-0 flex-grow">Generation Options</h2>
-                        <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0 ml-4" aria-label={isGenerationOptionsCollapsed ? 'Expand generation options' : 'Collapse generation options'}>
-                            <ArrowIcon collapsed={isGenerationOptionsCollapsed} />
-                        </button>
+                <Card>
+                    <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                        <h2 className="text-xl font-bold text-neutral">Generation Options</h2>
                     </div>
                     
-                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isGenerationOptionsCollapsed ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100 mt-4'}`}>
-                        <div className="py-4 space-y-6">
-                            {/* Resume Group */}
-                            <div>
-                                <div className="flex items-center">
-                                    <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
-                                    <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">
-                                        Create Resume
-                                    </label>
+                    <div className="py-4 space-y-6">
+                        <div>
+                            <div className="flex items-center">
+                                <input id="resume" type="checkbox" checked={options.generateResume} onChange={(e) => setOptions(o => ({...o, generateResume: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="resume" className="ml-3 block text-base font-semibold text-gray-900">
+                                    Create Resume
+                                </label>
+                            </div>
+                            <div className={`pl-8 mt-4 space-y-4 transition-opacity ${!options.generateResume ? 'opacity-50' : 'opacity-100'}`}>
+                                <div className="relative flex items-start">
+                                    <div className="flex h-6 items-center">
+                                        <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed" disabled={!options.generateResume} />
+                                    </div>
+                                    <div className="ml-3 text-sm leading-6">
+                                        <label htmlFor="summary" className={`font-medium text-gray-900 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Include Professional Summary</label>
+                                        <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
+                                    </div>
                                 </div>
-                                <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateResume ? 'opacity-50' : 'opacity-100'}`}>
-                                    <div className="relative flex items-start">
-                                        <div className="flex h-6 items-center">
-                                            <input id="summary" type="checkbox" checked={options.includeSummary} onChange={(e) => setOptions(o => ({...o, includeSummary: e.target.checked}))} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed" disabled={!options.generateResume} />
-                                        </div>
-                                        <div className="ml-3 text-sm leading-6">
-                                            <label htmlFor="summary" className={`font-medium text-gray-900 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Include Professional Summary</label>
-                                            <p className="text-gray-500">Add a brief, impactful summary at the top of your resume.</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="resume-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Maximum Resume Length</label>
-                                        <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateResume}>
-                                            <option value="1 page max">1 Page Max</option>
-                                            <option value="2 pages max">2 Pages Max</option>
-                                        </select>
-                                    </div>
+                                <div>
+                                    <label htmlFor="resume-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateResume ? 'cursor-not-allowed' : ''}`}>Maximum Resume Length</label>
+                                    <select id="resume-length" value={options.resumeLength} onChange={(e) => setOptions(o => ({...o, resumeLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateResume}>
+                                        <option value="1 page max">1 Page Max</option>
+                                        <option value="2 pages max">2 Pages Max</option>
+                                    </select>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Cover Letter Group */}
-                            <div className="pt-6 border-t border-gray-200">
-                                <div className="flex items-center">
-                                    <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
-                                    <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">
-                                        Create Cover Letter
-                                    </label>
-                                </div>
-                                <div className={`pl-7 mt-4 space-y-4 transition-opacity ${!options.generateCoverLetter ? 'opacity-50' : 'opacity-100'}`}>
-                                    <div>
-                                        <label htmlFor="cover-letter-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateCoverLetter ? 'cursor-not-allowed' : ''}`}>Cover Letter Length</label>
-                                        <select id="cover-letter-length" value={options.coverLetterLength} onChange={(e) => setOptions(o => ({...o, coverLetterLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateCoverLetter}>
-                                            <option value="short">Short (~3 paragraphs)</option>
-                                            <option value="medium">Medium (4-5 paragraphs)</option>
-                                            <option value="long">Long (5+ paragraphs)</option>
-                                        </select>
-                                    </div>
+                        <div className="pt-6 border-t border-gray-200">
+                            <div className="flex items-center">
+                                <input id="coverLetter" type="checkbox" checked={options.generateCoverLetter} onChange={(e) => setOptions(o => ({...o, generateCoverLetter: e.target.checked}))} className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
+                                <label htmlFor="coverLetter" className="ml-3 block text-base font-semibold text-gray-900">
+                                    Create Cover Letter
+                                </label>
+                            </div>
+                            <div className={`pl-8 mt-4 space-y-4 transition-opacity ${!options.generateCoverLetter ? 'opacity-50' : 'opacity-100'}`}>
+                                <div>
+                                    <label htmlFor="cover-letter-length" className={`block text-sm font-medium text-gray-700 mb-2 ${!options.generateCoverLetter ? 'cursor-not-allowed' : ''}`}>Cover Letter Length</label>
+                                    <select id="cover-letter-length" value={options.coverLetterLength} onChange={(e) => setOptions(o => ({...o, coverLetterLength: e.target.value as any}))} className="block w-full max-w-xs rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" disabled={!options.generateCoverLetter}>
+                                        <option value="short">Short (~3 paragraphs)</option>
+                                        <option value="medium">Medium (4-5 paragraphs)</option>
+                                        <option value="long">Long (5+ paragraphs)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
                 <ProfileContentSelector
                 profile={profile}
                 selections={includedProfileSelections}

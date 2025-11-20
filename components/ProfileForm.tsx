@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { ProfileContext } from '../App';
 import AccordionItem from './AccordionItem';
 import { XCircleIcon, LoadingSpinnerIcon, UploadIcon } from './Icons';
+import Button from './Button';
+import Card from './Card';
 
 import { PersonalInfoSection } from './profile/PersonalInfoSection';
 import { SummarySection } from './profile/SummarySection';
@@ -30,9 +32,8 @@ const ProfileForm: React.FC = () => {
 
   const isDirty = profile && lastSavedProfile ? JSON.stringify(profile) !== JSON.stringify(lastSavedProfile) : false;
 
-  const handleSave = async () => {
-    const didSave = await saveProfile();
-    if (didSave) {
+  const handleSave = () => {
+    if (saveProfile()) {
       setShowSaveConfirmation(true);
       setTimeout(() => setShowSaveConfirmation(false), 3000);
     }
@@ -57,7 +58,7 @@ const ProfileForm: React.FC = () => {
 
   return (
     <>
-    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-200">
+    <Card>
       <div className="border-b border-gray-200 pb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
@@ -73,23 +74,14 @@ const ProfileForm: React.FC = () => {
               accept=".pdf,.txt,.md"
               disabled={isParsing}
             />
-            <button
+            <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isParsing}
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-secondary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed"
+              isLoading={isParsing}
+              variant="secondary"
+              leftIcon={<UploadIcon />}
             >
-              {isParsing ? (
-                <>
-                  <LoadingSpinnerIcon className="h-5 w-5 mr-2" />
-                  Parsing in background...
-                </>
-              ) : (
-                <>
-                  <UploadIcon />
-                  Import from Resume
-                </>
-              )}
-            </button>
+              {isParsing ? 'Parsing...' : 'Import from Resume'}
+            </Button>
             <p className="mt-2 text-xs text-gray-500">.pdf, .txt, or .md accepted</p>
           </div>
         </div>
@@ -182,18 +174,15 @@ const ProfileForm: React.FC = () => {
             </AccordionItem>
           </div>
       </div>
-    </div>
+    </Card>
 
     {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm p-4 border-t border-gray-200 shadow-lg z-40 animate-slide-in-up">
             <div className="mx-auto flex justify-end items-center px-4 sm:px-6 lg:px-8">
                 <p className="text-gray-600 mr-4 hidden sm:block">You have unsaved changes.</p>
-                <button
-                    onClick={handleSave}
-                    className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                >
+                <Button variant="primary" size="lg" onClick={handleSave}>
                     Save Changes
-                </button>
+                </Button>
             </div>
         </div>
     )}

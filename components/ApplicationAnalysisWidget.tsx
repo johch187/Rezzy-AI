@@ -5,7 +5,7 @@ import { SimpleMarkdown } from './SimpleMarkdown';
 
 const ApplicationAnalysisWidget: React.FC<{ analysis: ApplicationAnalysisResult }> = ({ analysis }) => {
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 space-y-4">
+        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200/80 space-y-4">
             <h2 className="text-xl font-bold text-neutral border-b border-gray-200 pb-3">Application Fit Analysis</h2>
             
             <div>

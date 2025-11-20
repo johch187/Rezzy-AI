@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import PlanCard from '../components/PlanCard';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
+import Card from '../components/Card';
+import Button from '../components/Button';
 
 const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
@@ -17,15 +21,13 @@ const SubscriptionPage: React.FC = () => {
 
   return (
     <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+      <Container className="py-0">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Find the Perfect Plan</h1>
-            <p className="mt-4 text-xl text-slate-500">
-              Start for free, and unlock powerful features when you're ready.
-            </p>
-          </div>
+          <PageHeader
+            title="Find the Perfect Plan"
+            subtitle="Start for free, and unlock powerful features when you're ready."
+          />
 
           {/* Billing Cycle Toggle */}
           <div className="flex justify-center items-center space-x-4 mb-12">
@@ -91,7 +93,7 @@ const SubscriptionPage: React.FC = () => {
           </div>
 
           {/* Boost Applications Section */}
-          <div className="mt-20 text-center bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-slate-200">
+          <Card className="mt-20 text-center">
             <h3 className="text-3xl font-bold text-slate-900">Need a Quick Boost?</h3>
             <p className="mt-3 text-slate-700 max-w-2xl mx-auto">
               Purchase a one-time pack of tokens for extra document generations. They never expire and there's no subscription required.
@@ -102,24 +104,24 @@ const SubscriptionPage: React.FC = () => {
                 <h4 className="text-xl font-bold text-slate-900">Boost Pack</h4>
                 <span className="text-4xl font-extrabold text-slate-900 mt-2">20 Tokens</span>
                 <p className="text-3xl font-bold text-brand-blue my-4">€10</p>
-                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
+                <Button variant="primary" fullWidth className="transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
                   Purchase Pack
-                </button>
+                </Button>
               </div>
               {/* Power Pack */}
               <div className="border border-slate-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:border-brand-blue/50">
                 <h4 className="text-xl font-bold text-slate-900">Power Pack</h4>
                 <span className="text-4xl font-extrabold text-slate-900 mt-2">50 Tokens</span>
                 <p className="text-3xl font-bold text-brand-blue my-4">€20</p>
-                <button className="w-full text-center px-6 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
+                 <Button variant="primary" fullWidth className="transition-transform transform hover:scale-105 shadow-md hover:shadow-brand-blue/40">
                   Purchase Pack
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
 
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

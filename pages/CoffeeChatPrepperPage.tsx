@@ -1,8 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { generateCoffeeChatBriefViaServer, generateReachOutMessageViaServer } from '../services/aiGateway';
+import { generateCoffeeChatBrief, generateReachOutMessage } from '../services/actions/networkingActions';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import { TubelightNavbar, NavItem } from '../components/ui/tubelight-navbar';
+import { Coffee, Send } from 'lucide-react';
 
 const CoffeeChatPrepperPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
@@ -43,8 +49,8 @@ const CoffeeChatPrepperPage: React.FC = () => {
         (async () => {
             try {
                 const result = generationMode === 'prep'
-                    ? await generateCoffeeChatBriefViaServer(profile, counterpartInfo)
-                    : await generateReachOutMessageViaServer(profile, counterpartInfo);
+                    ? await generateCoffeeChatBrief(profile, counterpartInfo)
+                    : await generateReachOutMessage(profile, counterpartInfo);
 
                 const finalResultPayload = { 
                     content: result,
@@ -65,10 +71,15 @@ const CoffeeChatPrepperPage: React.FC = () => {
         
     const buttonText = generationMode === 'prep' ? 'Generate Brief' : 'Generate Message';
 
+    const navItems: NavItem[] = [
+        { name: 'prep', displayName: 'Coffee Chat Prep', icon: Coffee },
+        { name: 'reach_out', displayName: 'Reach Out Message', icon: Send },
+    ];
+
     return (
         <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
-            <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-                <div className="text-center mb-12">
+            <Container className="max-w-4xl py-0">
+                <div className="text-center mb-0">
                     <div className="flex justify-center mb-6">
                         <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mx-auto">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -76,36 +87,20 @@ const CoffeeChatPrepperPage: React.FC = () => {
                             </svg>
                         </div>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Coffee Chats</h1>
-                    <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
-                        Ace your professional networking. Provide details about a person you want to connect with—like their bio, notes, or a LinkedIn profile—and our AI coach will generate a tailored outreach message or a personalized brief to ensure you make a great impression.
-                    </p>
+                    <PageHeader 
+                        title="Coffee Chats"
+                        subtitle="Ace your professional networking. Provide details about a person you want to connect with—like their bio, notes, or a LinkedIn profile—and our AI coach will generate a tailored outreach message or a personalized brief to ensure you make a great impression."
+                    />
                 </div>
+                
+                <TubelightNavbar
+                    items={navItems}
+                    activeTab={generationMode}
+                    onTabChange={(mode) => setGenerationMode(mode as 'prep' | 'reach_out')}
+                    layoutId="coffee-chat-nav"
+                />
 
-                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-                    <div className="mb-6">
-                        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200" role="radiogroup">
-                            <button
-                                onClick={() => setGenerationMode('prep')}
-                                className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${generationMode === 'prep' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
-                                aria-pressed={generationMode === 'prep'}
-                                role="radio"
-                                aria-checked={generationMode === 'prep'}
-                            >
-                                Coffee Chat Prep
-                            </button>
-                            <button
-                                onClick={() => setGenerationMode('reach_out')}
-                                className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${generationMode === 'reach_out' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
-                                aria-pressed={generationMode === 'reach_out'}
-                                role="radio"
-                                aria-checked={generationMode === 'reach_out'}
-                            >
-                                Reach Out Message
-                            </button>
-                        </div>
-                    </div>
-
+                <Card>
                     <label htmlFor="counterpart-info" className="block text-lg font-semibold text-gray-800">
                         Who are you connecting with?
                     </label>
@@ -123,22 +118,17 @@ const CoffeeChatPrepperPage: React.FC = () => {
                     />
                     <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4">
                         <p className="text-sm text-gray-600">This will cost <span className="font-bold">1 Token</span>.</p>
-                        <button
+                        <Button
                             onClick={handleGenerate}
-                            disabled={isGenerating || !counterpartInfo.trim()}
-                            className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            disabled={!counterpartInfo.trim()}
+                            isLoading={isGenerating}
+                            variant="primary"
+                            size="lg"
                         >
-                            {isGenerating ? (
-                                <>
-                                    <LoadingSpinnerIcon className="h-5 w-5 mr-3" />
-                                    Generating...
-                                </>
-                            ) : (
-                                buttonText
-                            )}
-                        </button>
+                            {isGenerating ? 'Generating...' : buttonText}
+                        </Button>
                     </div>
-                </div>
+                </Card>
 
                 {error && (
                     <div className="mt-8 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
@@ -152,7 +142,7 @@ const CoffeeChatPrepperPage: React.FC = () => {
                         </button>
                     </div>
                 )}
-            </div>
+            </Container>
         </div>
     );
 };

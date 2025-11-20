@@ -1,17 +1,15 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Safely access environment variables
+const env = (import.meta as any).env || {};
+const supabaseUrl = 'https://adktjayvtprtypgqlwpr.supabase.co';
+const supabaseAnonKey = 'sb_publishable_cCuUc9y6VJRC478K0te-9w_Jj1NFalw';
 
-export const isSupabaseEnabled =
-  typeof supabaseUrl === 'string' &&
-  supabaseUrl.length > 0 &&
-  typeof supabaseKey === 'string' &&
-  supabaseKey.length > 0;
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase URL or Anon Key is missing. Please check your .env file.');
+}
 
-export const supabase: SupabaseClient<Database> | null = isSupabaseEnabled
-  ? createClient<Database>(supabaseUrl, supabaseKey)
-  : null;
-
-export default supabase;
+export const supabase = createClient(
+    supabaseUrl || 'https://adktjayvtprtypgqlwpr.supabase.co', 
+    supabaseAnonKey || 'sb_publishable_cCuUc9y6VJRC478K0te-9w_Jj1NFalw'
+);

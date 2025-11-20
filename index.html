@@ -18,29 +18,45 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              'brand-blue': '#3B82F6', // A calm, muted, professional blue
-              'slate-900': '#1E293B', // Deep slate for primary text and elements
+              'brand-blue': '#2563EB', // A slightly more vibrant, modern blue
+              'slate-900': '#0F172A',
+              'slate-800': '#1E293B',
               'slate-700': '#334155',
+              'slate-600': '#475569',
               'slate-500': '#64748B',
+              'slate-400': '#94A3B8',
               'slate-300': '#CBD5E1',
               'slate-200': '#E2E8F0',
               'slate-100': '#F1F5F9',
-              'primary': '#3B82F6', // Alias for brand-blue
-              'secondary': '#1E293B', // Alias for slate-900
-              'accent': '#3B82F6', // Accent is now the primary blue
-              'neutral': '#1E293B', // Neutral is now the primary text color
+              'slate-50': '#F8FAFC',
+              primary: '#2563EB', // Alias for brand-blue
+              secondary: '#0F172A', // Alias for slate-900
+              accent: '#F1F5F9',
+              neutral: '#1E293B',
               'base-100': '#ffffff',
-              'base-200': '#F8FAFC', // Lighter gray for backgrounds
-              'base-300': '#F1F5F9', // Slightly darker gray for borders
+              'base-200': '#F8FAFC', 
+              'base-300': '#F1F5F9',
+              background: '#ffffff',
+              foreground: '#0F172A',
+              'muted-foreground': '#475569',
+              brand: "hsl(var(--brand))",
+              "brand-foreground": "hsl(var(--brand-foreground))",
+              border: '#E2E8F0',
+              input: '#E2E8F0',
+              ring: '#2563EB',
             },
             boxShadow: {
-                'lg': '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05)',
-                'xl': '0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05)',
-                '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.1)',
+                'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+                'md': '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
+                'lg': '0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)',
+                'xl': '0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08)',
+                '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.15)',
             },
             animation: {
               'fade-in': 'fadeIn 0.5s ease-in-out',
               'slide-in-up': 'slideInUp 0.5s ease-in-out',
+              appear: "appear 0.5s ease-out forwards",
+              "appear-zoom": "appear-zoom 0.5s ease-out forwards"
             },
             keyframes: {
               fadeIn: {
@@ -51,14 +67,74 @@
                 '0%': { transform: 'translateY(20px)', opacity: 0 },
                 '100%': { transform: 'translateY(0)', opacity: 1 },
               },
+              appear: {
+                "0%": { opacity: "0", transform: "translateY(10px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" }
+              },
+              "appear-zoom": {
+                "0%": { opacity: "0", transform: "scale(0.95)" },
+                "100%": { opacity: "1", transform: "scale(1)" }
+              }
             },
           }
         }
       }
     </script>
-  </head>
+    <style>
+      .delay-100 { animation-delay: 100ms; }
+      .delay-300 { animation-delay: 300ms; }
+      .delay-700 { animation-delay: 700ms; }
+      .delay-1000 { animation-delay: 1000ms; }
+
+      :root {
+        --background: 0 0% 100%;
+        --brand: 27 96% 61%;
+        --brand-foreground: 31 97% 72%;
+      }
+      .fade-bottom {
+        position: relative;
+      }
+      .fade-bottom::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 150px;
+        background: linear-gradient(to top, var(--base-200-color, #F8FAFC), transparent);
+        pointer-events: none;
+      }
+      body.bg-base-200 {
+        --base-200-color: #F8FAFC;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "pdfjs-dist": "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.min.mjs",
+    "pdfjs-dist/": "https://aistudiocdn.com/pdfjs-dist@^5.4.296/",
+    "dist/": "https://aistudiocdn.com/dist@^0.1.2/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.11",
+    "@radix-ui/react-slot": "https://aistudiocdn.com/@radix-ui/react-slot@^1.2.4",
+    "class-variance-authority": "https://aistudiocdn.com/class-variance-authority@^0.7.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.553.0",
+    "@tabler/icons-react": "https://aistudiocdn.com/@tabler/icons-react@^3.10.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.83.0",
+    "tesseract.js": "https://aistudiocdn.com/tesseract.js@^5.1.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
   <body class="bg-base-200 font-sans">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

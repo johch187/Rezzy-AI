@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { ProfileContext } from '../App';
 import type { ProfileData } from '../types';
+import Card from './Card';
 
 const VibeFocusSelector: React.FC = () => {
     const profileContext = useContext(ProfileContext);
@@ -15,7 +16,7 @@ const VibeFocusSelector: React.FC = () => {
     };
 
     return (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-200">
+        <Card>
             <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-2xl font-bold text-neutral">Target Role</h2>
                 <p className="mt-1 text-gray-500">Define your career goals to help the AI tailor your documents.</p>
@@ -129,7 +130,7 @@ const VibeFocusSelector: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </Card>
     );
 };
 

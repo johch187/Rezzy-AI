@@ -3,6 +3,7 @@ import { ProfileContext } from '../App';
 import ProfileForm from '../components/ProfileForm';
 import TemplateSelector from '../components/TemplateSelector';
 import VibeFocusSelector from '../components/VibeFocusSelector';
+import Container from '../components/Container';
 
 const HomePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
@@ -12,7 +13,7 @@ const HomePage: React.FC = () => {
   }
   
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+    <Container>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
         <aside className="lg:col-span-1">
           <div className="sticky top-24 space-y-8">
@@ -23,7 +24,7 @@ const HomePage: React.FC = () => {
           <ProfileForm />
         </div>
       </div>
-    </div>
+    </Container>
   );
 };
 

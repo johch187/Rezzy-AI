@@ -6,6 +6,12 @@ import EditableDocument from '../components/EditableDocument';
 import { XCircleIcon } from '../components/Icons';
 import ApplicationAnalysisWidget from '../components/ApplicationAnalysisWidget';
 import { isParsedCoverLetter, isParsedResume } from '../utils';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import { TubelightNavbar, NavItem } from '../components/ui/tubelight-navbar';
+import { FileText, Mail } from 'lucide-react';
 
 const GenerationResultPage: React.FC = () => {
     const location = useLocation();
@@ -14,21 +20,23 @@ const GenerationResultPage: React.FC = () => {
 
     if (!location.state?.generatedContent) {
         return (
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24 animate-fade-in text-center">
-                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 max-w-lg mx-auto">
+            <Container className="text-center">
+                <Card className="max-w-lg mx-auto">
                     <h1 className="text-2xl font-bold text-neutral">Oops! Something went wrong.</h1>
                     <p className="mt-4 text-gray-600">
                         The generation data was not found. This can happen if you refresh the page or navigate here directly.
                         Please start a new generation from the builder page.
                     </p>
-                    <button
+                    <Button
                         onClick={() => navigate('/generate')}
-                        className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                        variant="primary"
+                        size="lg"
+                        className="mt-6"
                     >
                         Start New Generation
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </Card>
+            </Container>
         );
     }
 
@@ -85,8 +93,13 @@ const GenerationResultPage: React.FC = () => {
     const hasResume = !!editableDocs.resume;
     const hasCoverLetter = !!editableDocs.coverLetter;
 
+    const navItems: NavItem[] = [
+        { name: 'resume', displayName: 'Resume', icon: FileText },
+        { name: 'coverLetter', displayName: 'Cover Letter', icon: Mail },
+    ];
+
     return (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+        <Container>
             {parsingError && (
                 <div className="mb-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
                     <div>
@@ -100,38 +113,21 @@ const GenerationResultPage: React.FC = () => {
             )}
 
             <div>
-                <div className="text-center mb-12 animate-slide-in-up">
-                    <h1 className="text-4xl font-extrabold text-neutral tracking-tight sm:text-5xl">Your Generation Results</h1>
-                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-600">
-                        Review your application's fit, then edit and download your tailored documents.
-                    </p>
-                </div>
+                <PageHeader
+                    title="Your Generation Results"
+                    subtitle="Review your application's fit, then edit and download your tailored documents."
+                    className="animate-slide-in-up"
+                />
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <main className="lg:col-span-2 space-y-8">
-                        {(hasResume || hasCoverLetter) && (
-                            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 max-w-sm mx-auto" role="tablist">
-                                {hasResume && (
-                                    <button
-                                        onClick={() => setActiveView('resume')}
-                                        className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${activeView === 'resume' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
-                                        role="tab"
-                                        aria-selected={activeView === 'resume'}
-                                    >
-                                        Resume
-                                    </button>
-                                )}
-                                {hasCoverLetter && (
-                                    <button
-                                        onClick={() => setActiveView('coverLetter')}
-                                        className={`w-1/2 py-2 px-4 rounded-md text-sm font-semibold transition-all duration-300 ${activeView === 'coverLetter' ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
-                                        role="tab"
-                                        aria-selected={activeView === 'coverLetter'}
-                                    >
-                                        Cover Letter
-                                    </button>
-                                )}
-                            </div>
+                        {hasResume && hasCoverLetter && (
+                            <TubelightNavbar
+                                items={navItems}
+                                activeTab={activeView!}
+                                onTabChange={(view) => setActiveView(view as 'resume' | 'coverLetter')}
+                                layoutId="generation-result-nav"
+                            />
                         )}
 
                         <div className="w-full">
@@ -169,7 +165,7 @@ const GenerationResultPage: React.FC = () => {
                     </aside>
                 </div>
             </div>
-        </div>
+        </Container>
     );
 };
 

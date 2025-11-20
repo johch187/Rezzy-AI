@@ -4,6 +4,8 @@ import { ProfileContext } from '../App';
 import { DocumentDuplicateIcon } from '../components/Icons';
 import SettingsCard from '../components/SettingsCard';
 import Button from '../components/Button';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
 
 const ManageSubscriptionPage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
@@ -21,16 +23,13 @@ const ManageSubscriptionPage: React.FC = () => {
 
   return (
     <div className="bg-base-200 py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Account Settings</h1>
-            <p className="mt-4 text-xl text-slate-500">
-              Manage your subscription, billing, and account details.
-            </p>
-          </div>
-          
-          <div className="space-y-8">
+      <Container className="max-w-4xl py-0">
+        <PageHeader
+          title="Account Settings"
+          subtitle="Manage your subscription, billing, and account details."
+        />
+        
+        <div className="space-y-8">
             {/* Current Plan Card */}
             <SettingsCard title="Current Plan">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -39,9 +38,7 @@ const ManageSubscriptionPage: React.FC = () => {
                   <p className="text-slate-500 text-sm mt-1">You currently have the free Basic plan.</p>
                 </div>
                 <div className="flex space-x-2 mt-4 sm:mt-0">
-                  <Link to="/subscription">
-                    <Button variant="primary">Upgrade Plan</Button>
-                  </Link>
+                  <Button as="link" to="/subscription" variant="primary">Upgrade Plan</Button>
                   <Button variant="danger">Cancel Subscription</Button>
                 </div>
               </div>
@@ -55,8 +52,8 @@ const ManageSubscriptionPage: React.FC = () => {
                   <p className="text-slate-500 text-sm mt-1">Next invoice will be billed on November 24, 2025.</p>
                 </div>
                 <div className="flex space-x-2 mt-4 sm:mt-0">
-                    <Button>Update Payment</Button>
-                    <Button>View History</Button>
+                    <Button variant='outline'>Update Payment</Button>
+                    <Button variant='outline'>View History</Button>
                 </div>
               </div>
             </SettingsCard>
@@ -86,19 +83,18 @@ const ManageSubscriptionPage: React.FC = () => {
                         value={referralLink} 
                         className="flex-grow block w-full rounded-md border-slate-300 bg-slate-100 shadow-sm sm:text-sm focus:ring-0 focus:border-slate-300"
                     />
-                    <button 
+                    <Button
                         onClick={handleCopyLink}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900"
+                        variant="secondary"
+                        leftIcon={<DocumentDuplicateIcon />}
                     >
-                        <DocumentDuplicateIcon />
-                        <span className="ml-2">{copied ? 'Copied!' : 'Copy Link'}</span>
-                    </button>
+                        {copied ? 'Copied!' : 'Copy Link'}
+                    </Button>
                 </div>
             </SettingsCard>
 
           </div>
-        </div>
-      </div>
+      </Container>
     </div>
   );
 };

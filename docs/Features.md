@@ -1,43 +1,42 @@
 # Keju Feature Breakdown
 
-This document provides a detailed look at the major features of the Keju application, their purpose, and their technical implementation.
+This document provides a detailed look at the major features of the Keju application, their purpose, and their technical implementation in the new client-server architecture.
 
 ## 1. Profile Management & Builder
 
--   **Location:** `HomePage.tsx`, `components/ProfileForm.tsx`, `components/Sidebar.tsx`
--   **Purpose:** To create comprehensive sources of truth for the user's professional identities. This profile context is foundational for all AI interactions.
--   **Key Features:**
-    -   **Multi-Profile Support:** Users can create, rename, delete, and switch between multiple, distinct profiles from the sidebar.
-    -   **Comprehensive Form:** A multi-section accordion form allows users to input everything from personal info and work experience to custom-defined sections for the active profile.
-    -   **Resume Import:** Users can upload a `.pdf`, `.txt`, or `.md` file. The `parserService.ts` helper reads the file locally, sends the text to the secure `/api/parser/resume` endpoint via `aiGateway.ts`, and applies the parsed result to the active profile.
-    -   **Autosave & Manual Save:** The profile is automatically saved to `localStorage` periodically, and a "Save Changes" bar appears for immediate manual saves.
+-   **Location:** `HomePage.tsx`, `components/ProfileForm.tsx`
+-   **Purpose:** To create comprehensive sources of truth for the user's professional identities. This profile is foundational for all AI interactions.
+-   **Implementation:**
+    -   The frontend UI allows users to input and edit their profile data.
+    -   **Data Persistence (Current):** All profile data is currently stored in `localStorage`.
+    -   **Data Persistence (Future):** This will be migrated to a Supabase database. The frontend will fetch the profile from the backend upon user login and send updates via API calls.
+    -   **Resume Import:** The frontend reads the uploaded file (`.pdf`, `.txt`, `.md`) using `readFileContent`. The extracted text is then sent to a backend endpoint (`/api/v1/parse/resume-text`) for the AI to process. The returned JSON populates the profile form.
 
 ## 2. Application Tailoring & Analysis Suite
 
 ### a. Application Tailoring
 -   **Location:** `GeneratePage.tsx`
--   **Purpose:** To generate resumes and cover letters that are highly tailored to a specific job application, using the currently active profile as the data source.
+-   **Purpose:** To generate resumes and cover letters that are highly tailored to a specific job, using the user's profile as the data source.
 -   **Workflow:**
-    1.  The user provides a job description via URL or paste.
-    2.  The user selects which items from their active profile to include.
-    3.  The page calls `generateDocumentsViaServer` (from `aiGateway.ts`), which forwards the request to the Cloud Run `/api/generate/documents` endpoint where the actual Gemini call happens.
+    1.  The user provides a job description (via URL fetch to the backend or pasting).
+    2.  The user selects which profile items to include.
+    3.  `generationService.ts` sends the profile data, job description, and generation options to the `/api/v1/generate/documents` backend endpoint.
+    4.  The backend handles prompt engineering, calls the Gemini API, and returns the generated markdown.
 
-### b. Application Fit Analysis (Integrated & Standalone)
+### b. Application Fit Analysis
 -   **Location:** `GeneratePage.tsx` (integrated), `ApplicationAnalysisPage.tsx` (standalone)
--   **Purpose:** To provide users with a detailed analysis of how well their resume matches a job description, offering concrete improvement suggestions.
+-   **Purpose:** To provide a detailed analysis of how a resume matches a job description.
 -   **Workflow:**
-    1.  **Integrated:** During document generation (`GeneratePage.tsx`), if a job description and a resume (either generated or uploaded) are present, the client automatically calls `/api/applications/analyze` via `aiGateway.ts`.
-    2.  **Standalone:** On the `ApplicationAnalysisPage.tsx`, users can input any resume text and job description to get a dedicated analysis using the same backend endpoint.
-    3.  The Cloud Run service calls Gemini with a strict schema (`analyzeApplicationFit`) to return the `fitScore`, `gapAnalysis`, `keywordOptimization`, and `impactEnhancer`.
+    1.  The frontend gathers the resume text and job description.
+    2.  It sends this data to the `/api/v1/analyze/application-fit` backend endpoint.
+    3.  The backend calls the Gemini API with a specific prompt and schema to get a structured analysis object (`fitScore`, `gapAnalysis`, etc.) and returns it to the client.
 
 ### c. Generation Results & Editor
 -   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
--   **Purpose:** To allow users to review, refine, and export their AI-generated documents alongside their application analysis.
--   **Key Features:**
-    -   **Smart Parsing:** Upon receiving the generated markdown, the app uses `parserService.ts` (which calls the backend parsing endpoint) to convert it back into structured data for rich editing.
-    -   **Rich Editing:** The document is displayed in a form-based editor where users can edit individual fields.
-    -   **Drag-and-Drop Reordering:** For resumes, users can drag and drop entire sections.
-    -   **Export Options:** Users can download their final document as a PDF or copy the content to paste into Google Docs.
+-   **Purpose:** To allow users to review, refine, and export their AI-generated documents.
+-   **Implementation:**
+    -   After receiving generated markdown from the backend, the frontend sends it back to another backend endpoint (`/api/v1/parse/resume-markdown`) to parse it into a structured JSON format suitable for the rich editor. This ensures high-fidelity conversion.
+    -   The rich editor allows for form-based edits and drag-and-drop reordering.
 
 ## 3. AI Career Coach & Career Path
 
@@ -45,47 +44,29 @@ This document provides a detailed look at the major features of the Keju applica
 -   **Location:** `CareerCoachPage.tsx`
 -   **Purpose:** To provide an interactive, conversational interface for personalized career advice and to act as a central hub for the app's tools.
 -   **Implementation:**
-    -   **Contextual Session:** `CareerCoachPage.tsx` sends each user turn to `/api/coach/message` through `aiGateway.ts`, where the backend assembles the system prompt with the active profile, history, and Gemini configuration.
-    -   **Tool Calling (Function Calling):** The server instructs Gemini with the available tools, and the frontend executes the returned function calls (updating the UI or navigating) before posting the results back for a follow-up response.
-        -   Updating the user's profile summary.
-        -   Navigating to the document generator or networking tools.
-        -   Initiating a career path generation.
-        -   Starting a mock interview session.
-        -   Providing negotiation prep.
-        -   Quantifying work experience and reframing feedback.
+    -   The frontend no longer maintains a stateful `Chat` object.
+    -   With each message, the frontend sends the *entire chat history* along with the user's profile context to the `/api/v1/coach/chat` backend endpoint.
+    -   The backend manages the conversation with the Gemini API, including handling tool calls.
+    -   If the AI decides to use a tool, the backend sends a specific action response (e.g., `{ "action": { "type": "navigate", "payload": "..." } }`) which the frontend interprets and executes.
 
 ### b. Career Path Planner
 -   **Location:** `CareerPathPage.tsx`
 -   **Purpose:** To visualize the long-term career roadmap generated by the AI.
 -   **Workflow:**
     1.  The user requests a career path from the **AI Career Coach**.
-    2.  The coach calls the `promptToCreateCareerPath` tool, showing a confirmation UI to the user.
-    3.  If the user agrees, the client triggers the `/api/career-path` endpoint (via `aiGateway.ts`), which generates a detailed multi-year plan on the server.
-    4.  The result is saved to the active profile, and the `CareerPathPage` displays it as an interactive, scroll-aware timeline.
--   **YouTube Recommendations:** The page also fetches and verifies relevant YouTube videos for the target role to provide immediate learning resources.
+    2.  The backend's AI logic determines the need for this tool and sends a "prompt" action back to the frontend.
+    3.  If the user agrees in the UI, the frontend sends a request to the `/api/v1/generate/career-path` endpoint.
+    4.  The backend generates the path, which is saved (in the future via Supabase) and returned. The `CareerPathPage` then displays it as an interactive timeline.
+    5.  The frontend makes subsequent requests to a `/api/v1/generate/milestone-videos` endpoint to fetch curated YouTube videos for each milestone.
 
-## 4. Preparation Tools
+## 4. Preparation Tools (Interview, Networking)
 
-### a. Interview Prep Center
--   **Location:** `InterviewPrepPage.tsx`
--   **Purpose:** A dedicated hub for all pre-interview preparation.
--   **Tools:**
-    -   **Story Shaper:** Transforms a user's "brain dump" into a structured story using the STAR method.
-    -   **Rapport Builder:** Generates talking points and insightful questions based on an interviewer's bio.
-    -   **Question Bank:** Creates a list of likely interview questions from a job description.
+-   **Location:** `InterviewPrepPage.tsx`, `CoffeeChatPrepperPage.tsx`
+-   **Purpose:** To provide specialized, single-purpose AI tools for interview and networking preparation.
+-   **Implementation:** Each tool in these pages corresponds to a dedicated backend endpoint.
+    -   **Story Shaper:** Sends a "brain dump" to `/api/v1/generate/interview-story`.
+    -   **Rapport Builder:** Sends interviewer info to `/api/v1/generate/coffee-chat-brief`.
+    -   **Question Bank:** Sends a job description to `/api/v1/generate/interview-questions`.
+    -   **Reach Out Message:** Sends counterpart info to `/api/v1/generate/reach-out-message`.
 
-### b. Coffee Chat Prepper
--   **Location:** `CoffeeChatPrepperPage.tsx`
--   **Purpose:** To help users excel at professional networking.
--   **Modes:**
-    -   **Prep Mode:** Generates a "Coffee Chat Brief" with talking points and shared connections.
-    -   **Reach Out Mode:** Generates a concise, professional outreach message.
-
-## 5. Standalone Analysis Tools
-
-### a. Mentor Matcher
--   **Location:** `MentorMatcherPage.tsx`
--   **Purpose:** A specialized academic tool that helps students find the most suitable faculty mentor by analyzing their thesis topic against a list of faculty bios.
--   **Workflow:**
-    1.  The user provides their thesis topic/abstract and a list of faculty with their bios.
-    2.  The page calls `/api/mentor-match` through `aiGateway.ts`; the backend invokes Gemini with the `findMentorMatch` schema to return a ranked list of potential mentors, including a match `score` and `reasoning`.
+This backend-centric approach ensures that all prompt engineering and sensitive operations are kept secure and can be updated independently of the frontend application.

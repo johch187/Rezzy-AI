@@ -1,74 +1,60 @@
-# Google Gemini API Integration
+# Backend & AI Integration
 
-The Google Gemini API is the core engine powering all intelligent features in the Keju application. This document details our integration strategy, from the low-level service wrapper to the high-level prompt engineering for each feature.
+In the new architecture, all communication with the Google Gemini API is handled exclusively by the Python backend. This is a critical security measure to protect the API key and allows for more complex, stateful AI interactions. This document outlines the new data flow and the backend's responsibilities.
 
-## 1. Service Layers
+## 1. High-Level Data Flow
 
-Our interaction with the Gemini API is organized into two main service layers to ensure modularity and reusability.
+The interaction between the user, frontend, backend, and Gemini API follows this sequence:
 
-### a. `server/lib/genai.ts` (Low-Level Wrapper)
+1.  **User Action (Frontend):** The user interacts with the UI, for example, by clicking "Generate Documents" on the `GeneratePage`.
+2.  **Frontend Service Call:** The React component calls a function in one of the `services/` modules (e.g., `generateTailoredDocuments` in `generationService.ts`).
+3.  **API Request to Backend:** The service function uses the `apiService` utility to make a `fetch` request to a specific endpoint on the Python backend (e.g., `POST /api/v1/generate/documents`). The request body contains the necessary data (user profile, job description, etc.) as a JSON payload.
+4.  **Backend Processing:** The Python backend receives the request. It validates the data and, if applicable, the user's authentication token (JWT from Supabase).
+5.  **Secure Gemini API Call:** The backend constructs a detailed, secure prompt using the data from the frontend. It then makes a server-to-server call to the Google Gemini API using its stored API key.
+6.  **Response to Frontend:** The backend processes the response from the Gemini API. It might format the data, save results to the database (via Supabase), and then sends a clean JSON response back to the frontend.
+7.  **UI Update (Frontend):** The frontend receives the JSON response from the backend and updates the UI accordingly (e.g., displays the generated documents or analysis results).
 
-All direct Gemini calls now happen on the backend inside the Cloud Run container. The `server/lib/genai.ts` module exposes a single helper, `generateContentWithRetry`, that wraps `ai.models.generateContent`.
+## 2. Backend Responsibilities
 
--   **Purpose:** Provide a hardened, server-side integration point that keeps API keys private.
--   **Key Features:**
-    -   **Automatic Retries:** Implements exponential backoff for transient errors.
-    -   **Centralized Error Handling:** Surfaces consistent errors to the Express controllers, which in turn relay user-friendly messages to the client.
+The Python backend is the "brain" of the operation and is responsible for all aspects of the AI integration.
 
-### b. Feature Services + Client Gateway
+### a. Prompt Engineering
 
--   **Backend:** Prompt engineering lives in dedicated service files such as `server/controllers/generation.ts`, `server/services/aiTools.ts`, `server/services/parser.ts`, and `server/services/scraper.ts`. Each service builds the prompt, defines optional JSON schemas, and calls `generateContentWithRetry`.
--   **Frontend:** The React app never touches Gemini directly. Instead, `services/aiGateway.ts` attaches the Supabase access token and calls the corresponding `/api/...` endpoint. This keeps credentials on the server while allowing the UI to stay simple.
+The backend will contain all the prompt engineering logic. For each feature, it will have a dedicated function that takes the frontend's raw data and constructs the highly detailed, instruction-rich prompts previously found in the frontend's `generationService.ts` and `careerCoachService.ts`.
 
-## 2. Key Prompts & Schemas
+-   **Example (`/api/v1/generate/documents`):** This endpoint will receive the user's `profile` and `options`. The backend code will then assemble the multi-part prompt, including the system instruction, the JSON-stringified profile, the job description, and the final output format requirements, before sending it to Gemini.
 
-Effective prompt engineering is critical to the success of the application.
+### b. Model Selection
 
-### a. AI Career Coach (`server/controllers/coach.ts`)
+The backend will be responsible for selecting the appropriate Gemini model for each task to balance cost, speed, and quality.
 
--   **Goal:** To create a conversational agent that can provide advice and use tools to interact with the application.
--   **Prompt Strategy (System Prompt):** The backend generates the system prompt using the user's active profile and history for context. Crucially, it lists the tools the AI can use and provides explicit instructions on *when* and *how* to use each one.
--   **Tool Definitions:** Each available tool (e.g., `updateProfessionalSummary`, `startMockInterview`, `getNegotiationPrep`) is defined as a `FunctionDeclaration` with a name, description, and a parameter schema. This allows the Gemini model to understand the tool's purpose and required arguments.
+-   **`gemini-2.5-flash`** will be used for simpler, high-volume tasks.
+-   **`gemini-2.5-pro`** will be used for complex reasoning, such as the AI Career Coach, career path generation, and application analysis.
 
-### b. Resume Parsing (`server/services/parser.ts`)
+### c. Tool (Function Calling) Implementation
 
--   **Goal:** To convert unstructured resume text into a structured `ProfileData` JSON object with maximum accuracy.
--   **Prompt Strategy:** The backend prompt instructs the AI to be a "hyper-attentive data extraction AI" with a goal of **completeness**. It enforces a multi-pass internal process to ensure all fields are filled.
--   **Schema:** A comprehensive JSON schema (`PARSING_SCHEMA`) mirrors the `ProfileData` type, ensuring the AI's output can be directly mapped to our application's state.
+For the AI Career Coach, the backend will manage the entire function-calling loop.
 
-### c. Document Generation (`server/controllers/generation.ts`)
+1.  The backend defines the tool schemas (e.g., `navigateToResumeGenerator`, `updateProfessionalSummary`) that it sends to the Gemini API.
+2.  When Gemini responds with a `functionCall`, the backend does **not** execute the function itself. Instead, it translates the AI's intent into a structured response for the frontend.
+3.  **Example:** If Gemini returns a `functionCall` for `navigateToResumeGenerator`, the backend's response to the frontend might look like this:
+    ```json
+    {
+      "text": "Great! Let's get that resume tailored. I'm taking you to the generator now...",
+      "action": {
+        "type": "navigate",
+        "payload": {
+          "path": "/generate",
+          "state": { "jobDescription": "..." }
+        }
+      }
+    }
+    ```
+4.  The frontend receives this response and is responsible for performing the navigation. This keeps the backend stateless while still allowing the AI to "control" the application's UI.
 
--   **Goal:** To generate a resume and/or cover letter that is perfectly tailored to a job description.
--   **Prompt Strategy:** The server-side prompt is structured with clear sections for the candidate's profile (as JSON), the job description, and strict "Directives & Constraints" that govern the output style and content.
--   **Schema:** The `responseSchema` requires a JSON object with two keys, `resume` and `coverLetter`, whose values are either the full markdown string or `null`.
+### d. State Management for Conversations
 
-### d. Interview Prep & Other Tools (`server/services/aiTools.ts`)
-
--   **Goal:** To power the various tools in the Interview Prep Center and other parts of the app.
--   **Strategy:** Each tool (e.g., `shapeInterviewStory`, `generateInterviewQuestions`) has a dedicated backend function with a highly specific prompt and, where necessary, a JSON schema to structure the output for easy rendering in the UI.
-
-### e. Application Analysis & Mentor Matching (`server/controllers/generation.ts`)
-
--   **Goal:** To provide specialized, structured analysis for standalone tools.
--   **Strategy:**
-    -   **`analyzeApplicationFit`**: The prompt asks the AI to act as a career analyst, comparing a resume to a job description. A strict JSON schema with keys like `fitScore`, `gapAnalysis`, and `keywordOptimization` is used to get a structured analysis object.
-    -   **`findMentorMatch`**: The prompt instructs the AI to act as an academic advisor, comparing a thesis topic to faculty bios. It uses a JSON schema to return an array of `MentorMatch` objects, ensuring the data is correctly structured for ranking and display.
-
-## 3. Model Selection Strategy
-
-We strategically use different Gemini models to balance cost, speed, and quality:
-
--   **`gemini-2.5-flash`:** This is the default model for most interactive tasks.
-    -   **Use Cases:** Standard document generation, URL scraping, YouTube recommendations, and the *first* resume parse from an uploaded file. Also used for grounded search tasks like salary lookup.
-    -   **Reasoning:** Offers an excellent balance of speed and capability for user-initiated tasks where a quick response is important.
-
--   **`gemini-2.5-pro`:** This is our premium, high-quality model.
-    -   **Use Cases:**
-        -   Document generation when "Thinking Mode" is enabled.
-        -   All AI Career Coach conversations and tool executions.
-        -   Generating complex, structured content like the Career Path or Application Analysis.
-        -   All Interview Prep tasks.
-        -   Parsing *generated* documents back into structured data for the editor.
-        -   Reparsing a resume from a file if the user uploads again within a 10-minute window (providing a higher-quality "second chance" parse).
-        -   All Application Strength Analysis and Mentor Matcher tasks.
-    -   **Reasoning:** Its superior reasoning and instruction-following are essential for our most complex and nuanced tasks, ensuring the highest quality output where it matters most.
+The AI Career Coach requires a stateful conversation. The backend will manage this by:
+1.  Receiving the entire chat history from the frontend with each new message.
+2.  Passing this history to the Gemini API to maintain context.
+3.  This ensures that even if the backend is deployed as a stateless service (as is common on Cloud Run), the conversation's context is preserved across requests.

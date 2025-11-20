@@ -1,13 +1,16 @@
 import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import {
-    shapeInterviewStoryViaServer,
-    generateInterviewQuestionsViaServer,
-    generateCoffeeChatBriefViaServer,
-} from '../services/aiGateway';
+import { shapeInterviewStory, generateInterviewQuestions } from '../services/actions/interviewActions';
+import { generateCoffeeChatBrief } from '../services/actions/networkingActions';
 import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
 import { SimpleMarkdown } from '../components/SimpleMarkdown';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import { TubelightNavbar, NavItem } from '../components/ui/tubelight-navbar';
+import { MessageSquareText, Users, HelpCircle } from 'lucide-react';
 
 type Tool = 'story' | 'rapport' | 'questions';
 
@@ -57,13 +60,13 @@ const InterviewPrepPage: React.FC = () => {
                 let result: string | string[];
                 switch (activeTool) {
                     case 'story':
-                        result = await shapeInterviewStoryViaServer(inputs.story);
+                        result = await shapeInterviewStory(inputs.story);
                         break;
                     case 'rapport':
-                        result = await generateCoffeeChatBriefViaServer(profile, inputs.rapport);
+                        result = await generateCoffeeChatBrief(profile, inputs.rapport);
                         break;
                     case 'questions':
-                        result = await generateInterviewQuestionsViaServer(inputs.questions);
+                        result = await generateInterviewQuestions(inputs.questions);
                         break;
                 }
                 setResults(prev => ({ ...prev, [activeTool]: result }));
@@ -82,6 +85,12 @@ const InterviewPrepPage: React.FC = () => {
         rapport: { title: "Build Rapport with Interviewer", placeholder: "Paste your interviewer's LinkedIn bio or any info you have...", button: "Generate Rapport Builders", cost: 1 },
         questions: { title: "Generate Practice Questions", placeholder: "Paste the job description here...", button: "Generate Questions", cost: 1 },
     };
+    
+    const navItems: NavItem[] = [
+        { name: 'story', displayName: 'Story Shaper', icon: MessageSquareText },
+        { name: 'rapport', displayName: 'Rapport Builder', icon: Users },
+        { name: 'questions', displayName: 'Practice Questions', icon: HelpCircle },
+    ];
 
     const renderTool = () => {
         const config = toolConfig[activeTool];
@@ -97,13 +106,15 @@ const InterviewPrepPage: React.FC = () => {
                 />
                 <div className="pt-2 flex flex-col sm:flex-row justify-end items-center gap-4">
                     <p className="text-sm text-gray-600">This will cost <span className="font-bold">{config.cost} Token</span>.</p>
-                    <button
+                    <Button
                         onClick={handleGenerate}
-                        disabled={isGenerating || !inputs[activeTool].trim()}
-                        className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled={!inputs[activeTool].trim()}
+                        isLoading={isGenerating}
+                        variant="primary"
+                        size="lg"
                     >
-                        {isGenerating ? <><LoadingSpinnerIcon className="h-5 w-5 mr-3" />Generating...</> : config.button}
-                    </button>
+                        {isGenerating ? 'Generating...' : config.button}
+                    </Button>
                 </div>
             </div>
         );
@@ -134,35 +145,25 @@ const InterviewPrepPage: React.FC = () => {
 
     return (
         <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
-            <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-neutral sm:text-5xl">Interview Prep Center</h1>
-                    <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
-                        Walk into any interview with confidence. Use our AI tools to structure your stories, prepare questions, and build rapport.
-                    </p>
-                </div>
+            <Container className="py-0">
+                <PageHeader 
+                    title="Interview Prep Center"
+                    subtitle="Walk into any interview with confidence. Use our AI tools to structure your stories, prepare questions, and build rapport."
+                />
                 
+                <TubelightNavbar
+                    items={navItems}
+                    activeTab={activeTool}
+                    onTabChange={(tool) => setActiveTool(tool as Tool)}
+                    layoutId="interview-prep-nav"
+                />
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-                        <div className="mb-6">
-                            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200" role="tablist">
-                                {(Object.keys(toolConfig) as Tool[]).map(tool => (
-                                    <button
-                                        key={tool}
-                                        onClick={() => setActiveTool(tool)}
-                                        className={`w-full py-2 px-2 text-center rounded-md text-sm font-semibold transition-all duration-300 ${activeTool === tool ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-gray-200'}`}
-                                        role="tab"
-                                        aria-selected={activeTool === tool}
-                                    >
-                                        {toolConfig[tool].title}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                    <Card>
                         {renderTool()}
-                    </div>
+                    </Card>
                     
-                    <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 min-h-[30rem]">
+                    <Card className="min-h-[30rem]">
                         {error && !isGenerating && (
                             <div className="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-sm" role="alert">
                                 <p>{error}</p>
@@ -170,10 +171,10 @@ const InterviewPrepPage: React.FC = () => {
                             </div>
                         )}
                         {renderResult()}
-                    </div>
+                    </Card>
                 </div>
 
-            </div>
+            </Container>
         </div>
     );
 };

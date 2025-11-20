@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Container from '../components/Container';
+import PageHeader from '../components/PageHeader';
 
 const GDPRPage: React.FC = () => {
   return (
     <div className="bg-white py-16 sm:py-24 animate-fade-in">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">GDPR Disclaimer</h1>
-        </div>
+      <Container className="max-w-4xl py-0">
+        <PageHeader title="GDPR Disclaimer" />
         <div className="max-w-3xl mx-auto">
           <div className="prose prose-lg max-w-none prose-a:text-brand-blue hover:prose-a:text-blue-700">
             <p>
@@ -19,7 +19,7 @@ const GDPRPage: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };
