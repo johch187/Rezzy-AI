@@ -43,6 +43,7 @@ jobs:
         run: |
           npm ci
           npm run lint
+          npm run test
           npm run build
 
       - name: Backend dependency check
@@ -50,6 +51,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
           python -m py_compile $(find backend -name "*.py")
+          cd backend && pytest
 
       - id: auth
         name: Auth to Google Cloud
@@ -82,4 +84,13 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --set-env-vars SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }},SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }},CSP_POLICY=${{ secrets.CSP_POLICY }},FRONTEND_DIST=/app/frontend,GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},BIGQUERY_DATASET=${{ secrets.BIGQUERY_DATASET }},BIGQUERY_TABLE=${{ secrets.BIGQUERY_TABLE }}
+            --set-env-vars SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+            --set-env-vars SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --set-env-vars SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
+            --set-env-vars GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+            --set-env-vars ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}' \
+            --set-env-vars CSP_POLICY='${{ secrets.CSP_POLICY }}' \
+            --set-env-vars FRONTEND_DIST="/app/frontend" \
+            --set-env-vars GCP_PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}" \
+            --set-env-vars BIGQUERY_DATASET="${{ secrets.BIGQUERY_DATASET }}" \
+            --set-env-vars BIGQUERY_TABLE="${{ secrets.BIGQUERY_TABLE }}"
