@@ -4,9 +4,14 @@ import Container from '../components/Container';
 import PageHeader from '../components/PageHeader';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { createCheckout } from '../services/paymentsService';
+import { useNavigate } from 'react-router-dom';
 
 const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const plans = {
     associate: {
@@ -17,6 +22,25 @@ const SubscriptionPage: React.FC = () => {
       monthly: 30,
       annually: 30 * 12 * (1 - 0.10), // 10% discount
     },
+  };
+
+  const startCheckout = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const successUrl = `${window.location.origin}/#/account`;
+      const cancelUrl = `${window.location.origin}/#/subscription`;
+      const res = await createCheckout(successUrl, cancelUrl);
+      if (res.url) {
+        window.location.href = res.url;
+      } else {
+        throw new Error('Checkout URL missing.');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Unable to start checkout.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,6 +113,11 @@ const SubscriptionPage: React.FC = () => {
                 "Credit rollovers (Credits roll over for 1 month on monthly plans, or until the end of your annual plan.)",
                 "Extended history & storage (6 months)",
               ]}
+              cta={
+                <Button variant="primary" fullWidth onClick={startCheckout} isLoading={loading}>
+                  {loading ? 'Redirecting...' : 'Upgrade'}
+                </Button>
+              }
             />
           </div>
 

@@ -40,3 +40,21 @@ export const persistWorkspace = async (payload: WorkspacePayload) => {
   assertApi();
   await postJson('/api/workspace', payload);
 };
+
+export const fetchSubscriptionStatus = async () => {
+  assertApi();
+  const headers = await (async () => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) h.Authorization = `Bearer ${token}`;
+    }
+    return h;
+  })();
+  const res = await fetch(`${API_BASE_URL}/api/payments/status`, { headers });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
+};

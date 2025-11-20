@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ProfileData, DocumentGeneration, BackgroundTask, ApplicationAnalysisResult, ParsedCoverLetter, CareerChatSummary } from '../types';
 import { importAndParseResume } from '../services/parserService';
-import { fetchWorkspace, persistWorkspace } from '../services/workspaceService';
+import { fetchWorkspace, persistWorkspace, fetchSubscriptionStatus } from '../services/workspaceService';
 import { supabase } from '../services/supabaseClient';
 
 const createNewProfile = (name: string): ProfileData => {
@@ -49,6 +49,7 @@ export const ProfileContext = createContext<{
   lastSavedProfile: ProfileData | null;
   tokens: number;
   setTokens: React.Dispatch<React.SetStateAction<number>>;
+  subscription: { status: string; plan: string; current_period_end?: string } | null;
   isFetchingUrl: boolean;
   setIsFetchingUrl: React.Dispatch<React.SetStateAction<boolean>>;
   documentHistory: DocumentGeneration[];
@@ -71,6 +72,7 @@ const AUTOSAVE_INTERVAL = 120 * 1000; // 2 minutes
 export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (msg: string) => void }> = ({ children, onToast }) => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [lastSavedProfile, setLastSavedProfile] = useState<ProfileData | null>(null);
+  const [subscription, setSubscription] = useState<{ status: string; plan: string; current_period_end?: string } | null>(null);
   
   useEffect(() => {
     const init = async () => {
@@ -80,6 +82,16 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
         if (hasSession) {
           try {
             const workspace = await fetchWorkspace();
+            let subTokens: number | undefined;
+            try {
+              const sub = await fetchSubscriptionStatus();
+              setSubscription(sub);
+              if (typeof sub.tokens === 'number') {
+                subTokens = sub.tokens;
+              }
+            } catch (e) {
+              console.warn("Subscription fetch failed", e);
+            }
             if (workspace.profile) {
               setProfile(workspace.profile);
               setLastSavedProfile(workspace.profile);
@@ -90,7 +102,13 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
             }
             setDocumentHistory(Array.isArray(workspace.documentHistory) ? workspace.documentHistory : []);
             setCareerChatHistory(Array.isArray(workspace.careerChatHistory) ? workspace.careerChatHistory : []);
-            setTokens(typeof workspace.tokens === 'number' ? workspace.tokens : 65);
+            if (typeof workspace.tokens === 'number') {
+              setTokens(workspace.tokens);
+            } else if (typeof subTokens === 'number') {
+              setTokens(subTokens);
+            } else {
+              setTokens(65);
+            }
             return;
           } catch (e) {
             console.warn("Workspace fetch failed, falling back to localStorage.", e);
@@ -370,6 +388,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       saveProfile, 
       lastSavedProfile,
       tokens, setTokens: setTokensWithSync, 
+      subscription,
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
       careerChatHistory, addCareerChatSummary,

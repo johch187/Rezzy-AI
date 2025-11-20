@@ -6,13 +6,32 @@ import SettingsCard from '../components/SettingsCard';
 import Button from '../components/Button';
 import Container from '../components/Container';
 import PageHeader from '../components/PageHeader';
+import { createCheckout } from '../services/paymentsService';
 
 const ManageSubscriptionPage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const [copied, setCopied] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
   
   const userEmail = profileContext?.profile?.email || 'user@example.com';
   const referralLink = `https://keju.io/join?ref=${userEmail.split('@')[0]}`;
+
+  const status = profileContext?.subscription?.status || 'free';
+  const plan = profileContext?.subscription?.plan || 'free';
+
+  const handleUpgrade = async () => {
+    setCheckingOut(true);
+    try {
+      const successUrl = `${window.location.origin}/#/account`;
+      const cancelUrl = `${window.location.origin}/#/account`;
+      const res = await createCheckout(successUrl, cancelUrl);
+      if (res.url) {
+        window.location.href = res.url;
+      }
+    } catch {
+      setCheckingOut(false);
+    }
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink).then(() => {
@@ -34,26 +53,12 @@ const ManageSubscriptionPage: React.FC = () => {
             <SettingsCard title="Current Plan">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <div>
-                  <p className="text-lg font-semibold text-slate-800">Basic Plan (Free)</p>
-                  <p className="text-slate-500 text-sm mt-1">You currently have the free Basic plan.</p>
+                  <p className="text-lg font-semibold text-slate-800">{plan === 'free' ? 'Basic Plan (Free)' : plan}</p>
+                  <p className="text-slate-500 text-sm mt-1">Status: {status}</p>
                 </div>
                 <div className="flex space-x-2 mt-4 sm:mt-0">
-                  <Button as="link" to="/subscription" variant="primary">Upgrade Plan</Button>
-                  <Button variant="danger">Cancel Subscription</Button>
-                </div>
-              </div>
-            </SettingsCard>
-
-            {/* Billing Information Card */}
-            <SettingsCard title="Billing Information">
-               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                <div>
-                  <p className="text-slate-800"><span className="font-semibold">Payment Method:</span> Visa ending in 1234</p>
-                  <p className="text-slate-500 text-sm mt-1">Next invoice will be billed on November 24, 2025.</p>
-                </div>
-                <div className="flex space-x-2 mt-4 sm:mt-0">
-                    <Button variant='outline'>Update Payment</Button>
-                    <Button variant='outline'>View History</Button>
+                  <Button as="link" to="/subscription" variant="primary">View Plans</Button>
+                  <Button variant="primary" onClick={handleUpgrade} isLoading={checkingOut}>Upgrade</Button>
                 </div>
               </div>
             </SettingsCard>

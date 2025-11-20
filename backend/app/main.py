@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.routers import analytics, health, latex, llm, parse, workspace
+from app.routers import analytics, health, latex, llm, parse, payments, workspace
 
 
 def create_app() -> FastAPI:
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(parse.router)
     app.include_router(latex.router)
     app.include_router(analytics.router)
+    app.include_router(payments.router)
 
     frontend_dir = Path(settings.frontend_dist_dir) if settings.frontend_dist_dir else None
     index_file: Path | None = None

@@ -33,6 +33,15 @@ class Settings(BaseSettings):
         description="Content-Security-Policy header value. Example: default-src 'self'; connect-src 'self' https://...;",
     )
 
+    # Polar payments
+    polar_api_key: Optional[str] = Field(None, description="Polar API key")
+    polar_webhook_secret: Optional[str] = Field(None, description="Polar webhook secret for signature verification.")
+    polar_organization_id: Optional[str] = Field(None, description="Polar organization ID")
+    polar_product_price_id: Optional[str] = Field(
+        None,
+        description="Default Polar product price ID for checkout sessions (plan/variant).",
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

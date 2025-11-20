@@ -6,6 +6,8 @@ from app.config import get_settings
 
 
 EMPTY_WORKSPACE = {"profile": None, "documentHistory": [], "careerChatHistory": [], "tokens": 65}
+FREE_PLAN_TOKENS = 10
+PAID_PLAN_TOKENS = 200
 
 
 def _headers():
@@ -68,3 +70,45 @@ async def persist_workspace(
     async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
         resp = await client.post("/rest/v1/workspaces", params={"on_conflict": "user_id"}, json=payload)
     resp.raise_for_status()
+
+
+async def upsert_subscription_status(
+    user_id: str,
+    status: str,
+    plan: Optional[str],
+    current_period_end: Optional[str],
+    polar_customer_id: Optional[str],
+    polar_subscription_id: Optional[str],
+) -> None:
+    settings = get_settings()
+    payload = {
+        "user_id": user_id,
+        "status": status,
+        "plan": plan,
+        "current_period_end": current_period_end,
+        "polar_customer_id": polar_customer_id,
+        "polar_subscription_id": polar_subscription_id,
+        "updated_at": "now()",
+    }
+    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
+        resp = await client.post("/rest/v1/subscriptions", params={"on_conflict": "user_id"}, json=payload)
+    resp.raise_for_status()
+
+
+async def fetch_subscription_status(user_id: str) -> Dict[str, Any]:
+    settings = get_settings()
+    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
+        resp = await client.get(
+            "/rest/v1/subscriptions",
+            params={"user_id": f"eq.{user_id}", "select": "status,plan,current_period_end", "limit": 1},
+        )
+    if resp.status_code != 200:
+        return {"status": "free", "plan": "free", "tokens": FREE_PLAN_TOKENS}
+    data = resp.json()
+    if isinstance(data, list) and data:
+        row = data[0]
+        status = row.get("status") or "free"
+        plan = row.get("plan") or "free"
+        tokens = PAID_PLAN_TOKENS if status == "active" else FREE_PLAN_TOKENS
+        return {"status": status, "plan": plan, "tokens": tokens, "current_period_end": row.get("current_period_end")}
+    return {"status": "free", "plan": "free", "tokens": FREE_PLAN_TOKENS}

@@ -22,9 +22,13 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+ARG TECTONIC_VERSION=0.15.0
+
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential curl ca-certificates tectonic && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends build-essential curl ca-certificates && \
+    curl -L -o /tmp/tectonic.deb "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic_${TECTONIC_VERSION}_amd64.deb" && \
+    apt-get install -y --no-install-recommends /tmp/tectonic.deb && \
+    rm -rf /var/lib/apt/lists/* /tmp/tectonic.deb
 
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt

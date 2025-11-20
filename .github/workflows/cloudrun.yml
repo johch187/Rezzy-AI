@@ -27,6 +27,18 @@ jobs:
       - name: Set image name
         run: echo "IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
 
+      - name: Validate registry configuration
+        run: |
+          if [ -z "$REGION" ] || [ -z "$PROJECT_ID" ] || [ -z "$GAR_REPO" ]; then
+            echo "Missing registry configuration. Ensure secrets GCP_REGION, GCP_PROJECT_ID, and GAR_REPO are set." >&2
+            exit 1
+          fi
+          if [ -z "$IMAGE" ]; then
+            echo "IMAGE tag is empty; check earlier steps." >&2
+            exit 1
+          fi
+          echo "Using image: $IMAGE"
+
       - name: Frontend build check
         run: |
           npm ci
