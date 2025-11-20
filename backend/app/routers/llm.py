@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from app.deps.auth import CurrentUser
 from app.schemas.generation import GenerateDocumentsRequest
 from app.services.agents import AgentService
+from app.services.supabase import ensure_active_subscription
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 agent_service = AgentService()
@@ -12,6 +13,10 @@ agent_service = AgentService()
 
 @router.post("/generate-documents")
 async def generate_documents(req: GenerateDocumentsRequest, user: CurrentUser):
+    try:
+        await ensure_active_subscription(user["id"])
+    except PermissionError:
+        raise HTTPException(status_code=402, detail="Subscription required for document generation.")
     try:
         result = await agent_service.generate_documents(profile=req.profile.model_dump(), options=req.options.model_dump())
     except Exception as exc:

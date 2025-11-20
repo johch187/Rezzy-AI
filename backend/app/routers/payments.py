@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
@@ -11,7 +13,7 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 class CheckoutRequest(BaseModel):
     successUrl: str
     cancelUrl: str
-    priceId: str | None = None
+    priceId: Optional[str] = None
 
 
 @router.post("/checkout")
@@ -35,7 +37,7 @@ async def get_subscription_status(user: CurrentUser):
 
 
 @router.post("/webhook")
-async def polar_webhook(request: Request, polar_signature: str = Header(default=None)):
+async def polar_webhook(request: Request, polar_signature: str = Header(default=None, alias="Polar-Signature")):
     raw = await request.body()
     try:
         await handle_polar_webhook(raw, polar_signature)

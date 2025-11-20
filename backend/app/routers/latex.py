@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
@@ -9,7 +11,7 @@ router = APIRouter(prefix="/api/latex", tags=["latex"])
 
 class CompileRequest(BaseModel):
     content: str
-    filename: str | None = None
+    filename: Optional[str] = None
 
 
 @router.post("/compile")

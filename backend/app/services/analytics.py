@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from google.cloud import bigquery
+try:
+    from google.cloud import bigquery
+except ImportError:  # pragma: no cover - optional dependency guard
+    bigquery = None
 
 from app.config import get_settings
 
-_client: Optional[bigquery.Client] = None
+_client: Optional[Any] = None
 
 
 def _table_id() -> str:
@@ -15,8 +18,10 @@ def _table_id() -> str:
     return f"{settings.gcp_project_id}.{settings.bigquery_dataset}.{settings.bigquery_table}"
 
 
-def _get_client() -> bigquery.Client:
+def _get_client() -> Any:
     global _client
+    if bigquery is None:
+        raise RuntimeError("BigQuery client library not installed.")
     if _client is None:
         settings = get_settings()
         if not settings.gcp_project_id:

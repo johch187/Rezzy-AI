@@ -112,3 +112,10 @@ async def fetch_subscription_status(user_id: str) -> Dict[str, Any]:
         tokens = PAID_PLAN_TOKENS if status == "active" else FREE_PLAN_TOKENS
         return {"status": status, "plan": plan, "tokens": tokens, "current_period_end": row.get("current_period_end")}
     return {"status": "free", "plan": "free", "tokens": FREE_PLAN_TOKENS}
+
+
+async def ensure_active_subscription(user_id: str) -> Dict[str, Any]:
+    sub = await fetch_subscription_status(user_id)
+    if sub.get("status") != "active":
+        raise PermissionError("Subscription inactive or missing.")
+    return sub
