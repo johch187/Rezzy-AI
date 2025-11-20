@@ -9,7 +9,6 @@ env:
   REGION: ${{ secrets.GCP_REGION }}
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GAR_REPO: ${{ secrets.GAR_REPO }}
-  IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
 jobs:
   deploy:
@@ -24,6 +23,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
+
+      - name: Set image name
+        run: echo "IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Frontend build check
         run: |
