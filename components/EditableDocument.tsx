@@ -6,6 +6,7 @@ import { coverLetterToMarkdown, profileToMarkdown, formatContentForDisplay } fro
 import { ResumeDisplay } from './editor/ResumeDisplay';
 import { CoverLetterDisplay } from './editor/CoverLetterDisplay';
 import { isParsedCoverLetter, isParsedResume } from '../utils';
+import { downloadResumePdf } from '../services/latexService';
 
 interface EditableDocumentProps {
   documentType: 'resume' | 'cover-letter';
@@ -30,6 +31,7 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const recordUndoState = useCallback(() => {
     setHistory(prev => [...prev, { formData, sectionOrder }]);
@@ -70,6 +72,16 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     }
   }, [isEditing]);
 
+  const toMarkdown = useCallback(() => {
+    if (isParsedCoverLetter(formData)) {
+        return coverLetterToMarkdown(formData);
+    }
+    if (isParsedResume(formData)) {
+        return profileToMarkdown(formData, sectionOrder);
+    }
+    return editedContent;
+  }, [formData, editedContent, sectionOrder]);
+
   const handleSave = () => {
     let newMarkdown = editedContent;
     let newFormData = formData;
@@ -87,49 +99,28 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
     setTimeout(() => setShowSaveConfirmation(false), 3000);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (tokens < 1) {
         console.warn("Attempted to download PDF with insufficient tokens.");
         return;
     }
+    setDownloadError(null);
     setTokens(prev => prev - 1);
 
-    const contentElement = document.getElementById(`document-content-display-${documentType}`);
-    if (!contentElement) {
-      console.error('Printable content not found.');
-      return;
+    const markdown = toMarkdown();
+    const filename = `keju_${documentType}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+    try {
+        await downloadResumePdf(markdown, filename);
+    } catch (err: any) {
+        console.error('Failed to download PDF', err);
+        setDownloadError(err?.message || 'PDF download failed. Please try again.');
+        setTokens(prev => prev + 1); // Refund
     }
-  
-    const printContainer = document.createElement('div');
-    printContainer.id = 'print-container';
-    printContainer.innerHTML = contentElement.innerHTML;
-    document.body.appendChild(printContainer);
-    
-    const style = document.createElement('style');
-    style.innerHTML = `
-      @media print {
-        body > *:not(#print-container) { display: none !important; }
-        #print-container { display: block !important; margin: 2rem; }
-      }
-    `;
-    document.head.appendChild(style);
-    
-    window.print();
-    
-    document.body.removeChild(printContainer);
-    document.head.removeChild(style);
   };
   
   const handleOpenInGoogleDocs = () => {
-    let contentToCopy = '';
-
-    if (isParsedCoverLetter(formData)) {
-        contentToCopy = coverLetterToMarkdown(formData);
-    } else if (isParsedResume(formData)) {
-        contentToCopy = profileToMarkdown(formData, sectionOrder);
-    } else {
-        contentToCopy = editedContent;
-    }
+    let contentToCopy = toMarkdown();
 
     const plainTextContent = contentToCopy
         .replace(/^# (.*$)/gm, '$1')
@@ -215,23 +206,28 @@ const EditableDocument: React.FC<EditableDocumentProps> = ({ documentType, initi
                     </>
                   ) : (
                     <>
-                      <button 
-                        onClick={handleDownloadPdf} 
-                        disabled={!hasEnoughTokensForDownload}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      >
-                        {hasEnoughTokensForDownload ? (
-                            <>
-                                <DownloadIcon className="h-5 w-5 mr-2" />
-                                <span>Download PDF (1 Token)</span>
-                            </>
-                        ) : (
-                            <div className="text-center text-xs px-1">
-                                <span className="font-bold text-red-600 block">Insufficient Tokens</span>
-                                <Link to="/subscription" className="text-primary underline hover:text-blue-700">Get More</Link>
-                            </div>
+                      <div className="flex flex-col items-start sm:items-center">
+                        <button 
+                          onClick={handleDownloadPdf} 
+                          disabled={!hasEnoughTokensForDownload}
+                          className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        >
+                          {hasEnoughTokensForDownload ? (
+                              <>
+                                  <DownloadIcon className="h-5 w-5 mr-2" />
+                                  <span>Download PDF (1 Token)</span>
+                              </>
+                          ) : (
+                              <div className="text-center text-xs px-1">
+                                  <span className="font-bold text-red-600 block">Insufficient Tokens</span>
+                                  <Link to="/subscription" className="text-primary underline hover:text-blue-700">Get More</Link>
+                              </div>
+                          )}
+                        </button>
+                        {downloadError && (
+                          <p className="mt-1 text-xs text-red-600">{downloadError}</p>
                         )}
-                      </button>
+                      </div>
                       <button
                         onClick={handleOpenInGoogleDocs}
                         className={`inline-flex items-center justify-center px-4 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200 ${

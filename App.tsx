@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import GeneratePage from './pages/GeneratePage';
 import GenerationResultPage from './pages/GenerationResultPage';
@@ -24,12 +24,15 @@ import ToastNotification from './components/ToastNotification';
 import ApplicationAnalysisPage from './pages/ApplicationAnalysisPage';
 import MentorMatcherPage from './pages/MentorMatcherPage';
 import { ProfileProvider, ProfileContext } from './context/ProfileContext';
+import { supabase, isSupabaseEnabled } from './services/supabaseClient';
+import { sendAnalyticsEvent } from './services/analyticsService';
 
 // Re-export context for other components to use
 export { ProfileContext };
 
 const AppContent: React.FC = () => {
     const location = useLocation();
+    const [authStatus, setAuthStatus] = useState<'loading' | 'authed' | 'unauth'>(isSupabaseEnabled ? 'loading' : 'authed');
     
     // Define pages that should display the Public Layout (Header + Footer, No Sidebar)
     const publicPaths = [
@@ -43,6 +46,26 @@ const AppContent: React.FC = () => {
     ];
     
     const isPublicPage = publicPaths.includes(location.pathname);
+
+    useEffect(() => {
+        if (!isSupabaseEnabled || !supabase) {
+            setAuthStatus('authed');
+            return;
+        }
+        supabase.auth.getSession().then(({ data }) => {
+            setAuthStatus(data.session ? 'authed' : 'unauth');
+        });
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setAuthStatus(session ? 'authed' : 'unauth');
+        });
+        return () => listener?.subscription.unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (authStatus === 'authed') {
+            sendAnalyticsEvent('page_view', { path: location.pathname });
+        }
+    }, [authStatus, location.pathname]);
 
     const mainRoutes = (
         <Routes>
@@ -67,6 +90,15 @@ const AppContent: React.FC = () => {
             <Route path="/mentor-matcher" element={<MentorMatcherPage />} />
         </Routes>
     );
+
+    if (!isPublicPage) {
+        if (authStatus === 'loading') {
+            return <div className="flex items-center justify-center min-h-screen bg-base-200">Checking login...</div>;
+        }
+        if (authStatus === 'unauth') {
+            return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+        }
+    }
 
     // App Layout (Sidebar)
     if (!isPublicPage) {

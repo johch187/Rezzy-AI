@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: List[str] = Field(default_factory=list, description="Allowed origins for CORS.")
 
+    # Frontend serving (optional)
+    frontend_dist_dir: Optional[str] = Field(None, description="Path to built frontend assets (for single-container deploy).")
+
+    # GCP / BigQuery
+    gcp_project_id: Optional[str] = Field(None, description="GCP project ID for BigQuery.")
+    bigquery_dataset: Optional[str] = Field(None, description="BigQuery dataset for analytics events.")
+    bigquery_table: Optional[str] = Field(None, description="BigQuery table for analytics events.")
+
+    # Security headers
+    csp_policy: Optional[str] = Field(
+        None,
+        description="Content-Security-Policy header value. Example: default-src 'self'; connect-src 'self' https://...;",
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

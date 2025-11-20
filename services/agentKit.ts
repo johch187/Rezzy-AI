@@ -1,19 +1,11 @@
-import { GoogleGenAI, Chat, FunctionDeclaration, Tool, Type } from "@google/genai";
+import { Chat, FunctionDeclaration, Tool, Type } from "@google/genai";
 
-const env = (import.meta as any).env || {};
-const GEMINI_API_KEY = env.VITE_GEMINI_API_KEY as string | undefined;
-
-// Initialize the GoogleGenAI instance (Singleton pattern)
-let genAIInstance: GoogleGenAI | null = null;
-
-const getGenAI = (): GoogleGenAI => {
-  if (!genAIInstance) {
-    if (!GEMINI_API_KEY) {
-      throw new Error("VITE_GEMINI_API_KEY is not set. Frontend access is disabled; route Gemini calls through the backend.");
-    }
-    genAIInstance = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-  }
-  return genAIInstance;
+/**
+ * Frontend agent toolkit is disabled to avoid exposing model keys.
+ * Calls should go through backend LLM endpoints.
+ */
+const getGenAI = () => {
+  throw new Error("Frontend Gemini client is disabled. Use backend LLM endpoints.");
 };
 
 export type ToolExecutor = (args: any, context: any) => Promise<any> | any;

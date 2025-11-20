@@ -4,3 +4,5 @@ httpx==0.27.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
 # For local dev on Python 3.9 keep ADK/GenAI optional; install compatible versions later if needed.
+tectonic==0.5.1
+google-cloud-bigquery==3.25.0

@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+dist
+.git
+.github
+.env
+backend/.env
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
