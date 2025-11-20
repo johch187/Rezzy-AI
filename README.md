@@ -65,4 +65,4 @@ The project is organized to separate concerns and improve maintainability:
 
 ## 📖 Documentation
 
-For a deeper dive into the project's vision, architecture, and feature implementation, please see the documents in the `/docs` folder.
+For a deeper dive into the project's vision, architecture, and feature implementation, please see the documents in `/docs` folder.
