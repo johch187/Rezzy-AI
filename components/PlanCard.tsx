@@ -10,9 +10,10 @@ interface PlanCardProps {
     features: string[];
     isCurrent?: boolean;
     isPopular?: boolean;
+    cta?: React.ReactNode;
 }
 
-const PlanCard: React.FC<PlanCardProps> = ({ name, price, billingInfo, description, features, isCurrent, isPopular }) => {
+const PlanCard: React.FC<PlanCardProps> = ({ name, price, billingInfo, description, features, isCurrent, isPopular, cta }) => {
     
     const cardClasses = isPopular 
       ? "border-2 border-brand-blue ring-4 ring-blue-100 bg-white" 
@@ -79,9 +80,13 @@ const PlanCard: React.FC<PlanCardProps> = ({ name, price, billingInfo, descripti
         </ul>
 
         <div className="mt-auto pt-8">
-          <button disabled={isCurrent} className={buttonClasses}>
-            {isCurrent ? "Your Current Plan" : "Get Started"}
-          </button>
+          {cta ? (
+            cta
+          ) : (
+            <button disabled={isCurrent} className={buttonClasses}>
+              {isCurrent ? "Your Current Plan" : "Get Started"}
+            </button>
+          )}
         </div>
       </div>
     );
