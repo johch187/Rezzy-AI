@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Keju | AI Career Navigation, Resume Builder & Career Path Planning</title>
+    <meta name="description" content="Keju is an AI-powered career navigation platform. Use our AI Resume Builder and Cover Letter Generator to create tailored applications, and get personalized guidance with our Career Path Planning tools." />
+    <meta name="keywords" content="AI Career Navigation, Resume Builder, Cover Letter Generator, Career Path Planning, AI career coach, job application, professional profile" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'brand-blue': '#3B82F6', // A calm, muted, professional blue
+              'slate-900': '#1E293B', // Deep slate for primary text and elements
+              'slate-700': '#334155',
+              'slate-500': '#64748B',
+              'slate-300': '#CBD5E1',
+              'slate-200': '#E2E8F0',
+              'slate-100': '#F1F5F9',
+              'primary': '#3B82F6', // Alias for brand-blue
+              'secondary': '#1E293B', // Alias for slate-900
+              'accent': '#3B82F6', // Accent is now the primary blue
+              'neutral': '#1E293B', // Neutral is now the primary text color
+              'base-100': '#ffffff',
+              'base-200': '#F8FAFC', // Lighter gray for backgrounds
+              'base-300': '#F1F5F9', // Slightly darker gray for borders
+            },
+            boxShadow: {
+                'lg': '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05)',
+                'xl': '0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05)',
+                '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.1)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+              'slide-in-up': 'slideInUp 0.5s ease-in-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: 0 },
+                '100%': { opacity: 1 },
+              },
+              slideInUp: {
+                '0%': { transform: 'translateY(20px)', opacity: 0 },
+                '100%': { transform: 'translateY(0)', opacity: 1 },
+              },
+            },
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-base-200 font-sans">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

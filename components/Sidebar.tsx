@@ -27,13 +27,12 @@ export const Logo = () => {
       to="/career-coach"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto text-slate-900 flex-shrink-0">
-        <path d="M6 40 C 18 25, 12 45, 24 24 C 36 3, 30 23, 42 8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M10 32 C 16 20, 20 32, 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="6" cy="40" r="2.5" fill="currentColor"/>
-        <circle cx="10" cy="32" r="2.5" fill="currentColor"/>
-        <circle cx="24" cy="24" r="2.5" fill="currentColor"/>
-        <circle cx="42" cy="8" r="2.5" fill="currentColor"/>
+      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto flex-shrink-0">
+        <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0F172A" strokeWidth="3" strokeLinejoin="round"/>
+        <path d="M32.66 19C37 16 43 19 43 26" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M32.66 29C37 32 43 29 43 22" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M15.34 29C11 32 5 29 5 22" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M15.34 19C11 16 5 19 5 26" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
       </svg>
       <motion.span
         initial={{ opacity: 0 }}
@@ -52,13 +51,12 @@ export const LogoIcon = () => {
       to="/career-coach"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto text-slate-900 flex-shrink-0">
-          <path d="M6 40 C 18 25, 12 45, 24 24 C 36 3, 30 23, 42 8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10 32 C 16 20, 20 32, 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="6" cy="40" r="2.5" fill="currentColor"/>
-          <circle cx="10" cy="32" r="2.5" fill="currentColor"/>
-          <circle cx="24" cy="24" r="2.5" fill="currentColor"/>
-          <circle cx="42" cy="8" r="2.5" fill="currentColor"/>
+        <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto flex-shrink-0">
+            <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0F172A" strokeWidth="3" strokeLinejoin="round"/>
+            <path d="M32.66 19C37 16 43 19 43 26" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+            <path d="M32.66 29C37 32 43 29 43 22" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
+            <path d="M15.34 29C11 32 5 29 5 22" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+            <path d="M15.34 19C11 16 5 19 5 26" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
         </svg>
     </Link>
   );
@@ -81,8 +79,8 @@ const Sidebar: React.FC = () => {
     };
 
     const links = [
-        { label: "New Chat", to: "/career-coach", icon: <CareerCoachIcon /> },
-        { label: "Tailor App", to: "/generate", icon: <CreateDocIcon /> },
+        { label: "Career Coach", to: "/career-coach", icon: <CareerCoachIcon /> },
+        { label: "Create Documents", to: "/generate", icon: <CreateDocIcon /> },
         { label: "Documents", to: "/generated-documents", icon: <DocumentDuplicateIcon />, notification: hasUnreadNotificationsFor('document-generation'), onClick: () => markTasksAsViewedFor('document-generation') },
         { label: "Career Path", to: "/career-path", icon: <CareerPathIcon />, notification: hasUnreadNotificationsFor('career-path'), onClick: () => markTasksAsViewedFor('career-path') },
         { label: "Interview Prep", to: "/interview-prep", icon: <InterviewPrepIcon />, notification: hasUnreadNotificationsFor('interview-prep'), onClick: () => markTasksAsViewedFor('interview-prep') },

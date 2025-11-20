@@ -29,15 +29,12 @@ const Header: React.FC = () => {
       <div className="mx-auto px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-x-4">
           <Link to="/" className="flex items-center gap-2 text-slate-900">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto text-slate-900">
-              {/* Main path with bigger loops */}
-              <path d="M6 40 C 18 25, 12 45, 24 24 C 36 3, 30 23, 42 8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-              {/* Secondary path with bigger loops */}
-              <path d="M10 32 C 16 20, 20 32, 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="6" cy="40" r="2.5" fill="currentColor"/>
-              <circle cx="10" cy="32" r="2.5" fill="currentColor"/>
-              <circle cx="24" cy="24" r="2.5" fill="currentColor"/>
-              <circle cx="42" cy="8" r="2.5" fill="currentColor"/>
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+              <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0F172A" strokeWidth="3" strokeLinejoin="round"/>
+              <path d="M32.66 19C37 16 43 19 43 26" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M32.66 29C37 32 43 29 43 22" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M15.34 29C11 32 5 29 5 22" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M15.34 19C11 16 5 19 5 26" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
             </svg>
             <span className="text-xl font-bold">Keju</span>
           </Link>

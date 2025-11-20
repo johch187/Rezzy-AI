@@ -22,7 +22,7 @@ const CareerPathPage: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-neutral mt-6">Plan Your Professional Journey</h2>
                 <p className="text-gray-600 mt-4">
-                    No career path has been generated for this profile yet. Head over to the <Link to="/career-coach" className="text-primary font-semibold hover:underline">Career Coach</Link> and ask for a plan!
+                    No career path has been generated for this profile yet. Head over to the <Link to="/career-coach" className="text-primary font-semibold hover:underline">AI Career Coach</Link> and ask for a plan!
                 </p>
                 <p className="text-gray-500 mt-2 text-sm">
                     Try asking: "How do I become a Senior Product Manager?" or "What are the steps to get a job in finance?"

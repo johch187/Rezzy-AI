@@ -7,14 +7,14 @@ const LandingPage: React.FC = () => {
         <div>
             <HeroSection
               badge={{
-                text: "Smart Career Navigation",
+                text: "AI-Powered Career Navigation",
                 action: {
                   text: "How it works",
                   href: "/how-it-works",
                 },
               }}
-              title="Your Career, Expertly Navigated"
-              description="Stop guessing. Keju provides a personalized, data-driven roadmap to your dream job. Build tailored resumes, plan your career path, and ace interviews with your expert co-pilot."
+              title="Your Career, Navigated by AI"
+              description="Stop guessing. Keju provides a personalized, data-driven roadmap to your dream job. Build tailored resumes, plan your career path, and ace interviews with your AI co-pilot."
               actions={[
                 {
                   text: "Start for Free",

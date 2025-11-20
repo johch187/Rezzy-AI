@@ -44,15 +44,15 @@ export function HeroSection({
         <div className="flex flex-col items-center gap-6 text-center sm:gap-12">
           {/* Badge */}
           {badge && (
-            <Badge variant="outline" className="animate-appear gap-2">
+            <Badge variant="outline" className="animate-appear gap-2 pr-1">
               <span className="text-muted-foreground">{badge.text}</span>
               {badge.action.href.startsWith("/") ? (
-                <Link to={badge.action.href} className="flex items-center gap-1">
+                <Link to={badge.action.href} className="flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 transition-colors shadow-sm">
                   {badge.action.text}
                   <ArrowRightIcon className="h-3 w-3" />
                 </Link>
               ) : (
-                <a href={badge.action.href} className="flex items-center gap-1">
+                <a href={badge.action.href} className="flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 transition-colors shadow-sm">
                   {badge.action.text}
                   <ArrowRightIcon className="h-3 w-3" />
                 </a>

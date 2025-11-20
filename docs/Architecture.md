@@ -1,62 +1,54 @@
 # Keju Application Architecture
 
-This document details the technical architecture of the Keju web application, outlining both the current frontend structure and the planned backend integration.
+This document details the technical architecture of the Keju web application. Currently, Keju operates as a sophisticated **Client-Side AI Application**, leveraging the Google Gemini API directly from the browser via a custom Agent abstraction layer.
 
 ## 1. System Overview
 
-Keju is architected as a modern web application with a clear separation of concerns:
+Keju is architected as a React-based Single-Page Application (SPA) that contains all business logic, state management, and AI orchestration within the client.
 
-1.  **Frontend:** A React-based Single-Page Application (SPA) responsible for all user interface rendering and client-side state management.
-2.  **Backend (Future):** A Python-based API server that will handle all business logic, communication with third-party services (like the Google Gemini API), and data persistence.
-
-This separation allows for a secure, scalable, and maintainable system.
+1.  **Frontend (React 19):** Handles UI, routing, and local state.
+2.  **AI Orchestration Layer (`AgentKit`):** A custom TypeScript layer that manages stateful conversations, tool execution, and API communication with Google Gemini.
+3.  **Data Persistence:** Uses browser `localStorage` for user profiles and history, with CSV export capabilities for data portability.
 
 ## 2. Frontend Architecture
 
 ### Core Technologies
--   **React 19 & TypeScript:** Provides a robust, type-safe foundation for building a dynamic and component-based user interface.
--   **Tailwind CSS:** A utility-first CSS framework for rapid and consistent UI development.
--   **React Router DOM (`HashRouter`):** Manages all client-side navigation, chosen for its simplicity and compatibility with static hosting environments.
--   **Vite:** The build tool used for development and creating optimized production builds.
+-   **React 19 & TypeScript:** Provides a robust, type-safe foundation.
+-   **Tailwind CSS:** Utility-first styling.
+-   **React Router DOM:** Client-side routing.
+-   **Vite:** Build tool and dev server.
+-   **@google/genai:** The official SDK used to communicate with Gemini models.
 
 ### Application Structure
--   **`pages/`**: Top-level components for each route (e.g., `HomePage`, `GeneratePage`).
--   **`components/`**: Reusable UI elements (e.g., `ProfileForm`, `Button`).
--   **`services/`**: Modules that abstract communication with the backend API. Each function in these services corresponds to a specific backend endpoint (e.g., `generateTailoredDocuments` calls `POST /api/v1/generate/documents`).
--   **`utils.ts`**: Contains client-side helper functions, including a centralized `apiService` for making `fetch` requests to the backend.
--   **`App.tsx`**: The root component managing global state via `ProfileContext` and routing.
+-   **`pages/`**: Top-level views (e.g., `CareerCoachPage`, `GeneratePage`).
+-   **`components/`**: Reusable UI elements.
+-   **`services/`**:
+    -   **`agentKit.ts`**: The core class wrapping `GoogleGenAI`. It handles the chat loop, tool calls, and retries.
+    -   **`careerAgent.ts`**: Defines the specific tools (navigation, profile updates) and persona for the Career Coach.
+    -   **`actions/`**: Specialized functions for specific tasks (e.g., `documentActions.ts`, `networkingActions.ts`) that instantiate one-off Agents.
+-   **`context/ProfileContext.tsx`**: Manages global application state (UserProfile, Token Balance, Document History).
 
 ### State Management
--   **React Context API:** The `ProfileContext` provides global state (like the active user profile, tokens, and history) to the entire application.
--   **`localStorage` (Current):** For the unauthenticated, client-only version, all user data is persisted in the browser's `localStorage`. This is a temporary solution that will be replaced.
+-   **React Context API:** The `ProfileContext` serves as the central store.
+-   **Persistence:** State is automatically synchronized to `localStorage` to persist data across sessions without a database.
 
-## 3. Backend Architecture (Planned)
+## 3. AI Architecture: The Agent Kit
 
-The backend will be a separate service responsible for all secure operations and heavy lifting.
+Instead of a traditional backend, Keju uses a "Thick Client" approach where the frontend creates and manages AI Agents.
 
-### Core Technologies
--   **Python 3.11+:** The primary programming language.
--   **Web Framework (FastAPI/Flask):** A Python framework will be used to build the RESTful API endpoints that the frontend consumes. FastAPI is recommended for its performance and automatic documentation.
--   **Google Gemini API:** The backend will securely store the API key and be the sole point of communication with Google's AI services.
--   **Deployment:** The Python application will be containerized using **Docker** and deployed as a scalable service on **Google Cloud Run**.
+### The `Agent` Class
+Located in `services/agentKit.ts`, this class abstracts the complexity of the Gemini API:
+1.  **Initialization:** Accepts a model config (e.g., `gemini-3-pro-preview`), system instructions, and a `thinkingBudget`.
+2.  **Tool Registry:** Maps function declarations (sent to the model) to executable JavaScript functions (running in the browser).
+3.  **Autonomous Loop:** When `agent.chat(message)` is called:
+    -   It sends the message to Gemini.
+    -   If Gemini requests a tool call (e.g., `updateProfile`), the Agent executes the corresponding TypeScript function.
+    -   The result is fed back to Gemini.
+    -   This loop continues until Gemini produces a final text response.
 
-### Key Responsibilities
-1.  **Security:** Exposing a set of controlled API endpoints to the frontend, ensuring the Google Gemini API key and other sensitive logic are never exposed to the client.
-2.  **AI Logic:** Constructing prompts, calling the Gemini API, handling streaming responses (for features like the coach), and parsing the AI's output.
-3.  **Data Persistence:** Interfacing with the Supabase database to perform all CRUD (Create, Read, Update, Delete) operations for user profiles, history, and other data.
-4.  **User Authentication:** Validating JWTs provided by Supabase Auth to secure endpoints and ensure users can only access their own data.
+## 4. Future Roadmap: Backend Integration
 
-## 4. Data Persistence & Authentication (Planned)
-
-The current `localStorage` model will be migrated to a robust solution using Supabase.
-
--   **Supabase Auth:** Will handle user registration, login (including social providers), and session management. The frontend will receive a JWT upon successful login.
--   **Supabase Database (PostgreSQL):** Will store all user data, including profiles, document history, and career paths.
--   **Data Flow:**
-    1.  User logs in via the frontend using Supabase Auth.
-    2.  The frontend stores the JWT securely.
-    3.  Every request from the frontend to the Python backend includes the JWT in the `Authorization` header.
-    4.  The Python backend validates the JWT with Supabase and retrieves the user's ID.
-    5.  All database queries on the backend are scoped to the authenticated user's ID, ensuring data privacy.
-
-This architecture enables a full-fledged, multi-user application with cross-device data synchronization.
+While the current architecture is fully functional client-side, future iterations will introduce a backend for:
+-   **Authentication:** Secure user accounts via Supabase.
+-   **Cloud Persistence:** Storing profiles and history in a PostgreSQL database.
+-   **API Key Security:** Proxying Gemini calls through a server to hide the API key in production environments.

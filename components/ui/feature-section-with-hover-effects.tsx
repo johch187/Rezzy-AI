@@ -20,7 +20,7 @@ export function FeaturesSectionWithHoverEffects() {
       icon: <IconUserScan />,
     },
     {
-      title: "AI Career Coach",
+      title: "Career Coach",
       description: "Chat with your personal career advisor. Get instant answers, improve your profile, and discover your next steps in a natural conversation.",
       icon: <IconMessages />,
     },

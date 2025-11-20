@@ -1,6 +1,6 @@
 # Keju Project Overview
 
-This document provides a high-level overview of the Keju project, its current capabilities, and the future roadmap involving a full backend implementation.
+This document provides a high-level overview of the Keju project, its current capabilities, and the future roadmap.
 
 ## Project Vision: Keju - The AI Career Navigator
 
@@ -10,38 +10,40 @@ Keju is an AI-powered platform designed to replace generic career advice with pe
 2.  **Plan their future:** By generating actionable, long-term career roadmaps.
 3.  **Seize opportunities:** By creating perfectly tailored application documents and preparing for critical networking and interview interactions.
 
-## Current Status: A Comprehensive Client-Side Application
+## Current Status: Advanced Client-Side AI Application
 
-The application is a feature-complete, client-side SPA (Single-Page Application). It operates without a backend, with all data stored in the browser's `localStorage` and all AI calls made directly from the client to the Google Gemini API (via a provided API key).
+The application is a feature-rich Single-Page Application (SPA). It utilizes the Google Gemini API directly from the client to provide sophisticated AI agents without a backend server.
 
 ### Key Implemented Features:
--   **Dynamic Profile Builder:** A detailed, multi-section form serves as the foundation for all AI interactions.
--   **Resume Import:** Users can upload a PDF, TXT, or MD file to automatically parse and populate their profile.
--   **Application Tailoring & Analysis:** The app generates job-specific resumes/cover letters and provides an integrated **Application Fit Analysis**.
--   **Rich Document Editor:** Generated documents can be edited in a rich, form-based editor with drag-and-drop reordering.
--   **Interactive AI Career Coach:** A conversational AI assistant that provides career advice and can trigger navigation to other tools within the app.
--   **Personalized Career Path Generation:** The coach can generate a detailed career plan, visualized as an interactive timeline with curated video recommendations.
--   **Standalone Prep Tools:** A full suite of tools for interview prep, networking (coffee chats), application analysis, and academic mentor matching.
+-   **Interactive AI Career Coach:** An agentic chat interface capable of navigating the app and updating user profiles via tool calls.
+-   **Dynamic Profile Builder:** Comprehensive form with **Intelligent Resume Parsing** (PDF/TXT) powered by Gemini 2.5 Pro.
+-   **Application Tailoring:** Generates job-specific resumes and cover letters with integrated **Fit Analysis**.
+-   **Token Economy:** A simulated credit system with visual cost estimates for generation tasks.
+-   **Rich Document Editor:** Drag-and-drop section reordering and real-time Markdown editing.
+-   **Career Path Planner:** Generates multi-year roadmaps with curated YouTube video learning resources.
+-   **Prep Tools:** Dedicated modules for Interview Storytelling (STAR method) and Networking/Coffee Chat preparation.
+-   **Data Portability:** Full CSV export of generation history and local storage persistence.
+-   **Interactive Sidebar:** Collapsible navigation with persistent state.
 
-## Future Roadmap: Transition to a Full-Stack Application
+## Future Roadmap: Transition to Full-Stack
 
-The next major phase of development is to transition Keju from a client-side application to a full-stack, production-ready platform. This involves building and deploying a backend service.
+The next phase focuses on multi-user support and cloud persistence.
 
-### Phase 1: Backend Implementation & API Migration (In Progress)
--   **Goal:** Move all business logic and third-party API calls from the frontend to a secure backend.
+### Phase 1: Authentication & Database
+-   **Goal:** Allow users to access their data across devices.
 -   **Tasks:**
-    1.  **Develop a Python Backend:** Create a RESTful API using a framework like FastAPI or Flask.
-    2.  **Migrate AI Logic:** Transfer all prompt engineering and calls to the Google Gemini API from the frontend services (`generationService`, etc.) to the backend. The frontend will now call endpoints like `/api/v1/generate/documents`.
-    3.  **Secure API Key:** The Google Gemini API key will be stored securely on the backend, removing it entirely from the client-side code.
-    4.  **Containerize & Deploy:** The backend will be containerized using Docker and deployed to a scalable platform like **Google Cloud Run**. The frontend will also be containerized and deployed.
+    1.  **Integrate Supabase Auth:** Replace local profile creation with secure sign-up/login.
+    2.  **Database Migration:** Move `localStorage` data (profiles, history, paths) to a PostgreSQL database.
+    3.  **Security:** Implement Row Level Security (RLS) to protect user data.
 
-### Phase 2: User Authentication & Database Integration
--   **Goal:** Implement multi-user support with persistent, cross-device data storage.
+### Phase 2: Backend Proxy
+-   **Goal:** Secure the API Key and centralized business logic.
 -   **Tasks:**
-    1.  **Integrate Supabase:**
-        -   Use **Supabase Auth** for user registration, login, and session management.
-        -   Use the **Supabase (PostgreSQL) Database** to store all user data (profiles, document history, etc.).
-    2.  **Replace `localStorage`:** Refactor the frontend to fetch and save all user data via authenticated API calls to the backend, which will then interact with Supabase.
-    3.  **Secure Endpoints:** The Python backend will validate user authentication tokens (JWTs) on all relevant endpoints to ensure users can only access their own data.
+    1.  **Server-Side Agent Execution:** Move the `Agent` and `AgentKit` logic to a Node.js or Python backend.
+    2.  **API Proxying:** Ensure the frontend never exposes the Google Gemini API key.
 
-This roadmap will transform Keju into a secure, scalable, and commercially viable product.
+### Phase 3: Community & Monetization
+-   **Goal:** Build a sustainable platform.
+-   **Tasks:**
+    1.  **Stripe Integration:** Replace the mock token system with real payment processing.
+    2.  **Mentor Marketplace:** Connect users with human mentors based on AI matching analysis.

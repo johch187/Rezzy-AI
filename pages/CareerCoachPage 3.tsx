@@ -8,7 +8,6 @@ import { SimpleMarkdown } from '../components/SimpleMarkdown';
 import PageHeader from '../components/PageHeader';
 import { useAnimatedText } from '../components/ui/animated-text';
 import { PromptSuggestion } from '../components/ui/prompt-suggestion';
-import { TextShimmer } from '../components/ui/text-shimmer';
 
 type Message = { 
     role: 'user' | 'model' | 'system'; 
@@ -83,7 +82,7 @@ const CareerCoachPage: React.FC = () => {
             );
 
             if (isProfileEffectivelyEmpty) {
-                const initialMessage = `Hi! I'm your Keju Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
+                const initialMessage = `Hi! I'm your Keju AI Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
                 const actionButton = (
                     <button
                         onClick={() => navigate('/builder')}
@@ -100,7 +99,7 @@ const CareerCoachPage: React.FC = () => {
                     disableAnimation: true
                 }]);
             } else {
-                const initialMessage = `Hi! I'm your Keju Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
+                const initialMessage = `Hi! I'm your Keju AI Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
                  setMessages([{
                     role: 'model',
                     content: initialMessage,
@@ -123,7 +122,7 @@ const CareerCoachPage: React.FC = () => {
         setMessages(prev => [...prev, newUserMessage]);
         setUserInput('');
         setIsLoading(true);
-        setAgentStatus('');
+        setAgentStatus('Thinking...');
         setCareerPathPrompt(null);
 
         try {
@@ -182,18 +181,17 @@ const CareerCoachPage: React.FC = () => {
             try {
                 const newPath = await generateCareerPath(profile, currentRole, targetRole);
 
-                const pathWithVideos: any[] = [];
-                for (const milestone of newPath.path) {
-                    try {
-                        const videos = await getVideosForMilestone(newPath.targetRole, milestone);
-                        pathWithVideos.push({ ...milestone, recommendedVideos: videos });
-                    } catch (videoError) {
-                        console.error(`Failed to fetch videos for milestone: ${milestone.milestoneTitle}`, videoError);
-                        pathWithVideos.push({ ...milestone, recommendedVideos: [] });
-                    }
-                    // Add a small delay to avoid hitting API rate limits with concurrent complex requests
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
+                const pathWithVideos = await Promise.all(
+                    newPath.path.map(async (milestone) => {
+                        try {
+                            const videos = await getVideosForMilestone(newPath.targetRole, milestone);
+                            return { ...milestone, recommendedVideos: videos };
+                        } catch (videoError) {
+                            console.error(`Failed to fetch videos for milestone: ${milestone.milestoneTitle}`, videoError);
+                            return { ...milestone, recommendedVideos: [] };
+                        }
+                    })
+                );
 
                 const finalPathWithVideos = { ...newPath, path: pathWithVideos };
 
@@ -265,8 +263,7 @@ const CareerCoachPage: React.FC = () => {
         !profile?.jobTitle.trim()
     );
 
-    // Show suggestions more freely now (removed the messages.length restriction)
-    const shouldShowSuggestions = !isLoading && !careerPathPrompt;
+    const shouldShowSuggestions = messages.length <= 1 && !isLoading && !careerPathPrompt;
 
     const suggestionsForEmptyProfile = [
         "Help me build my professional profile.",
@@ -277,9 +274,8 @@ const CareerCoachPage: React.FC = () => {
     const suggestionsForFilledProfile = [
         `Help me create a career path to become a ${profile?.targetJobTitle || "Product Manager"}`,
         `Show me the steps to transition from ${profile?.jobTitle || "my current role"} to ${profile?.targetJobTitle || "a Senior Role"}`,
-        "What are the key skills for this role?",
-        "What is the typical salary range?",
-        "Tell me about current market trends.",
+        `How can I improve my resume for a ${profile?.targetJobTitle || "new"} role?`,
+        "Help me prepare for a coffee chat.",
     ];
 
     const suggestions = isProfileEffectivelyEmpty ? suggestionsForEmptyProfile : suggestionsForFilledProfile;
@@ -287,7 +283,7 @@ const CareerCoachPage: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-base-200">
             <PageHeader 
-                title="Career Coach"
+                title="AI Career Coach"
                 subtitle="Your personal guide for career development."
                 className="pt-8 !mb-8"
             />
@@ -320,8 +316,9 @@ const CareerCoachPage: React.FC = () => {
                         {isLoading && (
                             <div className="flex items-start gap-4">
                                 <ModelIcon />
-                                <div className="max-w-xl p-4 rounded-xl bg-white text-slate-800 border border-slate-100">
-                                    <TextShimmer className='text-sm font-medium [--base-color:theme(colors.slate.500)] [--base-gradient-color:theme(colors.slate.900)]' duration={1.5} children={agentStatus || "Keju is thinking..."} />
+                                <div className="max-w-xl p-4 rounded-xl bg-white text-slate-800 flex items-center space-x-3">
+                                    <LoadingSpinnerIcon className="h-5 w-5" />
+                                    <span className="text-sm text-slate-500 animate-pulse">{agentStatus || "Thinking..."}</span>
                                 </div>
                             </div>
                         )}

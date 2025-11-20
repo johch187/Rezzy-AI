@@ -40,7 +40,7 @@ const HowItWorksPage: React.FC = () => {
     },
     {
       icon: <IconMessages className="h-8 w-8" />,
-      title: "Chat with Your AI Career Coach",
+      title: "Chat with Your Career Coach",
       description: "Interact with your personal career advisor for any need. Get instant feedback on your profile, brainstorm career moves, or ask for help preparing for an interview. It's like having an industry expert on call, 24/7.",
     },
     {

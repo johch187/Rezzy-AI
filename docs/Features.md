@@ -1,72 +1,61 @@
 # Keju Feature Breakdown
 
-This document provides a detailed look at the major features of the Keju application, their purpose, and their technical implementation in the new client-server architecture.
+This document provides a detailed look at the major features of Keju and their technical implementation using the Client-Side Agent Architecture.
 
-## 1. Profile Management & Builder
+## 1. Profile Management
 
 -   **Location:** `HomePage.tsx`, `components/ProfileForm.tsx`
--   **Purpose:** To create comprehensive sources of truth for the user's professional identities. This profile is foundational for all AI interactions.
--   **Implementation:**
-    -   The frontend UI allows users to input and edit their profile data.
-    -   **Data Persistence (Current):** All profile data is currently stored in `localStorage`.
-    -   **Data Persistence (Future):** This will be migrated to a Supabase database. The frontend will fetch the profile from the backend upon user login and send updates via API calls.
-    -   **Resume Import:** The frontend reads the uploaded file (`.pdf`, `.txt`, `.md`) using `readFileContent`. The extracted text is then sent to a backend endpoint (`/api/v1/parse/resume-text`) for the AI to process. The returned JSON populates the profile form.
+-   **Purpose:** A comprehensive source of truth for the user's professional identity.
+-   **AI Feature:** **Resume Parsing**
+    -   **Implementation:** The `parserService.ts` reads uploaded files (PDF/TXT). It sends the raw text to a specific `gemini-3-pro-preview` model with a strict JSON schema (`PARSING_SCHEMA`).
+    -   **Reasoning:** A high `thinkingBudget` is enabled to allow the model to perform a multi-pass analysis (Extraction -> Gap Analysis -> Final Verification) before returning the JSON.
 
-## 2. Application Tailoring & Analysis Suite
+## 2. Application Tailoring & Analysis
 
-### a. Application Tailoring
+### a. Document Generation
 -   **Location:** `GeneratePage.tsx`
--   **Purpose:** To generate resumes and cover letters that are highly tailored to a specific job, using the user's profile as the data source.
--   **Workflow:**
-    1.  The user provides a job description (via URL fetch to the backend or pasting).
-    2.  The user selects which profile items to include.
-    3.  `generationService.ts` sends the profile data, job description, and generation options to the `/api/v1/generate/documents` backend endpoint.
-    4.  The backend handles prompt engineering, calls the Gemini API, and returns the generated markdown.
+-   **Purpose:** Create job-specific resumes and cover letters.
+-   **Implementation:**
+    -   **Token Cost:** Users spend tokens to generate. Costs are calculated dynamically based on selected options (e.g., +10 tokens for "Thinking Mode").
+    -   **Agent:** A `DocumentAgent` is instantiated with specific directives to act as a "Career Writer." It receives the user profile and job description and outputs structured Markdown via a JSON schema.
 
 ### b. Application Fit Analysis
--   **Location:** `GeneratePage.tsx` (integrated), `ApplicationAnalysisPage.tsx` (standalone)
--   **Purpose:** To provide a detailed analysis of how a resume matches a job description.
--   **Workflow:**
-    1.  The frontend gathers the resume text and job description.
-    2.  It sends this data to the `/api/v1/analyze/application-fit` backend endpoint.
-    3.  The backend calls the Gemini API with a specific prompt and schema to get a structured analysis object (`fitScore`, `gapAnalysis`, etc.) and returns it to the client.
-
-### c. Generation Results & Editor
--   **Location:** `GenerationResultPage.tsx`, `components/EditableDocument.tsx`
--   **Purpose:** To allow users to review, refine, and export their AI-generated documents.
+-   **Location:** `GeneratePage.tsx` & `ApplicationAnalysisPage.tsx`
+-   **Purpose:** Evaluate resume strength against a job description.
 -   **Implementation:**
-    -   After receiving generated markdown from the backend, the frontend sends it back to another backend endpoint (`/api/v1/parse/resume-markdown`) to parse it into a structured JSON format suitable for the rich editor. This ensures high-fidelity conversion.
-    -   The rich editor allows for form-based edits and drag-and-drop reordering.
+    -   An **HR Evaluator Agent** compares the resume text to the job description.
+    -   It returns a `fitScore` (0-100), `gapAnalysis`, and optimization tips.
 
-## 3. AI Career Coach & Career Path
+## 3. AI Career Coach
 
-### a. AI Career Coach
 -   **Location:** `CareerCoachPage.tsx`
--   **Purpose:** To provide an interactive, conversational interface for personalized career advice and to act as a central hub for the app's tools.
--   **Implementation:**
-    -   The frontend no longer maintains a stateful `Chat` object.
-    -   With each message, the frontend sends the *entire chat history* along with the user's profile context to the `/api/v1/coach/chat` backend endpoint.
-    -   The backend manages the conversation with the Gemini API, including handling tool calls.
-    -   If the AI decides to use a tool, the backend sends a specific action response (e.g., `{ "action": { "type": "navigate", "payload": "..." } }`) which the frontend interprets and executes.
+-   **Purpose:** A persistent, interactive guide.
+-   **Architecture:**
+    -   Uses `createCareerAgent` (`services/careerAgent.ts`).
+    -   **Tools:** The coach is equipped with client-side tools:
+        -   `navigateToResumeGenerator`: Redirects the user to the generation page with context.
+        -   `updateProfessionalSummary`: Directly modifies the React Context state to update the user's profile.
+        -   `promptToCreateCareerPath`: Triggers a UI modal for career planning.
+    -   **Context:** The agent receives the user's profile and document history as context for every message.
 
-### b. Career Path Planner
+## 4. Career Path Planner
+
 -   **Location:** `CareerPathPage.tsx`
--   **Purpose:** To visualize the long-term career roadmap generated by the AI.
--   **Workflow:**
-    1.  The user requests a career path from the **AI Career Coach**.
-    2.  The backend's AI logic determines the need for this tool and sends a "prompt" action back to the frontend.
-    3.  If the user agrees in the UI, the frontend sends a request to the `/api/v1/generate/career-path` endpoint.
-    4.  The backend generates the path, which is saved (in the future via Supabase) and returned. The `CareerPathPage` then displays it as an interactive timeline.
-    5.  The frontend makes subsequent requests to a `/api/v1/generate/milestone-videos` endpoint to fetch curated YouTube videos for each milestone.
+-   **Purpose:** Visual roadmap generation.
+-   **Implementation:**
+    -   The `generateCareerPath` action calls a high-reasoning Agent to break down a transition from Role A to Role B into milestones.
+    -   **Video Recommendations:** A separate "Resource Curator" Agent searches for specific YouTube video IDs that match the learning objectives of each milestone.
 
-## 4. Preparation Tools (Interview, Networking)
+## 5. Preparation Tools
 
+### Interview & Networking
 -   **Location:** `InterviewPrepPage.tsx`, `CoffeeChatPrepperPage.tsx`
--   **Purpose:** To provide specialized, single-purpose AI tools for interview and networking preparation.
--   **Implementation:** Each tool in these pages corresponds to a dedicated backend endpoint.
-    -   **Story Shaper:** Sends a "brain dump" to `/api/v1/generate/interview-story`.
-    -   **Rapport Builder:** Sends interviewer info to `/api/v1/generate/coffee-chat-brief`.
-    -   **Question Bank:** Sends a job description to `/api/v1/generate/interview-questions`.
-    -   **Reach Out Message:** Sends counterpart info to `/api/v1/generate/reach-out-message`.
+-   **Implementation:**
+    -   **Story Shaper:** Converts unstructured "brain dumps" into STAR-formatted stories.
+    -   **Coffee Chat Brief:** Generates a dossier on a person based on their bio/LinkedIn, suggesting conversation starters and shared touchpoints.
+    -   **Reach Out Message:** Drafts personalized cold messages.
 
-This backend-centric approach ensures that all prompt engineering and sensitive operations are kept secure and can be updated independently of the frontend application.
+## 6. Data Management
+
+-   **CSV Export:** Users can export their entire document generation history to CSV for external tracking.
+-   **Token System:** A mock currency system manages usage limits, simulating a SaaS tier structure (Intern, Associate, Senior plans).

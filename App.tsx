@@ -30,7 +30,19 @@ export { ProfileContext };
 
 const AppContent: React.FC = () => {
     const location = useLocation();
-    const isAppPage = !['/', '/login', '/how-it-works'].includes(location.pathname);
+    
+    // Define pages that should display the Public Layout (Header + Footer, No Sidebar)
+    const publicPaths = [
+        '/', 
+        '/login', 
+        '/how-it-works', 
+        '/subscription', 
+        '/privacy', 
+        '/terms', 
+        '/gdpr'
+    ];
+    
+    const isPublicPage = publicPaths.includes(location.pathname);
 
     const mainRoutes = (
         <Routes>
@@ -56,7 +68,8 @@ const AppContent: React.FC = () => {
         </Routes>
     );
 
-    if (isAppPage) {
+    // App Layout (Sidebar)
+    if (!isPublicPage) {
         return (
             <div className="flex flex-col md:flex-row bg-base-200 h-screen w-full">
                 <Sidebar />
@@ -69,15 +82,14 @@ const AppContent: React.FC = () => {
         );
     }
 
-    const showFooter = ['/', '/account', '/how-it-works'].includes(location.pathname);
-    const showHeader = ['/', '/how-it-works'].includes(location.pathname);
+    // Public Layout (Header + Footer)
     return (
         <div className="flex flex-col bg-base-200 min-h-screen">
-            {showHeader && <Header />}
-            <main className={`flex-grow flex flex-col ${showHeader ? 'min-h-[calc(100vh-65px)]' : 'min-h-screen'}`}>
+            <Header />
+            <main className="flex-grow flex flex-col min-h-[calc(100vh-65px)]">
                 {mainRoutes}
             </main>
-            {showFooter && <Footer />}
+            <Footer />
         </div>
     );
 };

@@ -15,9 +15,10 @@ export function useAnimatedText(text: string, delimiter: string = "") {
 
   useEffect(() => {
     const parts = text.split(delimiter);
-    const duration = delimiter === "" ? 8 : // Character animation
-                    delimiter === " " ? 4 : // Word animation
-                    2; // Chunk animation
+    // Speed up animation: 2s for chars, 1s for words, 0.5s for chunks
+    const duration = delimiter === "" ? 2 : 
+                    delimiter === " " ? 1 : 
+                    0.5; 
     
     const controls = animate(startingCursor, parts.length, {
       duration,

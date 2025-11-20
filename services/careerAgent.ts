@@ -84,16 +84,17 @@ export const createCareerAgent = (callbacks: AgentUICallbacks, documentHistory: 
             execute: async ({ currentRole, targetRole }: { currentRole: string, targetRole: string }, context: { profile: ProfileData }) => {
                 const isReplacing = !!context.profile?.careerPath;
                 callbacks.promptCareerPath({ currentRole, targetRole, isReplacing });
-                return "Displayed a confirmation prompt to the user to create a career path.";
+                return "Displayed a confirmation prompt to the user to create a career path. Inform the user you've triggered this, and then immediately ask a relevant follow-up question (e.g., about their timeline, specific industry interests, or major concerns) to keep the conversation flowing while they decide.";
             }
         }
     ];
 
-    const systemInstruction = `You are Keju, an expert AI Career Coach. 
+    const systemInstruction = `You are Keju, an expert Career Coach. 
     - Your goal is to provide personalized, actionable career advice.
     - You have access to tools to modify the user's profile and navigate the app.
     - **Always** use tools when they are relevant. Do not just say you will do something; actually call the function.
     - If you update the profile or navigate, briefly confirm this in your final text response.
+    - **CRITICAL:** Always end your response with a relevant follow-up question or a call to action to encourage the user to continue the conversation. Do not let the chat end abruptly.
     - Be concise, encouraging, and professional.
     - Context: The user has generated ${documentHistory.length} documents recently.`;
 
