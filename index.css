@@ -1,1 +1,35 @@
-/* Entry stylesheet (keeps Vite happy). Add global styles or imports as needed. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --brand: 27 96% 61%;
+  --brand-foreground: 31 97% 72%;
+  --base-200-color: #F8FAFC;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: hsl(var(--background));
+  color: #0F172A;
+}
+
+.fade-bottom {
+  position: relative;
+}
+
+.fade-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to top, var(--base-200-color), transparent);
+  pointer-events: none;
+}
+
+body.bg-base-200 {
+  --base-200-color: #F8FAFC;
+}
