@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
+const rawEnvBaseUrl = ((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
 
 // Validate API_BASE_URL format
 const validateApiBaseUrl = (url: string): boolean => {
@@ -24,6 +24,32 @@ const validateApiBaseUrl = (url: string): boolean => {
   }
 };
 
+const resolveApiBaseUrl = (): string => {
+  const fallbackOrigin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+  if (!rawEnvBaseUrl) {
+    if (fallbackOrigin) {
+      console.warn('VITE_API_BASE_URL missing; defaulting to same-origin backend.');
+      return fallbackOrigin;
+    }
+    return '';
+  }
+  if (!validateApiBaseUrl(rawEnvBaseUrl)) {
+    if (fallbackOrigin) {
+      console.warn(`VITE_API_BASE_URL is invalid: "${rawEnvBaseUrl}". Falling back to same-origin backend (${fallbackOrigin}).`);
+      return fallbackOrigin;
+    }
+    return '';
+  }
+  // Normalize trailing slash except for empty string (root-relative)
+  if (rawEnvBaseUrl === '/') return '';
+  return rawEnvBaseUrl.endsWith('/') ? rawEnvBaseUrl.slice(0, -1) : rawEnvBaseUrl;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+export const apiBaseUrl = API_BASE_URL;
+export const hasApiBaseUrl = !!API_BASE_URL;
+
 const buildHeaders = async (): Promise<Record<string, string>> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -40,10 +66,7 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 
 export const postJson = async <TResponse>(path: string, body: any): Promise<TResponse> => {
   if (!API_BASE_URL) {
-    throw new Error('VITE_API_BASE_URL is not configured. Please set it in your .env file (e.g., VITE_API_BASE_URL=http://localhost:8000 for local development).');
-  }
-  if (!validateApiBaseUrl(API_BASE_URL)) {
-    throw new Error(`VITE_API_BASE_URL is invalid: "${API_BASE_URL}". It must be a relative path (e.g., "/") or a valid URL with a proper domain (e.g., http://localhost:8000 or https://api.example.com).`);
+    throw new Error('VITE_API_BASE_URL is not configured and no same-origin fallback is available. Please set it in your environment (e.g., VITE_API_BASE_URL=https://your-api.run.app).');
   }
   const headers = await buildHeaders();
   const res = await fetch(`${API_BASE_URL}${path}`, {

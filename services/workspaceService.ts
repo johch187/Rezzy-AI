@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
-import { postJson } from './apiClient';
+import { postJson, apiBaseUrl } from './apiClient';
 
-const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
+const API_BASE_URL = apiBaseUrl;
 
 const assertApi = () => {
   if (!API_BASE_URL) {
