@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
 
 const buildHeaders = async (): Promise<Record<string, string>> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
