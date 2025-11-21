@@ -22,8 +22,8 @@ const ManageSubscriptionPage: React.FC = () => {
   const handleUpgrade = async () => {
     setCheckingOut(true);
     try {
-      const successUrl = `${window.location.origin}/#/account`;
-      const cancelUrl = `${window.location.origin}/#/account`;
+      const successUrl = `${window.location.origin}/account`;
+      const cancelUrl = `${window.location.origin}/account`;
       const res = await createCheckout(successUrl, cancelUrl);
       if (res.url) {
         window.location.href = res.url;

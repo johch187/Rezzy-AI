@@ -15,12 +15,12 @@ const SubscriptionPage: React.FC = () => {
 
   const plans = {
     associate: {
-      monthly: 15,
-      annually: 15 * 12 * (1 - 0.10), // 10% discount
+      monthly: 20,
+      annually: 20 * 12 * (1 - 0.10), // 10% discount
     },
     senior: {
-      monthly: 30,
-      annually: 30 * 12 * (1 - 0.10), // 10% discount
+      monthly: 45,
+      annually: 45 * 12 * (1 - 0.10), // 10% discount
     },
   };
 
@@ -28,8 +28,8 @@ const SubscriptionPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const successUrl = `${window.location.origin}/#/account`;
-      const cancelUrl = `${window.location.origin}/#/subscription`;
+      const successUrl = `${window.location.origin}/account`;
+      const cancelUrl = `${window.location.origin}/subscription`;
       const res = await createCheckout(successUrl, cancelUrl);
       if (res.url) {
         window.location.href = res.url;

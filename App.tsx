@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import GeneratePage from './pages/GeneratePage';
 import GenerationResultPage from './pages/GenerationResultPage';
@@ -136,10 +136,10 @@ const App: React.FC = () => {
 
   return (
     <ProfileProvider onToast={showToast}>
-      <HashRouter>
+      <BrowserRouter>
         <ToastNotification toast={toast} onDismiss={() => setToast(null)} />
         <AppContent />
-      </HashRouter>
+      </BrowserRouter>
     </ProfileProvider>
   );
 };

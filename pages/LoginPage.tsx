@@ -49,7 +49,7 @@ const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const redirectUrl = `${window.location.origin}/#/builder`;
+    const redirectUrl = `${window.location.origin}/builder`;
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
@@ -75,7 +75,7 @@ const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const redirectUrl = `${window.location.origin}/#/builder`;
+    const redirectUrl = `${window.location.origin}/builder`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

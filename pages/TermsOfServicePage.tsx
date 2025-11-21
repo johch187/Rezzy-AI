@@ -33,7 +33,7 @@ const TermsOfServicePage: React.FC = () => {
             <p>
               We prioritize user privacy and take steps to protect any personal
               data collected through the app. Please review our{' '}
-              <a href="#/privacy">Privacy Policy</a> to understand how we collect,
+              <a href="/privacy">Privacy Policy</a> to understand how we collect,
               use, and safeguard your information.
             </p>
             <h2>Changes and Updates</h2>
