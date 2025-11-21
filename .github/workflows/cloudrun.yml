@@ -70,9 +70,9 @@ jobs:
       - name: Build and Push image
         run: |
           docker build \
-            --build-arg VITE_API_BASE_URL=/ \
-            --build-arg VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }} \
-            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }} \
+            --build-arg VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL || '/' }}" \
+            --build-arg VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
             -t $IMAGE .
           docker push $IMAGE
 
