@@ -48,9 +48,14 @@ def create_app() -> FastAPI:
             index_file = candidate_index
 
     if index_file:
+        @app.get("/")
+        async def serve_root():
+            return FileResponse(index_file)
+        
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
-            if full_path.startswith("api/"):
+            # Don't serve frontend for API routes or health check routes
+            if full_path.startswith("api/") or full_path in ["healthz", "readyz"]:
                 raise HTTPException(status_code=404, detail="Not found")
             return FileResponse(index_file)
 

@@ -41,7 +41,7 @@ COPY --from=frontend /app/dist /app/frontend
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-ENV FRONTEND_DIST=/app/frontend
+ENV FRONTEND_DIST_DIR=/app/frontend
 ENV PORT=8080
 
 EXPOSE 8080
