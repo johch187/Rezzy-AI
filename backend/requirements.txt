@@ -6,6 +6,7 @@ pydantic-settings==2.5.2
 # For local dev on Python 3.9 keep ADK/GenAI optional; install compatible versions later if needed.
 # Tectonic is installed via OS package in Dockerfile for PDF generation.
 google-cloud-bigquery==3.25.0
+google-cloud-aiplatform>=1.72.0
 google-genai==1.0.0
 pytest==8.3.3
 pytest-asyncio==0.24.0

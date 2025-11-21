@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # Google / LLM
     gemini_api_key: Optional[str] = Field(None, description="Server-side Gemini/ADK API key.")
+    gcp_region: Optional[str] = Field(None, description="GCP region for Vertex AI (e.g., us-central1).")
 
     # CORS
     allowed_origins: List[str] = Field(default_factory=list, description="Allowed origins for CORS.")

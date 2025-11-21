@@ -1,6 +1,6 @@
 # Keju - Your AI-Powered Career Navigator
 
-Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a scalable web application with a React frontend, a Python FastAPI backend, and is powered by the Google Gemini API.
+Keju is an AI-powered career navigation platform, providing personalized, data-driven guidance to help you discover and achieve your dream career. It's a scalable web application with a React frontend, a Python FastAPI backend, and is powered by Google Vertex AI (Gemini) via service-account credentials.
 
 ## ✨ Key Features
 
@@ -21,7 +21,7 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 -   **Frontend**: [React](https://reactjs.org/) with [TypeScript](https://www.typescriptlang.org/)
 -   **Backend (Future)**: [Python](https://www.python.org/) (e.g., with FastAPI or Flask)
 -   **Database & Auth (Future)**: [Supabase](https://supabase.io/)
--   **AI Engine**: [Google Gemini API](https://ai.google.dev/gemini-api) (via backend)
+-   **AI Engine**: [Google Vertex AI (Gemini)](https://cloud.google.com/vertex-ai) via service accounts (ADC); API key fallback supported for local dev
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 -   **Routing**: [React Router](https://reactrouter.com/) (using `HashRouter`)
 -   **Deployment**: [Docker](https://www.docker.com/) & [Google Cloud Run](https://cloud.google.com/run) via [GitHub Actions](https://github.com/features/actions)
@@ -37,12 +37,13 @@ Keju is an AI-powered career navigation platform, providing personalized, data-d
 ### Backend (FastAPI)
 1. Create/activate a Python 3.11+ virtualenv.
 2. Install deps: `pip install -r backend/requirements.txt`
-3. Set environment variables (see `.env.example` for required keys such as Supabase, Gemini, BigQuery, Polar, CORS/CSP).
+3. Set environment variables (see `.env.example` for required keys such as Supabase, Vertex AI project/region, BigQuery, Polar, CORS/CSP). Vertex AI uses Application Default Credentials (service account) by default; optional `GEMINI_API_KEY` is only needed for local fallback.
 4. Run locally: `uvicorn app.main:app --host 0.0.0.0 --port 8000` from the `backend` directory (PYTHONPATH should include `/app/backend` in Docker).
 
 ### Docker / Cloud Run
 - Multi-stage Dockerfile builds the frontend and serves it via the backend container.
 - GitHub Actions workflow (`.github/workflows/cloudrun.yml`) builds, pushes to Artifact Registry, and deploys to Cloud Run. Secrets must be provided via GitHub/Cloud Run (do not commit real env files).
+- Vertex AI is accessed via the Cloud Run service account (Application Default Credentials). Ensure that service account has at least `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer` on the project. No API key is required in Cloud Run; `GEMINI_API_KEY` is only for local fallback.
 
 ## 📂 Project Structure
 

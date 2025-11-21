@@ -1,22 +1,25 @@
 import json
+import logging
 import re
 from typing import Any, Dict, Optional
 
 from app.config import get_settings
 
-
 try:
-    from google.adk.agents import LlmAgent
-    from google.adk.models import Gemini
-    from google.adk.runners import InMemoryRunner
-    from google.adk.sessions import Session
+    import vertexai
+    from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
 except ImportError:
-    LlmAgent = None  # type: ignore
+    vertexai = None  # type: ignore
+    GenerationConfig = None  # type: ignore
+    GenerativeModel = None  # type: ignore
 
 try:
     import google.genai as genai
 except ImportError:
     genai = None  # type: ignore
+
+
+logger = logging.getLogger(__name__)
 
 
 def _fallback_mock(message: str) -> Dict[str, Any]:
@@ -40,18 +43,25 @@ def _safe_parse_json(text: str) -> Any:
 
 class AgentService:
     """
-    Wrapper around Google ADK (preferred) with a google-genai fallback.
-    Uses Gemini 3.0 Pro for higher-quality outputs.
+    Wrapper around Vertex AI (preferred via service account/ADC) with a google-genai API key fallback.
+    Uses Gemini Pro for higher-quality outputs.
     """
 
     def __init__(self) -> None:
         settings = get_settings()
         self.api_key = settings.gemini_api_key
-        self.model_name = "gemini-3.0-pro"
+        self.project_id = settings.gcp_project_id
+        self.location = settings.gcp_region or "us-central1"
+        self.model_name = "gemini-1.5-pro"
+        self.vertex_model: Optional[GenerativeModel] = None
 
-    def _ensure_api_key(self) -> None:
-        if not self.api_key:
-            raise RuntimeError("GEMINI_API_KEY is not configured.")
+        # Prefer Vertex AI with application default credentials (e.g., Cloud Run service account).
+        if vertexai is not None and self.project_id:
+            try:
+                vertexai.init(project=self.project_id, location=self.location)
+                self.vertex_model = GenerativeModel(self.model_name)
+            except Exception as exc:  # pragma: no cover - initialization happens at runtime
+                logger.warning("Vertex AI init failed; falling back to API key client: %s", exc)
 
     async def _run_llm(
         self,
@@ -60,36 +70,37 @@ class AgentService:
         description: str,
         response_mime: Optional[str] = None,
     ) -> str:
-        self._ensure_api_key()
+        # Preferred path: Vertex AI with service account / ADC (no API key).
+        if self.vertex_model is not None and GenerationConfig is not None:
+            try:
+                response = self.vertex_model.generate_content(
+                    [prompt],
+                    system_instruction=system_instruction,
+                    generation_config=GenerationConfig(
+                        response_mime_type=response_mime or "text/plain",
+                        temperature=0.4,
+                        top_p=0.95,
+                    ),
+                )
+                if hasattr(response, "text"):
+                    return response.text or ""
+                return json.dumps(response, default=str)
+            except Exception as exc:  # pragma: no cover - runtime path
+                logger.error("Vertex AI request failed; falling back to API key client: %s", exc)
 
-        # Preferred path: ADK
-        if LlmAgent is not None:
-            model = Gemini(model=self.model_name, api_key=self.api_key)
-            agent = LlmAgent(
-                name="keju_agent",
-                model=model,
-                description=description,
-                instruction=system_instruction,
+        # Fallback: google-genai API key path (useful for local dev without Vertex permissions).
+        if genai is not None and self.api_key:
+            client = genai.Client(api_key=self.api_key)
+            resp = client.models.generate_content(
+                model=self.model_name,
+                contents=[{"role": "user", "parts": [prompt]}],
+                config={"system_instruction": system_instruction, "response_mime_type": response_mime or "text/plain"},
             )
-            runner = InMemoryRunner(agent=agent, session=Session(user_id="keju-backend"))
-            result = await runner.run_async(prompt)
-            if hasattr(result, "response") and hasattr(result.response, "text"):
-                return result.response.text or ""
-            if hasattr(result, "text"):
-                return result.text or ""
-            return json.dumps(result, default=str)
+            return resp.text or ""
 
-        # Fallback: google-genai
-        if genai is None:
-            return json.dumps(_fallback_mock("google-genai not installed"))
-
-        client = genai.Client(api_key=self.api_key)
-        resp = client.models.generate_content(
-            model=self.model_name,
-            contents=[{"role": "user", "parts": [prompt]}],
-            config={"system_instruction": system_instruction, "response_mime_type": response_mime or "text/plain"},
+        raise RuntimeError(
+            "No Vertex AI access (check service account roles/project) and GEMINI_API_KEY not provided for fallback."
         )
-        return resp.text or ""
 
     async def generate_documents(self, profile: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
         prompt = f"""
