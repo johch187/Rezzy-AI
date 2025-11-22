@@ -1,7 +1,5 @@
 import { supabase } from './supabaseClient';
-import { apiBaseUrl } from './apiClient';
-
-const API_BASE_URL = apiBaseUrl;
+import { requireApiBaseUrl } from './apiClient';
 
 const buildHeaders = async (): Promise<Record<string, string>> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -14,12 +12,9 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const createCheckout = async (successUrl: string, cancelUrl: string, priceId?: string) => {
-  // Empty string is valid - it means using relative paths (same origin)
-  if (API_BASE_URL === null || API_BASE_URL === undefined) {
-    throw new Error('VITE_API_BASE_URL is not configured.');
-  }
+  const baseUrl = requireApiBaseUrl();
   const headers = await buildHeaders();
-  const url = API_BASE_URL ? `${API_BASE_URL}/api/payments/checkout` : '/api/payments/checkout';
+  const url = `${baseUrl}/api/payments/checkout`;
   const res = await fetch(url, {
     method: 'POST',
     headers,

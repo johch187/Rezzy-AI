@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
-import { apiBaseUrl } from './apiClient';
+import { getApiBaseUrl } from './apiClient';
 
-const API_BASE_URL = apiBaseUrl;
+const API_BASE_URL = getApiBaseUrl();
 
 const buildHeaders = async (): Promise<Record<string, string>> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -14,14 +14,13 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const sendAnalyticsEvent = async (eventName: string, properties: Record<string, any> = {}) => {
-  // Empty string is valid - it means using relative paths (same origin)
-  // Only skip if API_BASE_URL is explicitly null/undefined (shouldn't happen)
-  if (API_BASE_URL === null || API_BASE_URL === undefined) {
+  const baseUrl = API_BASE_URL || getApiBaseUrl();
+  if (!baseUrl) {
     return;
   }
   const headers = await buildHeaders();
   try {
-    const url = API_BASE_URL ? `${API_BASE_URL}/api/analytics/events` : '/api/analytics/events';
+    const url = `${baseUrl}/api/analytics/events`;
     const res = await fetch(url, {
       method: 'POST',
       headers,
