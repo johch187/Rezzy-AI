@@ -14,9 +14,13 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const createCheckout = async (successUrl: string, cancelUrl: string, priceId?: string) => {
-  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not configured.');
+  // Empty string is valid - it means using relative paths (same origin)
+  if (API_BASE_URL === null || API_BASE_URL === undefined) {
+    throw new Error('VITE_API_BASE_URL is not configured.');
+  }
   const headers = await buildHeaders();
-  const res = await fetch(`${API_BASE_URL}/api/payments/checkout`, {
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/payments/checkout` : '/api/payments/checkout';
+  const res = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify({ successUrl, cancelUrl, priceId }),

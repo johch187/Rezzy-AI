@@ -25,24 +25,27 @@ const validateApiBaseUrl = (url: string): boolean => {
 };
 
 const resolveApiBaseUrl = (): string => {
-  const fallbackOrigin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-  if (!rawEnvBaseUrl) {
-    if (fallbackOrigin) {
-      console.warn('VITE_API_BASE_URL missing; defaulting to same-origin backend.');
-      return fallbackOrigin;
+  // If rawEnvBaseUrl is empty or just '/', use relative path (same origin)
+  if (!rawEnvBaseUrl || rawEnvBaseUrl === '/') {
+    if (typeof window !== 'undefined') {
+      console.log('Using relative path for API calls (same-origin backend)');
     }
     return '';
   }
+  
+  // Validate the URL
   if (!validateApiBaseUrl(rawEnvBaseUrl)) {
-    if (fallbackOrigin) {
-      console.warn(`VITE_API_BASE_URL is invalid: "${rawEnvBaseUrl}". Falling back to same-origin backend (${fallbackOrigin}).`);
-      return fallbackOrigin;
-    }
+    // If invalid, fall back to relative path (same origin)
+    console.warn(`VITE_API_BASE_URL is invalid: "${rawEnvBaseUrl}". Using relative path (same-origin) instead.`);
     return '';
   }
-  // Normalize trailing slash except for empty string (root-relative)
-  if (rawEnvBaseUrl === '/') return '';
-  return rawEnvBaseUrl.endsWith('/') ? rawEnvBaseUrl.slice(0, -1) : rawEnvBaseUrl;
+  
+  // Normalize trailing slash - remove it for absolute URLs
+  const normalized = rawEnvBaseUrl.endsWith('/') ? rawEnvBaseUrl.slice(0, -1) : rawEnvBaseUrl;
+  if (typeof window !== 'undefined') {
+    console.log(`Using API base URL: ${normalized}`);
+  }
+  return normalized;
 };
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -65,11 +68,11 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const postJson = async <TResponse>(path: string, body: any): Promise<TResponse> => {
-  if (!API_BASE_URL) {
-    throw new Error('VITE_API_BASE_URL is not configured and no same-origin fallback is available. Please set it in your environment (e.g., VITE_API_BASE_URL=https://your-api.run.app).');
-  }
+  // API_BASE_URL can be empty string for relative paths (same origin)
+  // This is valid when frontend and backend are served from the same origin
+  const url = API_BASE_URL ? `${API_BASE_URL}${path}` : path;
   const headers = await buildHeaders();
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),

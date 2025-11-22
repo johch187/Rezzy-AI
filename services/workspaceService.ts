@@ -4,7 +4,9 @@ import { postJson, apiBaseUrl } from './apiClient';
 const API_BASE_URL = apiBaseUrl;
 
 const assertApi = () => {
-  if (!API_BASE_URL) {
+  // Empty string is valid - it means using relative paths (same origin)
+  // Only throw if API_BASE_URL is explicitly null/undefined (shouldn't happen)
+  if (API_BASE_URL === null || API_BASE_URL === undefined) {
     throw new Error('VITE_API_BASE_URL is not configured; backend workspace sync unavailable.');
   }
 };
@@ -29,7 +31,8 @@ export const fetchWorkspace = async (): Promise<WorkspacePayload> => {
     return h;
   })();
 
-  const res = await fetch(`${API_BASE_URL}/api/workspace`, { headers });
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/workspace` : '/api/workspace';
+  const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(await res.text());
   }
@@ -52,7 +55,8 @@ export const fetchSubscriptionStatus = async () => {
     }
     return h;
   })();
-  const res = await fetch(`${API_BASE_URL}/api/payments/status`, { headers });
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/payments/status` : '/api/payments/status';
+  const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(await res.text());
   }

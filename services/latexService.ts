@@ -16,11 +16,13 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const downloadResumePdf = async (markdown: string, filename: string) => {
-  if (!API_BASE_URL) {
+  // Empty string is valid - it means using relative paths (same origin)
+  if (API_BASE_URL === null || API_BASE_URL === undefined) {
     throw new Error('VITE_API_BASE_URL is not configured.');
   }
   const headers = await buildHeaders();
-  const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/latex/compile` : '/api/latex/compile';
+  const response = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify({ content: markdown, filename }),

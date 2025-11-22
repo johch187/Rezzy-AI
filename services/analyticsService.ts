@@ -14,13 +14,15 @@ const buildHeaders = async (): Promise<Record<string, string>> => {
 };
 
 export const sendAnalyticsEvent = async (eventName: string, properties: Record<string, any> = {}) => {
-  if (!API_BASE_URL) {
-    // Fail silently if not configured or invalid to avoid breaking UX
+  // Empty string is valid - it means using relative paths (same origin)
+  // Only skip if API_BASE_URL is explicitly null/undefined (shouldn't happen)
+  if (API_BASE_URL === null || API_BASE_URL === undefined) {
     return;
   }
   const headers = await buildHeaders();
   try {
-    const res = await fetch(`${API_BASE_URL}/api/analytics/events`, {
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/analytics/events` : '/api/analytics/events';
+    const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({ eventName, properties }),
