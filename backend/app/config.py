@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     @field_validator("supabase_secret_key")
     @classmethod
     def _validate_secret_key_format(cls, key: str) -> str:
+        key = key.strip()
+        if not key:
+            raise ValueError("Supabase secret key cannot be empty.")
         if not key.startswith("sb_secret_"):
             raise ValueError(
                 "Supabase secret key must start with 'sb_secret_'. "
@@ -68,7 +71,12 @@ class Settings(BaseSettings):
     @field_validator("supabase_publishable_key")
     @classmethod
     def _validate_publishable_key_format(cls, key: Optional[str]) -> Optional[str]:
-        if key and not key.startswith("sb_publishable_"):
+        if key is None:
+            return None
+        key = key.strip()
+        if not key:
+            return None  # treat empty/whitespace env vars as unset
+        if not key.startswith("sb_publishable_"):
             raise ValueError(
                 "Supabase publishable key must start with 'sb_publishable_'. "
                 "Legacy anon keys are no longer supported. "
