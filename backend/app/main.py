@@ -7,7 +7,22 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.routers import analytics, health, latex, llm, parse, payments, workspace
+
+# Import routers defensively - if one fails, we can still start with others
+try:
+    from app.routers import analytics, health, latex, llm, parse, payments, workspace
+    _routers_loaded = True
+except Exception as e:
+    print(f"⚠ Warning: Failed to import some routers: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    # Import what we can
+    try:
+        from app.routers import health
+    except:
+        health = None
+    analytics = latex = llm = parse = payments = workspace = None
+    _routers_loaded = False
 
 
 def create_app() -> FastAPI:
@@ -52,13 +67,24 @@ def create_app() -> FastAPI:
             response.headers["Content-Security-Policy"] = settings.csp_policy
             return response
 
-    app.include_router(health.router)
-    app.include_router(workspace.router)
-    app.include_router(llm.router)
-    app.include_router(parse.router)
-    app.include_router(latex.router)
-    app.include_router(analytics.router)
-    app.include_router(payments.router)
+    # Include routers - health check should always be available
+    if health:
+        app.include_router(health.router)
+    if workspace:
+        app.include_router(workspace.router)
+    if llm:
+        app.include_router(llm.router)
+    if parse:
+        app.include_router(parse.router)
+    if latex:
+        app.include_router(latex.router)
+    if analytics:
+        app.include_router(analytics.router)
+    if payments:
+        app.include_router(payments.router)
+    
+    if not _routers_loaded:
+        print("⚠ Warning: Some routers failed to load. Application may have limited functionality.", file=sys.stderr)
 
     frontend_dir = Path(settings.frontend_dist_dir) if settings.frontend_dist_dir else None
     index_file: Path | None = None
@@ -105,4 +131,25 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+# Create app instance - wrap in try-except to ensure we can at least start and show errors
+try:
+    app = create_app()
+    print("✓ Application initialized successfully", file=sys.stderr)
+except Exception as e:
+    print(f"✗ CRITICAL: Failed to create application: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    # Create a minimal app that at least responds to health checks
+    app = FastAPI(title="Keju API (Error State)", version="0.1.0")
+    
+    @app.get("/healthz")
+    async def healthcheck_error():
+        return {"status": "error", "message": "Application failed to initialize. Check logs."}
+    
+    @app.get("/readyz")
+    async def readiness_error():
+        return {"status": "not_ready", "message": "Application failed to initialize. Check logs."}
+    
+    @app.get("/{full_path:path}")
+    async def error_handler():
+        return {"error": "Application initialization failed. Check Cloud Run logs for details."}

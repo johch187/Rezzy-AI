@@ -25,12 +25,24 @@ if [[ ! "${SUPABASE_SECRET_KEY}" =~ ^sb_secret_ ]]; then
 fi
 
 PORT="${PORT:-8080}"
-echo "Starting server on port ${PORT}..."
-echo "Environment check:"
-echo "  - SUPABASE_URL: ${SUPABASE_URL:0:30}..."
-echo "  - GCP_PROJECT_ID: ${GCP_PROJECT_ID:-not set}"
-echo "  - GCP_REGION: ${GCP_REGION:-not set}"
-echo "  - GEMINI_API_KEY: ${GEMINI_API_KEY:+set (hidden)}${GEMINI_API_KEY:-not set}"
-echo ""
+echo "==========================================" >&2
+echo "Starting Keju API Server" >&2
+echo "==========================================" >&2
+echo "Port: ${PORT}" >&2
+echo "Python: $(python --version)" >&2
+echo "Working directory: $(pwd)" >&2
+echo "" >&2
+echo "Environment check:" >&2
+echo "  - SUPABASE_URL: ${SUPABASE_URL:0:30}..." >&2
+echo "  - GCP_PROJECT_ID: ${GCP_PROJECT_ID:-not set}" >&2
+echo "  - GCP_REGION: ${GCP_REGION:-not set}" >&2
+echo "  - GEMINI_API_KEY: ${GEMINI_API_KEY:+set (hidden)}${GEMINI_API_KEY:-not set}" >&2
+echo "  - FRONTEND_DIST: ${FRONTEND_DIST:-not set}" >&2
+echo "" >&2
+echo "Checking Python imports..." >&2
+python -c "import fastapi; import uvicorn; print('✓ Core dependencies OK')" 2>&1 || echo "✗ Core dependencies missing!" >&2
+echo "" >&2
+echo "Starting uvicorn..." >&2
+echo "==========================================" >&2
 
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --log-level info
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --log-level info --access-log
