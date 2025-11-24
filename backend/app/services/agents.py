@@ -48,7 +48,18 @@ class AgentService:
     """
 
     def __init__(self) -> None:
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except Exception as exc:
+            logger.error("Failed to load settings during AgentService init: %s", exc)
+            # Use defaults to allow app to start, but LLM calls will fail with clear error
+            self.api_key = None
+            self.project_id = None
+            self.location = "us-central1"
+            self.model_name = "gemini-1.5-pro"
+            self.vertex_model = None
+            return
+        
         self.api_key = settings.gemini_api_key
         self.project_id = settings.gcp_project_id
         self.location = settings.gcp_region or "us-central1"
@@ -60,8 +71,11 @@ class AgentService:
             try:
                 vertexai.init(project=self.project_id, location=self.location)
                 self.vertex_model = GenerativeModel(self.model_name)
+                logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
             except Exception as exc:  # pragma: no cover - initialization happens at runtime
                 logger.warning("Vertex AI init failed; falling back to API key client: %s", exc)
+        elif not self.api_key:
+            logger.warning("AgentService: No Vertex AI project_id and no GEMINI_API_KEY fallback configured. LLM features will be unavailable.")
 
     async def _run_llm(
         self,

@@ -8,7 +8,15 @@ from app.services.agents import AgentService
 from app.services.supabase import ensure_active_subscription
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
-agent_service = AgentService()
+
+# Lazy initialization - only create when needed to avoid startup failures
+_agent_service: AgentService | None = None
+
+def get_agent_service() -> AgentService:
+    global _agent_service
+    if _agent_service is None:
+        _agent_service = AgentService()
+    return _agent_service
 
 
 @router.post("/generate-documents")
@@ -18,6 +26,7 @@ async def generate_documents(req: GenerateDocumentsRequest, user: CurrentUser):
     except PermissionError:
         raise HTTPException(status_code=402, detail="Subscription required for document generation.")
     try:
+        agent_service = get_agent_service()
         result = await agent_service.generate_documents(profile=req.profile.model_dump(), options=req.options.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -33,6 +42,7 @@ class CareerPathRequest(BaseModel):
 @router.post("/career-path")
 async def career_path(req: CareerPathRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.career_path(req.profile, req.currentRole, req.targetRole)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -47,6 +57,7 @@ class NetworkingRequest(BaseModel):
 @router.post("/networking/brief")
 async def networking_brief(req: NetworkingRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.networking_brief(req.profile, req.counterpartInfo)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -56,6 +67,7 @@ async def networking_brief(req: NetworkingRequest, user: CurrentUser):
 @router.post("/networking/reach-out")
 async def networking_reach_out(req: NetworkingRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.networking_reach_out(req.profile, req.counterpartInfo)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -70,6 +82,7 @@ class ApplicationAnalysisRequest(BaseModel):
 @router.post("/analysis/application-fit")
 async def application_fit(req: ApplicationAnalysisRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.analyze_application(req.resumeText, req.jobDescription)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -84,6 +97,7 @@ class MentorMatchRequest(BaseModel):
 @router.post("/analysis/mentor-match")
 async def mentor_match(req: MentorMatchRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.mentor_match(req.topic, req.facultyList)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -98,6 +112,7 @@ class NegotiationRequest(BaseModel):
 @router.post("/analysis/negotiation")
 async def negotiation(req: NegotiationRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.negotiation_prep(req.jobTitle, req.location)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -111,6 +126,7 @@ class InterviewStoryRequest(BaseModel):
 @router.post("/interview/story")
 async def interview_story(req: InterviewStoryRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.interview_story(req.brainDump)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -124,6 +140,7 @@ class InterviewQuestionsRequest(BaseModel):
 @router.post("/interview/questions")
 async def interview_questions(req: InterviewQuestionsRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.interview_questions(req.jobDescription)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -137,6 +154,7 @@ class ReframeFeedbackRequest(BaseModel):
 @router.post("/interview/reframe")
 async def reframe(req: ReframeFeedbackRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.reframe_feedback(req.feedback)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -152,6 +170,7 @@ class CareerChatRequest(BaseModel):
 @router.post("/career-chat")
 async def career_chat(req: CareerChatRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.career_chat(req.message, req.profile, req.documentHistory or [])
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -166,6 +185,7 @@ class VideoRequest(BaseModel):
 @router.post("/career/videos")
 async def career_videos(req: VideoRequest, user: CurrentUser):
     try:
+        agent_service = get_agent_service()
         result = await agent_service.video_recommendations(req.targetRole, req.milestone)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

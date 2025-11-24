@@ -26,4 +26,11 @@ fi
 
 PORT="${PORT:-8080}"
 echo "Starting server on port ${PORT}..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}"
+echo "Environment check:"
+echo "  - SUPABASE_URL: ${SUPABASE_URL:0:30}..."
+echo "  - GCP_PROJECT_ID: ${GCP_PROJECT_ID:-not set}"
+echo "  - GCP_REGION: ${GCP_REGION:-not set}"
+echo "  - GEMINI_API_KEY: ${GEMINI_API_KEY:+set (hidden)}${GEMINI_API_KEY:-not set}"
+echo ""
+
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --log-level info
