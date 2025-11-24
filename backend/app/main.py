@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -10,7 +11,29 @@ from app.routers import analytics, health, latex, llm, parse, payments, workspac
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
+    try:
+        settings = get_settings()
+    except Exception as e:
+        # Log configuration errors clearly before crashing
+        error_msg = str(e)
+        print(f"ERROR: Failed to load application settings: {error_msg}", file=sys.stderr)
+        print("\n" + "="*80, file=sys.stderr)
+        print("CONFIGURATION ERROR - Required Environment Variables:", file=sys.stderr)
+        print("="*80, file=sys.stderr)
+        if "supabase_secret_key" in error_msg.lower() or "sb_secret_" in error_msg.lower():
+            print("\n❌ SUPABASE_SECRET_KEY is missing or invalid!", file=sys.stderr)
+            print("   Required format: sb_secret_...", file=sys.stderr)
+            print("   Get it from: Supabase Dashboard → Project Settings → API → Secret Keys", file=sys.stderr)
+            print("   Update your GitHub secret: SUPABASE_SECRET_KEY", file=sys.stderr)
+        elif "supabase_publishable_key" in error_msg.lower() or "sb_publishable_" in error_msg.lower():
+            print("\n❌ SUPABASE_PUBLISHABLE_KEY is invalid!", file=sys.stderr)
+            print("   Required format: sb_publishable_...", file=sys.stderr)
+            print("   Get it from: Supabase Dashboard → Project Settings → API → Publishable Keys", file=sys.stderr)
+        elif "supabase_url" in error_msg.lower():
+            print("\n❌ SUPABASE_URL is missing or invalid!", file=sys.stderr)
+            print("   Format: https://your-project.supabase.co", file=sys.stderr)
+        print("\n" + "="*80, file=sys.stderr)
+        raise
     app = FastAPI(title="Keju API", version="0.1.0")
 
     if settings.allowed_origins:
