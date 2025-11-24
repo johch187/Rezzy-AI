@@ -33,14 +33,17 @@ def _get_client() -> Any:
 def log_event(user_id: str, user_email: Optional[str], event_name: str, properties: Optional[Dict[str, Any]] = None) -> None:
     """
     Insert a single analytics event into BigQuery. Keep payloads small to avoid quota issues.
+    
+    For JSON fields in BigQuery, pass the Python dict directly - the client handles serialization.
     """
     client = _get_client()
     table = _table_id()
+    
     payload = {
         "user_id": user_id,
         "user_email": user_email,
         "event_name": event_name,
-        "properties": properties or {},
+        "properties": properties or {},  # Pass dict directly for JSON field type
         "ingested_at": datetime.now(timezone.utc).isoformat(),
     }
     errors = client.insert_rows_json(table, [payload])

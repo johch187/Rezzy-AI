@@ -62,13 +62,28 @@ def create_app() -> FastAPI:
 
     frontend_dir = Path(settings.frontend_dist_dir) if settings.frontend_dist_dir else None
     index_file: Path | None = None
+    assets_mounted = False
+    
     if frontend_dir and frontend_dir.exists():
         assets_dir = frontend_dir / "assets"
         if assets_dir.exists():
-            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+            try:
+                app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+                assets_mounted = True
+                print(f"✓ Mounted assets directory: {assets_dir}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠ Warning: Failed to mount assets directory: {e}", file=sys.stderr)
+        else:
+            print(f"⚠ Warning: Assets directory not found: {assets_dir}", file=sys.stderr)
+        
         candidate_index = frontend_dir / "index.html"
         if candidate_index.exists():
             index_file = candidate_index
+            print(f"✓ Found index.html: {candidate_index}", file=sys.stderr)
+        else:
+            print(f"⚠ Warning: index.html not found: {candidate_index}", file=sys.stderr)
+    else:
+        print(f"⚠ Warning: Frontend directory not configured or doesn't exist: {frontend_dir}", file=sys.stderr)
 
     if index_file:
         @app.get("/")
@@ -76,10 +91,15 @@ def create_app() -> FastAPI:
             return FileResponse(index_file)
         
         @app.get("/{full_path:path}")
-        async def serve_spa(full_path: str):
-            # Don't serve frontend for API routes or health check routes
-            if full_path.startswith("api/") or full_path in ["healthz", "readyz"]:
+        async def serve_spa(full_path: str, request: Request):
+            # Don't serve frontend for API routes, assets (if mounted), or health check routes
+            if full_path.startswith("api/"):
                 raise HTTPException(status_code=404, detail="Not found")
+            if full_path in ["healthz", "readyz"]:
+                raise HTTPException(status_code=404, detail="Not found")
+            # If assets are mounted, they'll be handled by the mount; otherwise let it fall through
+            if assets_mounted and full_path.startswith("assets/"):
+                raise HTTPException(status_code=404, detail="Asset not found")
             return FileResponse(index_file)
 
     return app
