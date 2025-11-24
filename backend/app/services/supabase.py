@@ -13,12 +13,17 @@ PAID_PLAN_TOKENS = 200
 def _headers():
     """
     Returns headers for Supabase admin API calls.
-    Uses new secret key format (sb_secret_...) for admin operations.
+
+    Supabase’s new API keys are *not* JWTs. They must be sent via the
+    `apikey` header, and **not** as `Authorization: Bearer ...`.
+    For backwards compatibility (and to satisfy the platform’s
+    "Authorization must match apikey" allowance), we mirror the key
+    directly into `Authorization` without the Bearer prefix.
     """
     settings = get_settings()
     return {
         "apikey": settings.supabase_secret_key,  # Secret key (sb_secret_...)
-        "Authorization": f"Bearer {settings.supabase_secret_key}",  # Secret key for authorization
+        "Authorization": settings.supabase_secret_key,  # Must exactly match apikey per new key rules
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates",
     }
