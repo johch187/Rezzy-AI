@@ -6,6 +6,7 @@ import GenerationResultPage from './pages/GenerationResultPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import GDPRPage from './pages/GDPRPage';
+import CookiePolicyPage from './pages/CookiePolicyPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import LoginPage from './pages/LoginPage';
@@ -42,7 +43,8 @@ const AppContent: React.FC = () => {
         '/subscription', 
         '/privacy', 
         '/terms', 
-        '/gdpr'
+        '/gdpr',
+        '/cookies'
     ];
     
     const isPublicPage = publicPaths.includes(location.pathname);
@@ -81,6 +83,7 @@ const AppContent: React.FC = () => {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
+            <Route path="/cookies" element={<CookiePolicyPage />} />
             <Route path="/coffee-chats" element={<CoffeeChatPrepperPage />} />
             <Route path="/coffee-chats/result" element={<CoffeeChatResultPage />} />
             <Route path="/career-coach" element={<CareerCoachPage />} />

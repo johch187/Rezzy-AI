@@ -20,6 +20,7 @@ const Footer: React.FC = () => {
             <Link to="/subscription" className="hover:text-brand-blue hover:underline">Pricing</Link>
             <Link to="/privacy" className="hover:text-brand-blue hover:underline">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-brand-blue hover:underline">Terms of Service</Link>
+            <Link to="/cookies" className="hover:text-brand-blue hover:underline">Cookie Policy</Link>
             <Link to="/gdpr" className="hover:text-brand-blue hover:underline">GDPR</Link>
           </div>
         </div>
