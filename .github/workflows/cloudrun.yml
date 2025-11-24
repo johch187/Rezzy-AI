@@ -78,19 +78,26 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE_NAME \
+          DEPLOY_CMD="gcloud run deploy $SERVICE_NAME \
             --image $IMAGE \
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --set-env-vars SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
-            --set-env-vars SUPABASE_SECRET_KEY="${{ secrets.SUPABASE_SECRET_KEY }}" \
-            --set-env-vars SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
+            --set-env-vars SUPABASE_URL=\"${{ secrets.SUPABASE_URL }}\" \
+            --set-env-vars SUPABASE_SECRET_KEY=\"${{ secrets.SUPABASE_SECRET_KEY }}\" \
+            --set-env-vars SUPABASE_PUBLISHABLE_KEY=\"${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}\" \
             --set-env-vars ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}' \
             --set-env-vars CSP_POLICY='${{ secrets.CSP_POLICY }}' \
-            --set-env-vars FRONTEND_DIST="/app/frontend" \
-            --set-env-vars GCP_PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}" \
-            --set-env-vars GCP_REGION="${{ env.REGION }}" \
-            --set-env-vars BIGQUERY_DATASET="${{ secrets.BIGQUERY_DATASET }}" \
-            --set-env-vars BIGQUERY_TABLE="${{ secrets.BIGQUERY_TABLE }}"
+            --set-env-vars FRONTEND_DIST=\"/app/frontend\" \
+            --set-env-vars GCP_PROJECT_ID=\"${{ secrets.GCP_PROJECT_ID }}\" \
+            --set-env-vars GCP_REGION=\"${{ env.REGION }}\" \
+            --set-env-vars BIGQUERY_DATASET=\"${{ secrets.BIGQUERY_DATASET }}\" \
+            --set-env-vars BIGQUERY_TABLE=\"${{ secrets.BIGQUERY_TABLE }}\""
+          
+          # Add GEMINI_API_KEY if available (optional fallback for Vertex AI)
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            DEPLOY_CMD="$DEPLOY_CMD --set-env-vars GEMINI_API_KEY=\"${{ secrets.GEMINI_API_KEY }}\""
+          fi
+          
+          eval $DEPLOY_CMD
