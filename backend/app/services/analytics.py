@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from typing import Any, Dict, Optional
 
 try:
@@ -9,6 +10,7 @@ except ImportError:  # pragma: no cover - optional dependency guard
 from app.config import get_settings
 
 _client: Optional[Any] = None
+logger = logging.getLogger(__name__)
 
 
 def _table_id() -> str:
@@ -30,15 +32,27 @@ def _get_client() -> Any:
     return _client
 
 
-def log_event(user_id: str, user_email: Optional[str], event_name: str, properties: Optional[Dict[str, Any]] = None) -> None:
+def log_event(
+    user_id: str,
+    user_email: Optional[str],
+    event_name: str,
+    properties: Optional[Dict[str, Any]] = None,
+) -> bool:
     """
     Insert a single analytics event into BigQuery. Keep payloads small to avoid quota issues.
-    
-    For JSON fields in BigQuery, pass the Python dict directly - the client handles serialization.
+
+    Returns True on success, False if analytics is skipped or fails (we log warnings instead of raising).
     """
-    client = _get_client()
-    table = _table_id()
-    
+    try:
+        client = _get_client()
+        table = _table_id()
+    except RuntimeError as exc:
+        logger.warning("Analytics disabled: %s", exc)
+        return False
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Unexpected analytics init failure: %s", exc)
+        return False
+
     payload = {
         "user_id": user_id,
         "user_email": user_email,
@@ -46,6 +60,12 @@ def log_event(user_id: str, user_email: Optional[str], event_name: str, properti
         "properties": properties or {},  # Pass dict directly for JSON field type
         "ingested_at": datetime.now(timezone.utc).isoformat(),
     }
-    errors = client.insert_rows_json(table, [payload])
+    try:
+        errors = client.insert_rows_json(table, [payload])
+    except Exception as exc:
+        logger.warning("BigQuery insert raised: %s", exc)
+        return False
     if errors:
-        raise RuntimeError(f"BigQuery insert failed: {errors}")
+        logger.warning("BigQuery insert failed: %s", errors)
+        return False
+    return True

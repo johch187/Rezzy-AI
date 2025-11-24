@@ -26,13 +26,14 @@ async def ingest_event(event: AnalyticsEvent, user: CurrentUser):
     if event.plan:
         properties["plan"] = event.plan
 
-    try:
-        log_event(
-            user_id=user["id"],
-            user_email=user.get("email"),
-            event_name=event.eventName,
-            properties=properties,
-        )
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    return {"ok": True}
+    success = log_event(
+        user_id=user["id"],
+        user_email=user.get("email"),
+        event_name=event.eventName,
+        properties=properties,
+    )
+
+    # Do not block the user experience on analytics failures; return 202 with a hint.
+    if not success:
+        return {"ok": False, "logged": False, "message": "Analytics skipped or failed. Check BigQuery config/logs."}
+    return {"ok": True, "logged": True}
