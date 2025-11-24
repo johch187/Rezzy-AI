@@ -11,10 +11,14 @@ PAID_PLAN_TOKENS = 200
 
 
 def _headers():
+    """
+    Returns headers for Supabase admin API calls.
+    Uses new secret key format (sb_secret_...) for admin operations.
+    """
     settings = get_settings()
     return {
-        "apikey": settings.supabase_service_role_key,
-        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "apikey": settings.supabase_secret_key,  # Secret key (sb_secret_...)
+        "Authorization": f"Bearer {settings.supabase_secret_key}",  # Secret key for authorization
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates",
     }

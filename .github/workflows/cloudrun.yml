@@ -85,7 +85,7 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --set-env-vars SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
-            --set-env-vars SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --set-env-vars SUPABASE_SECRET_KEY="${{ secrets.SUPABASE_SECRET_KEY }}" \
             --set-env-vars SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
             --set-env-vars ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}' \
             --set-env-vars CSP_POLICY='${{ secrets.CSP_POLICY }}' \

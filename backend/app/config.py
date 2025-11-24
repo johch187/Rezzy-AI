@@ -6,11 +6,14 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Supabase
+    # Supabase - New API Keys Format Only
     supabase_url: HttpUrl = Field(..., description="Supabase project URL, e.g., https://xyzcompany.supabase.co")
-    supabase_service_role_key: str = Field(..., description="Supabase service role key (server-side only).")
+    supabase_secret_key: str = Field(
+        ..., 
+        description="Supabase secret key (sb_secret_...) for server-side admin operations. Required format: sb_secret_..."
+    )
     supabase_publishable_key: Optional[str] = Field(
-        None, description="Supabase publishable key (client-facing replacement for anon key)."
+        None, description="Supabase publishable key (sb_publishable_...) for client-side operations. Required format: sb_publishable_..."
     )
 
     # Google / LLM
@@ -49,11 +52,28 @@ class Settings(BaseSettings):
         case_sensitive = False
         extra = "ignore"
 
-    @field_validator("supabase_service_role_key")
+    @field_validator("supabase_secret_key")
     @classmethod
-    def _service_role_not_publishable(cls, key: str) -> str:
-        if "publishable" in key:
-            raise ValueError("Use the service role key on the backend; do not supply a publishable key here.")
+    def _validate_secret_key_format(cls, key: str) -> str:
+        if not key.startswith("sb_secret_"):
+            raise ValueError(
+                "Supabase secret key must start with 'sb_secret_'. "
+                "Legacy service_role keys are no longer supported. "
+                "Get your new secret key from Supabase Dashboard → Project Settings → API → Secret Keys."
+            )
+        if "publishable" in key.lower():
+            raise ValueError("Do not use a publishable key (sb_publishable_...) as the secret key. Use a secret key (sb_secret_...) for backend operations.")
+        return key
+    
+    @field_validator("supabase_publishable_key")
+    @classmethod
+    def _validate_publishable_key_format(cls, key: Optional[str]) -> Optional[str]:
+        if key and not key.startswith("sb_publishable_"):
+            raise ValueError(
+                "Supabase publishable key must start with 'sb_publishable_'. "
+                "Legacy anon keys are no longer supported. "
+                "Get your new publishable key from Supabase Dashboard → Project Settings → API → Publishable Keys."
+            )
         return key
 
 

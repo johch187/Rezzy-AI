@@ -9,4 +9,4 @@ if str(ROOT) not in sys.path:
 
 # Minimal env defaults for tests
 os.environ.setdefault("SUPABASE_URL", "http://test.supabase.local")
-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role")
+os.environ.setdefault("SUPABASE_SECRET_KEY", "sb_secret_test_key_for_testing")

@@ -15,6 +15,6 @@ create policy "workspace owner read/write"
   with check (auth.uid() = user_id);
 ```
 
-Service role actions (backend only) should use `SUPABASE_SERVICE_ROLE_KEY`; client uses publishable key.
+Backend admin operations use `SUPABASE_SECRET_KEY` (format: `sb_secret_...`); client uses `VITE_SUPABASE_PUBLISHABLE_KEY` (format: `sb_publishable_...`). Legacy keys (anon/service_role) are no longer supported.
 
 Auth redirect: set Supabase site URL to your Cloud Run base (or custom domain) and add `/#/builder` as redirect for magic links/OAuth. Update Cloud Run ALLOWED_ORIGINS accordingly.

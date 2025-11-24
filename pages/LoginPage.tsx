@@ -39,7 +39,7 @@ const LoginPage: React.FC = () => {
     setStatusMessage(null);
 
     if (!supabase) {
-      setErrorMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your .env.');
+      setErrorMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (format: sb_publishable_...) to your .env.');
       return;
     }
 
@@ -70,7 +70,7 @@ const LoginPage: React.FC = () => {
     setStatusMessage(null);
 
     if (!supabase) {
-      setErrorMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your .env.');
+      setErrorMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (format: sb_publishable_...) to your .env.');
       return;
     }
 
@@ -106,7 +106,7 @@ const LoginPage: React.FC = () => {
 
           {!isSupabaseEnabled && (
             <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-700">
-              Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env to enable authentication.
+              Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (format: sb_publishable_...) in your .env to enable authentication.
             </div>
           )}
 
