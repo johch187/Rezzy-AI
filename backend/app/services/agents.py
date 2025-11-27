@@ -77,24 +77,79 @@ class AgentService:
         
         self.api_key = settings.gemini_api_key
         self.project_id = settings.gcp_project_id
-        self.location = settings.gcp_region or "us-central1"
+        requested_region = settings.gcp_region or "us-central1"
         self.model_name = "gemini-1.5-pro"
         self.vertex_model: Optional[GenerativeModel] = None
 
         # Prefer Vertex AI with application default credentials (e.g., Cloud Run service account).
         self.is_production = _is_production()
         
+        # Vertex AI supported regions (as of 2024)
+        # Note: Cloud Run regions may differ from Vertex AI regions
+        # If Cloud Run is in europe-north2, use europe-north1 for Vertex AI
+        vertex_ai_regions = {
+            'us-central1', 'us-east1', 'us-east4', 'us-east5', 'us-west1', 'us-west2', 
+            'us-west3', 'us-west4', 'us-south1',
+            'europe-west1', 'europe-west2', 'europe-west3', 'europe-west4', 'europe-west6',
+            'europe-west8', 'europe-west9', 'europe-west12', 'europe-central2',
+            'europe-north1', 'europe-southwest1',
+            'asia-east1', 'asia-east2', 'asia-northeast1', 'asia-northeast2', 'asia-northeast3',
+            'asia-south1', 'asia-south2', 'asia-southeast1', 'asia-southeast2',
+            'australia-southeast1', 'australia-southeast2',
+            'northamerica-northeast1', 'northamerica-northeast2',
+            'southamerica-east1', 'southamerica-west1',
+            'me-central1', 'me-central2', 'me-west1',
+            'africa-south1', 'global'
+        }
+        
+        # Map Cloud Run regions to Vertex AI regions if needed
+        region_mapping = {
+            'europe-north2': 'europe-north1',  # Cloud Run supports europe-north2, but Vertex AI doesn't
+        }
+        
+        # Use mapped region if available, otherwise use requested region
+        self.location = region_mapping.get(requested_region, requested_region)
+        
+        # Validate region is supported by Vertex AI
+        if self.location not in vertex_ai_regions:
+            error_msg = (
+                f"Region '{self.location}' is not supported by Vertex AI. "
+                f"Supported regions: {', '.join(sorted(vertex_ai_regions))}. "
+            )
+            if requested_region != self.location:
+                error_msg += f"Note: Cloud Run region '{requested_region}' was mapped to '{self.location}'."
+            else:
+                error_msg += f"Please set GCP_REGION to a supported region (e.g., 'europe-north1' for Europe)."
+            
+            if self.is_production:
+                logger.error("CRITICAL: %s", error_msg)
+                raise RuntimeError(error_msg)
+            else:
+                logger.warning("%s", error_msg)
+        
         if vertexai is not None and self.project_id:
             try:
                 vertexai.init(project=self.project_id, location=self.location)
                 self.vertex_model = GenerativeModel(self.model_name)
-                logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
+                if requested_region != self.location:
+                    logger.info(
+                        "Vertex AI initialized: project=%s, Cloud Run region=%s mapped to Vertex AI region=%s",
+                        self.project_id, requested_region, self.location
+                    )
+                else:
+                    logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
             except Exception as exc:  # pragma: no cover - initialization happens at runtime
+                error_msg = str(exc)
+                # Check if it's a region-related error
+                if "Unsupported region" in error_msg or "region" in error_msg.lower():
+                    suggested_region = region_mapping.get(requested_region, "europe-north1" if "europe" in requested_region.lower() else "us-central1")
+                    error_msg += f" Try setting GCP_REGION={suggested_region} in your Cloud Run environment variables."
+                
                 if self.is_production:
-                    logger.error("CRITICAL: Vertex AI init failed in production. This should not happen. Error: %s", exc)
+                    logger.error("CRITICAL: Vertex AI init failed in production. Error: %s", error_msg)
                     raise RuntimeError(
                         f"Vertex AI initialization failed in production. "
-                        f"Check service account permissions and project configuration. Error: {exc}"
+                        f"Check service account permissions and project configuration. {error_msg}"
                     ) from exc
                 else:
                     logger.warning("Vertex AI init failed; falling back to API key client: %s", exc)
