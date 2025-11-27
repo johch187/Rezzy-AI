@@ -158,11 +158,14 @@ def create_app() -> FastAPI:
 
 
 # Create application instance
+_init_error: Optional[str] = None
+
 try:
     app = create_app()
     print("✓ Application created successfully", file=sys.stderr)
 except Exception as e:
-    print(f"CRITICAL: App creation failed: {e}", file=sys.stderr)
+    _init_error = str(e)
+    print(f"CRITICAL: App creation failed: {_init_error}", file=sys.stderr)
     # Minimal fallback for health checks
     app = FastAPI(title="Keju API (Error)", version="1.0.0")
 
@@ -179,5 +182,5 @@ except Exception as e:
         return JSONResponse({
             "status": "error",
             "message": "Application failed to initialize",
-            "error": str(e)
+            "error": _init_error
         }, status_code=500)
