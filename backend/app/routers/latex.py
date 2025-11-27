@@ -1,3 +1,5 @@
+"""LaTeX compilation endpoint for PDF generation."""
+
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Response
@@ -16,9 +18,7 @@ class CompileRequest(BaseModel):
 
 @router.post("/compile")
 async def compile_resume(req: CompileRequest, user: CurrentUser):
-    """
-    Compile markdown content into a PDF resume using Tectonic.
-    """
+    """Compile markdown content into PDF using Tectonic."""
     try:
         pdf_bytes = compile_markdown_to_pdf(req.content)
     except ValueError as ve:
@@ -29,5 +29,8 @@ async def compile_resume(req: CompileRequest, user: CurrentUser):
         raise HTTPException(status_code=500, detail="Failed to generate PDF.")
 
     filename = req.filename or "resume.pdf"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

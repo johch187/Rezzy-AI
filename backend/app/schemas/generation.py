@@ -1,3 +1,5 @@
+"""Document generation request/response models."""
+
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -20,8 +22,8 @@ class GenerationOptions(BaseModel):
 
 
 class GeneratedDocuments(BaseModel):
-    resume: Optional[str]
-    coverLetter: Optional[str]
+    resume: Optional[str] = None
+    coverLetter: Optional[str] = None
     analysis: Optional[Any] = None
 
 

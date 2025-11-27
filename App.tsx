@@ -24,6 +24,7 @@ import GeneratedDocumentsPage from './pages/GeneratedDocumentsPage';
 import ToastNotification from './components/ToastNotification';
 import ApplicationAnalysisPage from './pages/ApplicationAnalysisPage';
 import MentorMatcherPage from './pages/MentorMatcherPage';
+import OnboardingPage from './pages/OnboardingPage';
 import { ProfileProvider, ProfileContext } from './context/ProfileContext';
 import { supabase, isSupabaseEnabled } from './services/supabaseClient';
 import { sendAnalyticsEvent } from './services/analyticsService';
@@ -38,7 +39,6 @@ const AppContent: React.FC = () => {
     // Define pages that should display the Public Layout (Header + Footer, No Sidebar)
     const publicPaths = [
         '/', 
-        '/login', 
         '/how-it-works', 
         '/subscription', 
         '/privacy', 
@@ -47,7 +47,11 @@ const AppContent: React.FC = () => {
         '/cookies'
     ];
     
+    // Fullscreen pages (no header, no footer, no sidebar)
+    const fullscreenPaths = ['/login', '/onboarding'];
+    
     const isPublicPage = publicPaths.includes(location.pathname);
+    const isFullscreenPage = fullscreenPaths.includes(location.pathname);
 
     useEffect(() => {
         if (!isSupabaseEnabled || !supabase) {
@@ -80,6 +84,7 @@ const AppContent: React.FC = () => {
             <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/account" element={<ManageSubscriptionPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
@@ -94,21 +99,31 @@ const AppContent: React.FC = () => {
         </Routes>
     );
 
+    // Fullscreen pages (login, onboarding) - no layout wrappers
+    if (isFullscreenPage) {
+        return mainRoutes;
+    }
+
+    // Protected routes - check auth
     if (!isPublicPage) {
         if (authStatus === 'loading') {
-            return <div className="flex items-center justify-center min-h-screen bg-base-200">Checking login...</div>;
+            return (
+                <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                    <div className="text-gray-400 animate-pulse">Loading...</div>
+                </div>
+            );
         }
         if (authStatus === 'unauth') {
             return <Navigate to="/login" replace state={{ from: location.pathname }} />;
         }
     }
 
-    // App Layout (Sidebar)
+    // App Layout (Sidebar) - for authenticated routes
     if (!isPublicPage) {
         return (
-            <div className="flex flex-col md:flex-row bg-base-200 h-screen w-full">
+            <div className="flex flex-col md:flex-row bg-gray-50 h-screen w-full">
                 <Sidebar />
-                <div className="flex flex-col flex-1 overflow-y-auto">
+                <div className="flex flex-col flex-1 overflow-y-auto scrollbar-thin">
                     <main className="flex-grow flex flex-col w-full">
                         {mainRoutes}
                     </main>
@@ -117,11 +132,11 @@ const AppContent: React.FC = () => {
         );
     }
 
-    // Public Layout (Header + Footer)
+    // Public Layout (Header + Footer) - for marketing pages
     return (
-        <div className="flex flex-col bg-base-200 min-h-screen">
+        <div className="flex flex-col bg-white min-h-screen">
             <Header />
-            <main className="flex-grow flex flex-col min-h-[calc(100vh-65px)]">
+            <main className="flex-grow flex flex-col">
                 {mainRoutes}
             </main>
             <Footer />

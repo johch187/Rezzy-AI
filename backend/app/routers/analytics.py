@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+"""Analytics event ingestion endpoint."""
+
 from typing import Any, Dict, Optional
+
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app.deps.auth import CurrentUser
 from app.services.analytics import log_event
@@ -17,9 +20,7 @@ class AnalyticsEvent(BaseModel):
 
 @router.post("/events")
 async def ingest_event(event: AnalyticsEvent, user: CurrentUser):
-    """
-    Persist an analytics event to BigQuery. Keep payloads small to avoid quota issues.
-    """
+    """Persist analytics event to BigQuery."""
     properties = {**event.properties}
     if event.workspaceId:
         properties["workspaceId"] = event.workspaceId
@@ -33,7 +34,6 @@ async def ingest_event(event: AnalyticsEvent, user: CurrentUser):
         properties=properties,
     )
 
-    # Do not block the user experience on analytics failures; return 202 with a hint.
     if not success:
-        return {"ok": False, "logged": False, "message": "Analytics skipped or failed. Check BigQuery config/logs."}
+        return {"ok": False, "logged": False, "message": "Analytics skipped."}
     return {"ok": True, "logged": True}

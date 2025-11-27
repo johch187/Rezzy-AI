@@ -1,12 +1,19 @@
+# Core framework
 fastapi==0.115.0
 uvicorn[standard]==0.30.1
-httpx==0.27.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
-# For local dev on Python 3.9 keep ADK/GenAI optional; install compatible versions later if needed.
-# Tectonic is installed via OS package in Dockerfile for PDF generation.
-google-cloud-bigquery==3.25.0
+
+# HTTP client
+httpx==0.27.2
+
+# Google Cloud - Vertex AI & BigQuery
 google-cloud-aiplatform>=1.72.0
-google-genai==1.0.0
+google-cloud-bigquery>=3.25.0
+
+# Fallback: google-genai for local development
+google-genai>=1.0.0
+
+# Testing
 pytest==8.3.3
 pytest-asyncio==0.24.0

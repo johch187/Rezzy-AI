@@ -1,3 +1,5 @@
+"""Payment and subscription endpoints using Polar."""
+
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -5,7 +7,7 @@ from pydantic import BaseModel
 
 from app.deps.auth import CurrentUser
 from app.services.polar import PolarClient, handle_polar_webhook
-from app.services.supabase import fetch_subscription_status, upsert_subscription_status
+from app.services.supabase import fetch_subscription_status
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -18,6 +20,7 @@ class CheckoutRequest(BaseModel):
 
 @router.post("/checkout")
 async def create_checkout(req: CheckoutRequest, user: CurrentUser):
+    """Create Polar checkout session."""
     client = PolarClient()
     url = await client.create_checkout_session(
         user_id=user["id"],
@@ -33,11 +36,16 @@ async def create_checkout(req: CheckoutRequest, user: CurrentUser):
 
 @router.get("/status")
 async def get_subscription_status(user: CurrentUser):
+    """Get user's subscription status."""
     return await fetch_subscription_status(user["id"])
 
 
 @router.post("/webhook")
-async def polar_webhook(request: Request, polar_signature: str = Header(default=None, alias="Polar-Signature")):
+async def polar_webhook(
+    request: Request,
+    polar_signature: Optional[str] = Header(default=None, alias="Polar-Signature"),
+):
+    """Handle Polar webhook events."""
     raw = await request.body()
     try:
         await handle_polar_webhook(raw, polar_signature)

@@ -1,8 +1,9 @@
+"""Polar payment integration service."""
+
 import hmac
 import json
-import os
 from hashlib import sha256
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import httpx
 
@@ -11,10 +12,12 @@ from app.services.supabase import upsert_subscription_status
 
 
 class PolarClient:
+    """Client for Polar payment API."""
+
     def __init__(self) -> None:
         self.settings = get_settings()
         if not self.settings.polar_api_key:
-            raise RuntimeError("Polar API key is not configured.")
+            raise RuntimeError("Polar API key not configured.")
         self.base_url = "https://api.polar.sh/v1"
         self.headers = {
             "Authorization": f"Bearer {self.settings.polar_api_key}",
@@ -29,9 +32,10 @@ class PolarClient:
         cancel_url: str,
         price_id: Optional[str] = None,
     ) -> str:
+        """Create a Polar checkout session."""
         pid = price_id or self.settings.polar_product_price_id
         if not pid:
-            raise RuntimeError("Polar price ID is not configured.")
+            raise RuntimeError("Polar price ID not configured.")
 
         payload = {
             "customer_email": email,
@@ -40,29 +44,47 @@ class PolarClient:
             "cancel_url": cancel_url,
             "metadata": {"user_id": user_id},
         }
-        async with httpx.AsyncClient(base_url=self.base_url, headers=self.headers, timeout=15) as client:
+
+        async with httpx.AsyncClient(
+            base_url=self.base_url,
+            headers=self.headers,
+            timeout=15,
+        ) as client:
             resp = await client.post("/checkouts/", json=payload)
+
         if resp.status_code >= 300:
-            raise RuntimeError(f"Polar checkout creation failed: {resp.text}")
+            raise RuntimeError(f"Polar checkout failed: {resp.text}")
+
         data = resp.json()
-        return data.get("checkout_url") or data.get("url") or data.get("client_url") or ""
+        return data.get("checkout_url") or data.get("url") or ""
 
 
-def verify_webhook_signature(secret: str, raw_body: bytes, signature_header: str) -> bool:
-    """Basic HMAC SHA256 verification."""
+def verify_webhook_signature(
+    secret: str,
+    raw_body: bytes,
+    signature_header: str,
+) -> bool:
+    """Verify Polar webhook HMAC signature."""
     try:
         expected = hmac.new(secret.encode(), raw_body, sha256).hexdigest()
-        provided = signature_header.strip()
-        return hmac.compare_digest(expected, provided)
+        return hmac.compare_digest(expected, signature_header.strip())
     except Exception:
         return False
 
 
-async def handle_polar_webhook(raw_body: bytes, signature_header: Optional[str]) -> None:
+async def handle_polar_webhook(
+    raw_body: bytes,
+    signature_header: Optional[str],
+) -> None:
+    """Process Polar webhook event."""
     settings = get_settings()
+
     if not settings.polar_webhook_secret:
         raise RuntimeError("Polar webhook secret not configured.")
-    if not signature_header or not verify_webhook_signature(settings.polar_webhook_secret, raw_body, signature_header):
+
+    if not signature_header or not verify_webhook_signature(
+        settings.polar_webhook_secret, raw_body, signature_header
+    ):
         raise RuntimeError("Invalid webhook signature.")
 
     try:
@@ -80,18 +102,13 @@ async def handle_polar_webhook(raw_body: bytes, signature_header: Optional[str])
         return
 
     if event_type in {"subscription.active", "subscription.updated"}:
-        status = attributes.get("status") or "active"
-        plan = attributes.get("product_price_id") or settings.polar_product_price_id
-        current_period_end = attributes.get("current_period_end")
-        customer_id = attributes.get("customer_id")
-        subscription_id = data.get("id")
         await upsert_subscription_status(
             user_id=user_id,
-            status=status,
-            plan=plan,
-            current_period_end=current_period_end,
-            polar_customer_id=customer_id,
-            polar_subscription_id=subscription_id,
+            status=attributes.get("status") or "active",
+            plan=attributes.get("product_price_id") or settings.polar_product_price_id,
+            current_period_end=attributes.get("current_period_end"),
+            polar_customer_id=attributes.get("customer_id"),
+            polar_subscription_id=data.get("id"),
         )
     elif event_type in {"subscription.inactive", "subscription.canceled"}:
         await upsert_subscription_status(

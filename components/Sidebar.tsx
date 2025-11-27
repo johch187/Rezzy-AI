@@ -25,19 +25,19 @@ export const Logo = () => {
   return (
     <Link
       to="/career-coach"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+      className="flex items-center gap-2.5 py-1"
     >
-      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto flex-shrink-0">
-        <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0F172A" strokeWidth="3" strokeLinejoin="round"/>
-        <path d="M32.66 19C37 16 43 19 43 26" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M32.66 29C37 32 43 29 43 22" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M15.34 29C11 32 5 29 5 22" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M15.34 19C11 16 5 19 5 26" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
+      <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+        <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0d0d0d" strokeWidth="2.5" strokeLinejoin="round"/>
+        <path d="M32.66 19C37 16 43 19 43 26" stroke="#10a37f" strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M32.66 29C37 32 43 29 43 22" stroke="#0d0d0d" strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M15.34 29C11 32 5 29 5 22" stroke="#10a37f" strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M15.34 19C11 16 5 19 5 26" stroke="#0d0d0d" strokeWidth="2.5" strokeLinecap="round"/>
       </svg>
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: open ? 1 : 0 }}
-        className="font-bold text-xl text-slate-900 whitespace-pre"
+        className="font-semibold text-gray-900 whitespace-pre"
       >
         Keju
       </motion.span>
@@ -45,105 +45,108 @@ export const Logo = () => {
   );
 };
 
-export const LogoIcon = () => {
-  return (
-    <Link
-      to="/career-coach"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-        <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto flex-shrink-0">
-            <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0F172A" strokeWidth="3" strokeLinejoin="round"/>
-            <path d="M32.66 19C37 16 43 19 43 26" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
-            <path d="M32.66 29C37 32 43 29 43 22" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
-            <path d="M15.34 29C11 32 5 29 5 22" stroke="#2563EB" strokeWidth="3" strokeLinecap="round"/>
-            <path d="M15.34 19C11 16 5 19 5 26" stroke="#0F172A" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-    </Link>
-  );
-};
+export const LogoIcon = () => (
+  <Link to="/career-coach" className="flex items-center py-1">
+    <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+      <path d="M24 14L32.66 19V29L24 34L15.34 29V19L24 14Z" stroke="#0d0d0d" strokeWidth="2.5" strokeLinejoin="round"/>
+      <path d="M32.66 19C37 16 43 19 43 26" stroke="#10a37f" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M32.66 29C37 32 43 29 43 22" stroke="#0d0d0d" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M15.34 29C11 32 5 29 5 22" stroke="#10a37f" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M15.34 19C11 16 5 19 5 26" stroke="#0d0d0d" strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>
+  </Link>
+);
 
 const Sidebar: React.FC = () => {
-    const { careerChatHistory, backgroundTasks, markTaskAsViewed } = useContext(ProfileContext)!;
-    const [open, setOpen] = useState(true); // Default to true
+  const { careerChatHistory, backgroundTasks, markTaskAsViewed } = useContext(ProfileContext)!;
+  const [open, setOpen] = useState(true);
 
-    const hasUnreadNotificationsFor = (type: BackgroundTask['type']) => {
-        return backgroundTasks.some(task => task.type === type && (task.status === 'completed' || task.status === 'error') && !task.viewed);
-    };
+  const hasUnreadNotificationsFor = (type: BackgroundTask['type']) => {
+    return backgroundTasks.some(task => task.type === type && (task.status === 'completed' || task.status === 'error') && !task.viewed);
+  };
 
-    const markTasksAsViewedFor = (type: BackgroundTask['type']) => {
-        backgroundTasks.forEach(task => {
-            if (task.type === type && !task.viewed) {
-                markTaskAsViewed(task.id);
-            }
-        });
-    };
+  const markTasksAsViewedFor = (type: BackgroundTask['type']) => {
+    backgroundTasks.forEach(task => {
+      if (task.type === type && !task.viewed) {
+        markTaskAsViewed(task.id);
+      }
+    });
+  };
 
-    const links = [
-        { label: "Career Coach", to: "/career-coach", icon: <CareerCoachIcon /> },
-        { label: "Create Documents", to: "/generate", icon: <CreateDocIcon /> },
-        { label: "Documents", to: "/generated-documents", icon: <DocumentDuplicateIcon />, notification: hasUnreadNotificationsFor('document-generation'), onClick: () => markTasksAsViewedFor('document-generation') },
-        { label: "Career Path", to: "/career-path", icon: <CareerPathIcon />, notification: hasUnreadNotificationsFor('career-path'), onClick: () => markTasksAsViewedFor('career-path') },
-        { label: "Interview Prep", to: "/interview-prep", icon: <InterviewPrepIcon />, notification: hasUnreadNotificationsFor('interview-prep'), onClick: () => markTasksAsViewedFor('interview-prep') },
-        { label: "Coffee Chats", to: "/coffee-chats", icon: <CoffeeChatIcon />, notification: hasUnreadNotificationsFor('coffee-chat'), onClick: () => markTasksAsViewedFor('coffee-chat') },
-    ];
-    
-    return (
-        <SidebarContainer open={open} setOpen={setOpen} animate={true}>
-            <SidebarBody>
-                <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-                    <div className="px-2 flex items-center justify-between">
-                        {open ? <Logo /> : <LogoIcon />}
-                        {open && (
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpen(false);
-                                }}
-                                className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors"
-                                aria-label="Collapse sidebar"
-                            >
-                                <SidebarToggleIcon collapsed={false} className="w-5 h-5" />
-                            </button>
-                        )}
-                    </div>
-                    <div className="mt-8 flex flex-col gap-2">
-                        {links.map((link, idx) => (
-                            <div key={idx} className="relative" onClick={link.onClick}>
-                                <SidebarLink link={link} />
-                                {link.notification && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>}
-                            </div>
-                        ))}
-                    </div>
-                    <div className={`mt-8 pt-4 transition-all duration-300 ${!open ? 'opacity-0 h-0 invisible' : 'opacity-100 visible'}`}>
-                        <h3 className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Career Chat History</h3>
-                        {careerChatHistory.length > 0 ? (
-                            <ul className="mt-2 space-y-1">
-                                {careerChatHistory.slice(0, 5).map(chatSummary => {
-                                    const date = new Date(chatSummary.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                                    return (
-                                        <li key={chatSummary.id}>
-                                            <Link 
-                                                to="/career-coach" 
-                                                className="group flex items-center justify-between text-sm px-2 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
-                                            >
-                                                <span className="truncate">{chatSummary.title}</span>
-                                                <span className="text-xs text-slate-500 flex-shrink-0 ml-2">{date}</span>
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        ) : (
-                            <p className="mt-2 px-2 text-sm text-slate-500">No chat history yet.</p>
-                        )}
-                    </div>
-                </div>
-                <div>
-                    <ProfileMenu isCollapsed={!open} />
-                </div>
-            </SidebarBody>
-        </SidebarContainer>
-    );
+  const links = [
+    { label: "Career Coach", to: "/career-coach", icon: <CareerCoachIcon /> },
+    { label: "Create Documents", to: "/generate", icon: <CreateDocIcon /> },
+    { label: "Documents", to: "/generated-documents", icon: <DocumentDuplicateIcon />, notification: hasUnreadNotificationsFor('document-generation'), onClick: () => markTasksAsViewedFor('document-generation') },
+    { label: "Career Path", to: "/career-path", icon: <CareerPathIcon />, notification: hasUnreadNotificationsFor('career-path'), onClick: () => markTasksAsViewedFor('career-path') },
+    { label: "Interview Prep", to: "/interview-prep", icon: <InterviewPrepIcon />, notification: hasUnreadNotificationsFor('interview-prep'), onClick: () => markTasksAsViewedFor('interview-prep') },
+    { label: "Coffee Chats", to: "/coffee-chats", icon: <CoffeeChatIcon />, notification: hasUnreadNotificationsFor('coffee-chat'), onClick: () => markTasksAsViewedFor('coffee-chat') },
+  ];
+
+  return (
+    <SidebarContainer open={open} setOpen={setOpen} animate={true}>
+      <SidebarBody>
+        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+          {/* Logo & Toggle */}
+          <div className="px-2 flex items-center justify-between">
+            {open ? <Logo /> : <LogoIcon />}
+            {open && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                aria-label="Collapse sidebar"
+              >
+                <SidebarToggleIcon collapsed={false} className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className="mt-6 flex flex-col gap-1">
+            {links.map((link, idx) => (
+              <div key={idx} className="relative" onClick={link.onClick}>
+                <SidebarLink link={link} />
+                {link.notification && (
+                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary ring-2 ring-white" />
+                )}
+              </div>
+            ))}
+          </nav>
+
+          {/* Chat History */}
+          <div className={`mt-8 pt-6 border-t border-gray-100 transition-all duration-200 ${!open ? 'opacity-0 h-0 invisible' : 'opacity-100 visible'}`}>
+            <h3 className="px-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
+              Recent Chats
+            </h3>
+            {careerChatHistory.length > 0 ? (
+              <ul className="mt-3 space-y-0.5">
+                {careerChatHistory.slice(0, 5).map(chatSummary => {
+                  const date = new Date(chatSummary.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  return (
+                    <li key={chatSummary.id}>
+                      <Link 
+                        to="/career-coach" 
+                        className="flex items-center justify-between px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        <span className="truncate">{chatSummary.title}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{date}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-3 px-2 text-sm text-gray-400">No chats yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Profile Menu */}
+        <div className="mt-auto pt-4 border-t border-gray-100">
+          <ProfileMenu isCollapsed={!open} />
+        </div>
+      </SidebarBody>
+    </SidebarContainer>
+  );
 };
 
 export default Sidebar;

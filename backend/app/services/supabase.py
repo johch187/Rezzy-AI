@@ -1,43 +1,49 @@
+"""Supabase service for workspace and subscription management."""
+
 from typing import Any, Dict, Optional
 
 import httpx
 
 from app.config import get_settings
 
-
-EMPTY_WORKSPACE = {"profile": None, "documentHistory": [], "careerChatHistory": [], "tokens": 65}
+# Default values
+EMPTY_WORKSPACE = {
+    "profile": None,
+    "documentHistory": [],
+    "careerChatHistory": [],
+    "tokens": 65,
+}
 FREE_PLAN_TOKENS = 10
 PAID_PLAN_TOKENS = 200
 
 
-def _headers():
-    """
-    Returns headers for Supabase admin API calls.
-
-    Supabase’s new API keys are *not* JWTs. They must be sent via the
-    `apikey` header, and **not** as `Authorization: Bearer ...`.
-    For backwards compatibility (and to satisfy the platform’s
-    "Authorization must match apikey" allowance), we mirror the key
-    directly into `Authorization` without the Bearer prefix.
-    """
+def _headers() -> Dict[str, str]:
+    """Get headers for Supabase admin API calls."""
     settings = get_settings()
     return {
-        "apikey": settings.supabase_secret_key,  # Secret key (sb_secret_...)
-        "Authorization": settings.supabase_secret_key,  # Must exactly match apikey per new key rules
+        "apikey": settings.supabase_secret_key,
+        "Authorization": settings.supabase_secret_key,
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates",
     }
 
 
 async def fetch_workspace(user_id: str) -> Dict[str, Any]:
-    """
-    Fetch workspace data (profile, histories, tokens) from the 'workspaces' table.
-    """
+    """Fetch user's workspace data."""
     settings = get_settings()
-    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
+
+    async with httpx.AsyncClient(
+        base_url=str(settings.supabase_url),
+        headers=_headers(),
+        timeout=10,
+    ) as client:
         resp = await client.get(
             "/rest/v1/workspaces",
-            params={"user_id": f"eq.{user_id}", "select": "profile,document_history,career_chat_history,tokens", "limit": 1},
+            params={
+                "user_id": f"eq.{user_id}",
+                "select": "profile,document_history,career_chat_history,tokens",
+                "limit": 1,
+            },
         )
 
     if resp.status_code == 200:
@@ -50,10 +56,8 @@ async def fetch_workspace(user_id: str) -> Dict[str, Any]:
                 "careerChatHistory": row.get("career_chat_history") or [],
                 "tokens": row.get("tokens", 65),
             }
-        return EMPTY_WORKSPACE
 
-    # Non-200: return empty workspace but log upstream if desired
-    return EMPTY_WORKSPACE
+    return EMPTY_WORKSPACE.copy()
 
 
 async def persist_workspace(
@@ -63,9 +67,7 @@ async def persist_workspace(
     career_chat_history: Optional[list],
     tokens: Optional[int],
 ) -> None:
-    """
-    Upsert workspace data into the 'workspaces' table (PK: user_id).
-    """
+    """Upsert user's workspace data."""
     settings = get_settings()
     payload = {
         "user_id": user_id,
@@ -76,8 +78,16 @@ async def persist_workspace(
         "updated_at": "now()",
     }
 
-    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
-        resp = await client.post("/rest/v1/workspaces", params={"on_conflict": "user_id"}, json=payload)
+    async with httpx.AsyncClient(
+        base_url=str(settings.supabase_url),
+        headers=_headers(),
+        timeout=10,
+    ) as client:
+        resp = await client.post(
+            "/rest/v1/workspaces",
+            params={"on_conflict": "user_id"},
+            json=payload,
+        )
     resp.raise_for_status()
 
 
@@ -89,6 +99,7 @@ async def upsert_subscription_status(
     polar_customer_id: Optional[str],
     polar_subscription_id: Optional[str],
 ) -> None:
+    """Upsert user's subscription status."""
     settings = get_settings()
     payload = {
         "user_id": user_id,
@@ -99,32 +110,60 @@ async def upsert_subscription_status(
         "polar_subscription_id": polar_subscription_id,
         "updated_at": "now()",
     }
-    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
-        resp = await client.post("/rest/v1/subscriptions", params={"on_conflict": "user_id"}, json=payload)
+
+    async with httpx.AsyncClient(
+        base_url=str(settings.supabase_url),
+        headers=_headers(),
+        timeout=10,
+    ) as client:
+        resp = await client.post(
+            "/rest/v1/subscriptions",
+            params={"on_conflict": "user_id"},
+            json=payload,
+        )
     resp.raise_for_status()
 
 
 async def fetch_subscription_status(user_id: str) -> Dict[str, Any]:
+    """Fetch user's subscription status."""
     settings = get_settings()
-    async with httpx.AsyncClient(base_url=str(settings.supabase_url), headers=_headers(), timeout=10) as client:
+
+    async with httpx.AsyncClient(
+        base_url=str(settings.supabase_url),
+        headers=_headers(),
+        timeout=10,
+    ) as client:
         resp = await client.get(
             "/rest/v1/subscriptions",
-            params={"user_id": f"eq.{user_id}", "select": "status,plan,current_period_end", "limit": 1},
+            params={
+                "user_id": f"eq.{user_id}",
+                "select": "status,plan,current_period_end",
+                "limit": 1,
+            },
         )
+
     if resp.status_code != 200:
         return {"status": "free", "plan": "free", "tokens": FREE_PLAN_TOKENS}
+
     data = resp.json()
     if isinstance(data, list) and data:
         row = data[0]
         status = row.get("status") or "free"
         plan = row.get("plan") or "free"
         tokens = PAID_PLAN_TOKENS if status == "active" else FREE_PLAN_TOKENS
-        return {"status": status, "plan": plan, "tokens": tokens, "current_period_end": row.get("current_period_end")}
+        return {
+            "status": status,
+            "plan": plan,
+            "tokens": tokens,
+            "current_period_end": row.get("current_period_end"),
+        }
+
     return {"status": "free", "plan": "free", "tokens": FREE_PLAN_TOKENS}
 
 
 async def ensure_active_subscription(user_id: str) -> Dict[str, Any]:
+    """Verify user has active subscription."""
     sub = await fetch_subscription_status(user_id)
     if sub.get("status") != "active":
-        raise PermissionError("Subscription inactive or missing.")
+        raise PermissionError("Subscription inactive.")
     return sub

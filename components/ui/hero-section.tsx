@@ -4,7 +4,6 @@ import { Button } from "./button";
 import { Badge } from "./badge";
 import { ArrowRightIcon } from "lucide-react";
 import { cn } from "../../utils";
-import { Glow } from "./glow";
 
 interface HeroAction {
   text: string;
@@ -35,71 +34,71 @@ export function HeroSection({
   return (
     <section
       className={cn(
-        "bg-background text-foreground",
-        "py-12 sm:py-24 md:py-32 px-4",
-        "fade-bottom overflow-hidden pb-0"
+        "bg-white text-gray-900",
+        "py-16 sm:py-24 md:py-32 px-4",
+        "fade-bottom overflow-hidden"
       )}
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-12 pt-16 sm:gap-24">
-        <div className="flex flex-col items-center gap-6 text-center sm:gap-12">
-          {/* Badge */}
-          {badge && (
-            <Badge variant="outline" className="animate-appear gap-2 pr-1">
-              <span className="text-muted-foreground">{badge.text}</span>
-              {badge.action.href.startsWith("/") ? (
-                <Link to={badge.action.href} className="flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 transition-colors shadow-sm">
-                  {badge.action.text}
-                  <ArrowRightIcon className="h-3 w-3" />
-                </Link>
-              ) : (
-                <a href={badge.action.href} className="flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 transition-colors shadow-sm">
-                  {badge.action.text}
-                  <ArrowRightIcon className="h-3 w-3" />
-                </a>
-              )}
-            </Badge>
-          )}
+      <div className="max-w-4xl mx-auto flex flex-col items-center gap-8 text-center">
+        {/* Badge */}
+        {badge && (
+          <Badge variant="outline" className="gap-2 py-1.5 px-3 animate-fade-in">
+            <span className="text-gray-500 text-sm">{badge.text}</span>
+            {badge.action.href.startsWith("/") ? (
+              <Link 
+                to={badge.action.href} 
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-900 text-xs font-medium text-white hover:bg-gray-800 transition-colors"
+              >
+                {badge.action.text}
+                <ArrowRightIcon className="h-3 w-3" />
+              </Link>
+            ) : (
+              <a 
+                href={badge.action.href} 
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-900 text-xs font-medium text-white hover:bg-gray-800 transition-colors"
+              >
+                {badge.action.text}
+                <ArrowRightIcon className="h-3 w-3" />
+              </a>
+            )}
+          </Badge>
+        )}
 
-          {/* Title with Glow */}
-          <div className="relative">
-            <Glow variant="center" />
-            <h1 className="relative z-10 inline-block animate-appear bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-4xl font-semibold leading-tight text-transparent drop-shadow-2xl sm:text-6xl sm:leading-tight md:text-8xl md:leading-tight">
-              {title}
-            </h1>
-          </div>
+        {/* Title */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 text-balance animate-fade-up">
+          {title}
+        </h1>
 
+        {/* Description */}
+        <p className="text-lg sm:text-xl text-gray-500 max-w-2xl text-balance animate-fade-up" style={{ animationDelay: '100ms' }}>
+          {description}
+        </p>
 
-          {/* Description */}
-          <p className="text-md relative z-10 max-w-[550px] animate-appear font-medium text-muted-foreground opacity-0 delay-100 sm:text-xl">
-            {description}
-          </p>
-
-          {/* Actions */}
-          <div className="relative z-10 flex animate-appear justify-center gap-4 opacity-0 delay-300">
-            {actions.map((action, index) => {
-              const isInternalLink = action.href.startsWith("/");
-              
-              if (isInternalLink) {
-                return (
-                  <Button key={index} variant={action.variant} size="lg" asChild>
-                    <Link to={action.href} className="flex items-center gap-2">
-                      {action.icon}
-                      {action.text}
-                    </Link>
-                  </Button>
-                );
-              }
-
+        {/* Actions */}
+        <div className="flex flex-wrap justify-center gap-3 animate-fade-up" style={{ animationDelay: '200ms' }}>
+          {actions.map((action, index) => {
+            const isInternalLink = action.href.startsWith("/");
+            
+            if (isInternalLink) {
               return (
                 <Button key={index} variant={action.variant} size="lg" asChild>
-                  <a href={action.href} className="flex items-center gap-2">
+                  <Link to={action.href} className="flex items-center gap-2">
                     {action.icon}
                     {action.text}
-                  </a>
+                  </Link>
                 </Button>
               );
-            })}
-          </div>
+            }
+
+            return (
+              <Button key={index} variant={action.variant} size="lg" asChild>
+                <a href={action.href} className="flex items-center gap-2">
+                  {action.icon}
+                  {action.text}
+                </a>
+              </Button>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -1,3 +1,5 @@
+"""Profile data models."""
+
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -73,4 +75,4 @@ class ProfileData(BaseModel):
     companyName: str
     companyKeywords: str
     keySkillsToHighlight: str
-    careerPath: Optional[dict]
+    careerPath: Optional[dict] = None
