@@ -1,90 +1,88 @@
 import React from 'react';
-import { SubscriptionCheckIcon } from './Icons';
 import Tooltip from './Tooltip';
+
+type FeatureItem = string | { text: string; included: boolean };
 
 interface PlanCardProps {
     name: string;
     price: string;
     billingInfo?: string;
     description: string;
-    features: string[];
+    features: FeatureItem[];
     isCurrent?: boolean;
     isPopular?: boolean;
     cta?: React.ReactNode;
 }
 
+const CheckIcon: React.FC<{ className?: string }> = ({ className = "" }) => (
+    <svg className={`h-5 w-5 text-primary flex-shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+);
+
+const XIcon: React.FC<{ className?: string }> = ({ className = "" }) => (
+    <svg className={`h-5 w-5 text-gray-300 flex-shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
+
 const PlanCard: React.FC<PlanCardProps> = ({ name, price, billingInfo, description, features, isCurrent, isPopular, cta }) => {
     
     const cardClasses = isPopular 
-      ? "border-2 border-brand-blue ring-4 ring-blue-100 bg-white" 
-      : "border border-slate-200 bg-white";
-    
-    const buttonClasses = isCurrent
-      ? "w-full text-center px-4 py-3 border border-slate-300 text-sm font-bold rounded-lg text-slate-500 bg-slate-100 cursor-default"
-      : isPopular
-      ? "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-brand-blue hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg hover:shadow-brand-blue/50"
-      : "w-full text-center px-4 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-slate-900 hover:bg-slate-800 transition-transform transform hover:scale-105";
+      ? "border-2 border-primary ring-4 ring-primary/10 bg-white" 
+      : "border border-gray-200 bg-white";
 
     return (
-      <div className={`rounded-2xl p-8 flex flex-col relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${cardClasses}`}>
-        {isPopular && <span className="absolute top-0 -translate-y-1/2 bg-brand-blue text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">Most Popular</span>}
+      <div className={`rounded-2xl p-6 flex flex-col relative transition-all duration-300 hover:shadow-lg ${cardClasses}`}>
+        {isPopular && (
+          <span className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
+            Recommended
+          </span>
+        )}
         
-        <h3 className="text-2xl font-bold text-slate-900">{name}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
         
-        <div className="mt-4 text-slate-500 flex items-baseline gap-x-2">
-          <span className="text-5xl font-extrabold tracking-tight text-slate-900">{price}</span>
-          {price !== 'Free' && <span>/ month</span>}
+        <div className="mt-3 flex items-baseline gap-1">
+          <span className="text-4xl font-bold tracking-tight text-gray-900">{price}</span>
+          {price !== '€0' && <span className="text-sm text-gray-500">{billingInfo || '/month'}</span>}
         </div>
-        {billingInfo && <p className="text-sm text-slate-500 mt-1">{billingInfo}</p>}
 
-        <p className="mt-6 text-slate-700 min-h-12">{description}</p>
+        <p className="mt-4 text-sm text-gray-600">{description}</p>
         
-        <ul className="mt-8 space-y-4 text-slate-700">
+        <ul className="mt-6 space-y-3 flex-grow">
           {features.map((feature, index) => {
-            const creditRolloverMatch = feature.match(/^(Credit rollovers)\s*\((.*)\)/);
+            const isObject = typeof feature === 'object';
+            const text = isObject ? feature.text : feature;
+            const included = isObject ? feature.included : true;
             
-            if (creditRolloverMatch) {
-              const mainText = creditRolloverMatch[1];
-              const tooltipText = creditRolloverMatch[2];
-              return (
-                <li key={index} className="flex items-start">
-                  <SubscriptionCheckIcon />
-                  <span className="ml-3">
-                    <Tooltip text={tooltipText}>{mainText}</Tooltip>
-                  </span>
-                </li>
-              );
-            }
-
-            const isStartingTokens = feature.toLowerCase().includes('starting tokens');
-            if (feature.toLowerCase().includes('token') && !isStartingTokens) {
-                return (
-                    <li key={index} className="flex items-start">
-                        <SubscriptionCheckIcon />
-                        <span className="ml-3">
-                            <Tooltip text="Each resume or cover letter generation costs 1 token.">
-                                {feature}
-                            </Tooltip>
-                        </span>
-                    </li>
-                );
-            }
+            // Check for tooltip patterns
+            const tooltipMatch = text.match(/^(.+?)\s*\((.+)\)$/);
             
             return (
-              <li key={index} className="flex items-start">
-                <SubscriptionCheckIcon />
-                <span className="ml-3">{feature}</span>
+              <li key={index} className={`flex items-start gap-3 text-sm ${included ? 'text-gray-700' : 'text-gray-400'}`}>
+                {included ? <CheckIcon /> : <XIcon />}
+                <span className={!included ? 'line-through' : ''}>
+                  {tooltipMatch ? (
+                    <Tooltip text={tooltipMatch[2]}>{tooltipMatch[1]}</Tooltip>
+                  ) : (
+                    text
+                  )}
+                </span>
               </li>
             );
           })}
         </ul>
 
-        <div className="mt-auto pt-8">
+        <div className="mt-6 pt-4 border-t border-gray-100">
           {cta ? (
             cta
+          ) : isCurrent ? (
+            <div className="w-full text-center px-4 py-2.5 text-sm font-medium rounded-lg text-gray-500 bg-gray-100">
+              Current Plan
+            </div>
           ) : (
-            <button disabled={isCurrent} className={buttonClasses}>
-              {isCurrent ? "Your Current Plan" : "Get Started"}
+            <button className="w-full px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-gray-900 hover:bg-gray-800 transition-colors">
+              Get Started
             </button>
           )}
         </div>

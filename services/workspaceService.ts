@@ -6,6 +6,18 @@ export type WorkspacePayload = {
   documentHistory: any[];
   careerChatHistory: any[];
   tokens: number;
+  tokensReplenishedAt?: string;
+  rolledOverTokens?: number;
+};
+
+export type TokenStatus = {
+  tokens: number;
+  tokensReplenishedAt: string | null;
+  rolledOverTokens: number;
+  subscriptionStatus: string;
+  plan: string;
+  baseTokens: number;
+  maxRollover: number;
 };
 
 export const fetchWorkspace = async (): Promise<WorkspacePayload> => {
@@ -45,6 +57,25 @@ export const fetchSubscriptionStatus = async () => {
     return h;
   })();
   const url = `${baseUrl}/api/payments/status`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
+};
+
+export const fetchTokenStatus = async (): Promise<TokenStatus> => {
+  const baseUrl = requireApiBaseUrl();
+  const headers = await (async () => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) h.Authorization = `Bearer ${token}`;
+    }
+    return h;
+  })();
+  const url = `${baseUrl}/api/payments/tokens`;
   const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(await res.text());

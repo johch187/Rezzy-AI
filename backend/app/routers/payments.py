@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.deps.auth import CurrentUser
 from app.services.polar import PolarClient, handle_polar_webhook
-from app.services.supabase import fetch_subscription_status
+from app.services.supabase import fetch_subscription_status, get_token_status, deduct_tokens
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -38,6 +38,12 @@ async def create_checkout(req: CheckoutRequest, user: CurrentUser):
 async def get_subscription_status(user: CurrentUser):
     """Get user's subscription status."""
     return await fetch_subscription_status(user["id"])
+
+
+@router.get("/tokens")
+async def get_tokens(user: CurrentUser):
+    """Get detailed token status including replenishment info."""
+    return await get_token_status(user["id"])
 
 
 @router.post("/webhook")
