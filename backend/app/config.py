@@ -19,10 +19,13 @@ class Settings(BaseSettings):
 
     # Google / LLM
     gemini_api_key: Optional[str] = Field(None, description="Server-side Gemini/ADK API key.")
-    gcp_region: Optional[str] = Field(None, description="GCP region for Vertex AI (e.g., us-central1).")
+    gcp_region: Optional[str] = Field(
+        None, 
+        description="GCP region for Vertex AI. Default: europe-north1. See https://docs.cloud.google.com/vertex-ai/docs/general/locations for supported regions."
+    )
     gemini_model_name: Optional[str] = Field(
-        "gemini-3-pro-preview", 
-        description="Gemini model name for Vertex AI. Default: gemini-3-pro-preview. Fallback: gemini-2.5-pro. Note: Gemini 1.5 models are sunsetted."
+        None,  # Will use DEFAULT_GEMINI_MODEL from agents.py if not set
+        description="Gemini model name for Vertex AI. Default: gemini-3-pro-preview. Fallback models configured in agents.py. Note: Gemini 1.5 models are sunsetted."
     )
 
     # CORS

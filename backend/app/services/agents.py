@@ -30,6 +30,55 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# CONFIGURATION CONSTANTS - Update these to change models/regions easily
+# ============================================================================
+
+# Default Gemini model (primary model to use)
+DEFAULT_GEMINI_MODEL = "gemini-3-pro-preview"
+
+# Fallback Gemini models (tried in order if primary model fails)
+FALLBACK_GEMINI_MODELS = ["gemini-2.5-pro"]
+
+# Default GCP region for Vertex AI
+# Note: europe-north1 is supported according to Vertex AI documentation
+# https://docs.cloud.google.com/vertex-ai/docs/general/locations#europe
+DEFAULT_GCP_REGION = "europe-north1"  # Changed from us-central1 to match your deployment
+
+# Region mapping: Map Cloud Run regions to Vertex AI regions
+# Some Cloud Run regions don't have Vertex AI support, so we map them
+CLOUD_RUN_TO_VERTEX_AI_REGION_MAP = {
+    'europe-north2': 'europe-north1',  # Cloud Run supports europe-north2, but Vertex AI doesn't
+}
+
+# Vertex AI supported regions (from official documentation)
+# https://docs.cloud.google.com/vertex-ai/docs/general/locations#europe
+VERTEX_AI_SUPPORTED_REGIONS = {
+    # United States
+    'us-central1', 'us-east1', 'us-east4', 'us-east5', 'us-west1', 'us-west2', 
+    'us-west3', 'us-west4', 'us-south1',
+    # Canada
+    'northamerica-northeast1', 'northamerica-northeast2',
+    # South America
+    'southamerica-east1', 'southamerica-west1',
+    # Europe (including europe-north1)
+    'europe-west1', 'europe-west2', 'europe-west3', 'europe-west4', 'europe-west6',
+    'europe-west8', 'europe-west9', 'europe-west12', 'europe-central2',
+    'europe-north1', 'europe-southwest1',
+    # Asia Pacific
+    'asia-east1', 'asia-east2', 'asia-northeast1', 'asia-northeast2', 'asia-northeast3',
+    'asia-south1', 'asia-south2', 'asia-southeast1', 'asia-southeast2',
+    'australia-southeast1', 'australia-southeast2',
+    # Middle East
+    'me-central1', 'me-central2', 'me-west1',
+    # Africa
+    'africa-south1',
+    # Global (for preview models)
+    'global'
+}
+
+# ============================================================================
+
 # Detect if we're running in production (Cloud Run)
 def _is_production() -> bool:
     """Detect if running in Cloud Run production environment."""
@@ -70,58 +119,43 @@ class AgentService:
             # Use defaults to allow app to start, but LLM calls will fail with clear error
             self.api_key = None
             self.project_id = None
-            self.location = "us-central1"
-            self.model_name = "gemini-3-pro-preview"  # Default to Gemini 3 Pro Preview
+            self.location = DEFAULT_GCP_REGION
+            self.model_name = DEFAULT_GEMINI_MODEL
             self.vertex_model = None
             return
         
         self.api_key = settings.gemini_api_key
         self.project_id = settings.gcp_project_id
-        requested_region = settings.gcp_region or "us-central1"
-        # Use configured model name (defaults to gemini-3-pro-preview)
-        self.model_name = getattr(settings, 'gemini_model_name', 'gemini-3-pro-preview') or 'gemini-3-pro-preview'
+        
+        # Use configured region or default (now defaults to europe-north1)
+        requested_region = settings.gcp_region or DEFAULT_GCP_REGION
+        
+        # Use configured model name or default
+        self.model_name = getattr(settings, 'gemini_model_name', None) or DEFAULT_GEMINI_MODEL
+        
         self.vertex_model: Optional[GenerativeModel] = None
         self.vertex_ai_initialized = False
 
         # Prefer Vertex AI with application default credentials (e.g., Cloud Run service account).
         self.is_production = _is_production()
         
-        # Vertex AI supported regions (as of 2024)
-        # Note: Cloud Run regions may differ from Vertex AI regions
-        # If Cloud Run is in europe-north2, use europe-north1 for Vertex AI
-        vertex_ai_regions = {
-            'us-central1', 'us-east1', 'us-east4', 'us-east5', 'us-west1', 'us-west2', 
-            'us-west3', 'us-west4', 'us-south1',
-            'europe-west1', 'europe-west2', 'europe-west3', 'europe-west4', 'europe-west6',
-            'europe-west8', 'europe-west9', 'europe-west12', 'europe-central2',
-            'europe-north1', 'europe-southwest1',
-            'asia-east1', 'asia-east2', 'asia-northeast1', 'asia-northeast2', 'asia-northeast3',
-            'asia-south1', 'asia-south2', 'asia-southeast1', 'asia-southeast2',
-            'australia-southeast1', 'australia-southeast2',
-            'northamerica-northeast1', 'northamerica-northeast2',
-            'southamerica-east1', 'southamerica-west1',
-            'me-central1', 'me-central2', 'me-west1',
-            'africa-south1', 'global'
-        }
-        
         # Map Cloud Run regions to Vertex AI regions if needed
-        region_mapping = {
-            'europe-north2': 'europe-north1',  # Cloud Run supports europe-north2, but Vertex AI doesn't
-        }
-        
         # Use mapped region if available, otherwise use requested region
-        self.location = region_mapping.get(requested_region, requested_region)
+        self.location = CLOUD_RUN_TO_VERTEX_AI_REGION_MAP.get(requested_region, requested_region)
+        
+        # Store requested region for later use
+        self.requested_region = requested_region
         
         # Validate region is supported by Vertex AI
-        if self.location not in vertex_ai_regions:
+        if self.location not in VERTEX_AI_SUPPORTED_REGIONS:
             error_msg = (
                 f"Region '{self.location}' is not supported by Vertex AI. "
-                f"Supported regions: {', '.join(sorted(vertex_ai_regions))}. "
+                f"Supported regions: {', '.join(sorted(VERTEX_AI_SUPPORTED_REGIONS))}. "
             )
             if requested_region != self.location:
                 error_msg += f"Note: Cloud Run region '{requested_region}' was mapped to '{self.location}'."
             else:
-                error_msg += f"Please set GCP_REGION to a supported region (e.g., 'europe-north1' for Europe)."
+                error_msg += f"Please set GCP_REGION to a supported region (e.g., '{DEFAULT_GCP_REGION}' for Europe)."
             
             if self.is_production:
                 logger.error("CRITICAL: %s", error_msg)
@@ -138,10 +172,10 @@ class AgentService:
                     test_model = GenerativeModel(self.model_name)
                     # If successful, model exists in this region
                     self.vertex_ai_initialized = True
-                    if requested_region != self.location:
+                    if self.requested_region != self.location:
                         logger.info(
                             "Vertex AI initialized: project=%s, Cloud Run region=%s mapped to Vertex AI region=%s",
-                            self.project_id, requested_region, self.location
+                            self.project_id, self.requested_region, self.location
                         )
                     else:
                         logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
@@ -164,7 +198,11 @@ class AgentService:
                 error_msg = str(exc)
                 # Check if it's a region-related error
                 if "Unsupported region" in error_msg or "region" in error_msg.lower():
-                    suggested_region = region_mapping.get(requested_region, "europe-north1" if "europe" in requested_region.lower() else "us-central1")
+                    # Suggest appropriate region based on requested region
+                    if "europe" in self.requested_region.lower():
+                        suggested_region = DEFAULT_GCP_REGION  # europe-north1
+                    else:
+                        suggested_region = "us-central1"
                     error_msg += f" Try setting GCP_REGION={suggested_region} in your Cloud Run environment variables."
                 
                 if self.is_production:
@@ -196,9 +234,9 @@ class AgentService:
             try:
                 # Create generation config
                 generation_config = GenerationConfig(
-                    response_mime_type=response_mime or "text/plain",
-                    temperature=0.4,
-                    top_p=0.95,
+                        response_mime_type=response_mime or "text/plain",
+                        temperature=0.4,
+                        top_p=0.95,
                 )
                 
                 # In Vertex AI SDK, system_instruction should be passed when creating the model instance
@@ -243,15 +281,14 @@ class AgentService:
                         error_str = str(model_error).lower()
                         if "not found" in error_str or "404" in error_str or "does not have access" in error_str:
                             logger.warning("Model '%s' not available. Trying fallback models...", self.model_name)
-                            # Try fallback models in order of preference
-                            # Fallback to Gemini 2.5 Pro if Gemini 3 Pro Preview is not available
-                            fallback_models = ["gemini-2.5-pro"]  # Gemini 2.5 Pro as fallback
+                            # Try fallback models in order of preference (using configured fallback models)
+                            fallback_models = FALLBACK_GEMINI_MODELS
                             model_found = False
                             
                             # Reset to original location for fallback attempts
                             if self.location == "global":
-                                vertexai.init(project=self.project_id, location=requested_region)
-                                self.location = requested_region
+                                vertexai.init(project=self.project_id, location=self.requested_region)
+                                self.location = self.requested_region
                             
                             for fallback_model in fallback_models:
                                 if fallback_model == self.model_name:
