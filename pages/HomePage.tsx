@@ -14,9 +14,9 @@ const HomePage: React.FC = () => {
   
   return (
     <Container>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
         <aside className="lg:col-span-1">
-          <div className="sticky top-24 space-y-8">
+          <div className="lg:sticky lg:top-24 space-y-6 lg:space-y-8">
             <VibeFocusSelector />
           </div>
         </aside>
