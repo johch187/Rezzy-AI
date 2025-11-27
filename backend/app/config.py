@@ -1,5 +1,6 @@
+import json
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings
@@ -83,6 +84,41 @@ class Settings(BaseSettings):
                 "Get your new publishable key from Supabase Dashboard → Project Settings → API → Publishable Keys."
             )
         return key
+    
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _parse_allowed_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        """
+        Parse allowed_origins from environment variable.
+        Supports:
+        - JSON format: ["https://example.com","https://another.com"]
+        - Comma-separated: https://example.com,https://another.com
+        - Single value: https://example.com
+        - Empty string: returns empty list
+        """
+        if isinstance(v, list):
+            return v
+        if not v or not isinstance(v, str):
+            return []
+        
+        v = v.strip()
+        if not v:
+            return []
+        
+        # Try parsing as JSON first
+        try:
+            parsed = json.loads(v)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if item]
+            elif isinstance(parsed, str):
+                # Single JSON string value
+                return [parsed.strip()] if parsed.strip() else []
+            else:
+                return []
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, try comma-separated format
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+            return origins
 
 
 @lru_cache

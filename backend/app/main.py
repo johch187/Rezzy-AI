@@ -47,6 +47,13 @@ def create_app() -> FastAPI:
         elif "supabase_url" in error_msg.lower():
             print("\n❌ SUPABASE_URL is missing or invalid!", file=sys.stderr)
             print("   Format: https://your-project.supabase.co", file=sys.stderr)
+        elif "allowed_origins" in error_msg.lower():
+            print("\n❌ ALLOWED_ORIGINS is invalid!", file=sys.stderr)
+            print("   Supported formats:", file=sys.stderr)
+            print("   - JSON: [\"https://example.com\",\"https://another.com\"]", file=sys.stderr)
+            print("   - Comma-separated: https://example.com,https://another.com", file=sys.stderr)
+            print("   - Single value: https://example.com", file=sys.stderr)
+            print("   - Empty (no CORS): leave unset or set to empty string", file=sys.stderr)
         print("\n" + "="*80, file=sys.stderr)
         raise
     app = FastAPI(title="Keju API", version="0.1.0")
