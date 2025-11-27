@@ -241,12 +241,28 @@ const CareerCoachPage: React.FC = () => {
         let targetRole = '';
         
         // Common patterns: "become a X", "transition to X", "path to X", etc.
+        // More comprehensive patterns to capture various ways users might ask
         const patterns = [
-            /(?:become|be)\s+(?:a|an)\s+(.+?)(?:\?|$|\.|\!)/i,
-            /(?:transition|switch|move|get|break)\s+(?:to|into)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
-            /(?:path|roadmap|plan|journey|route)\s+to\s+(?:become\s+)?(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
-            /(?:career\s+path)\s+(?:to|for)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
-            /(?:how\s+to\s+become)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
+            // "become a/an X" patterns
+            /(?:become|be)\s+(?:a|an)\s+(.+?)(?:\?|$|\.|\!|,)/i,
+            // "transition/switch/move to X" patterns  
+            /(?:transition|switch|move|get|break)\s+(?:to|into)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "path/roadmap to X" patterns
+            /(?:path|roadmap|plan|journey|route)\s+(?:to|for)\s+(?:become\s+)?(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "career path to/for X" patterns
+            /(?:career\s+(?:path|plan|roadmap))\s+(?:to|for)\s+(?:become\s+)?(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "how to become X" patterns
+            /(?:how\s+(?:do\s+i\s+)?(?:to\s+)?become)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "want to be X" patterns
+            /(?:want\s+to\s+(?:be|become))\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "steps to become X" patterns
+            /(?:steps\s+to\s+(?:become|be))\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // "create a path to X" patterns
+            /(?:create|generate|make)\s+(?:a\s+)?(?:career\s+)?(?:path|plan|roadmap)\s+(?:to|for)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // Fallback: capture anything after "to become" 
+            /to\s+become\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!|,)/i,
+            // Fallback: capture anything after common career keywords at end
+            /(?:career|path|roadmap|plan)\s+(?:to|for)\s+(.+?)(?:\?|$|\.|\!|,)/i,
         ];
         
         for (const pattern of patterns) {
@@ -254,12 +270,23 @@ const CareerCoachPage: React.FC = () => {
             if (match && match[1]) {
                 targetRole = match[1].trim();
                 // Clean up common words at the end
-                targetRole = targetRole.replace(/\s+(role|position|job)$/i, '').trim();
-                break;
+                targetRole = targetRole
+                    .replace(/\s+(role|position|job|career)$/i, '')
+                    .replace(/\s+please$/i, '')
+                    .replace(/\s+from\s+.+$/i, '') // Remove "from X" at the end
+                    .trim();
+                // Capitalize first letter of each word for nice display
+                if (targetRole.length > 0) {
+                    targetRole = targetRole
+                        .split(' ')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                        .join(' ');
+                    break;
+                }
             }
         }
         
-        // If no target found but has keyword, use profile target or default
+        // If no target found but has keyword, use profile target job title
         if (!targetRole && profile?.targetJobTitle) {
             targetRole = profile.targetJobTitle;
         }
@@ -475,8 +502,12 @@ const CareerCoachPage: React.FC = () => {
     ];
 
     const suggestionsForFilledProfile = [
-        `Create a career path to become a ${profile?.targetJobTitle || "Senior Product Manager"}`,
-        `How do I transition from ${profile?.jobTitle || "my role"} to ${profile?.targetJobTitle || "a leadership role"}?`,
+        profile?.targetJobTitle 
+            ? `Create a career path to become a ${profile.targetJobTitle}`
+            : "Create a career path to become a [your dream job]",
+        profile?.jobTitle && profile?.targetJobTitle
+            ? `How do I transition from ${profile.jobTitle} to ${profile.targetJobTitle}?`
+            : "How do I transition to my dream role?",
         "What skills should I develop next?",
         "Help me prepare for interviews",
         "Review my career progress",

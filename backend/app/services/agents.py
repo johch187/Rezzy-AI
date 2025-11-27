@@ -374,6 +374,9 @@ education (array: institution, degree, fieldOfStudy, startDate, endDate), techni
         prompt = f"""
 Create a detailed career development path from '{current_role}' to '{target_role}'.
 
+CRITICAL: Generate content SPECIFICALLY for the target role "{target_role}". 
+Do NOT use generic or product management examples - tailor everything to {target_role}.
+
 User Profile:
 {json.dumps(profile, indent=2)}
 
@@ -384,44 +387,44 @@ Return a JSON object with this EXACT structure:
   "path": [
     {{
       "timeframe": "Year 0-1",
-      "milestoneTitle": "Short milestone name (3-5 words)",
-      "milestoneDescription": "Detailed description of this career phase and goals (2-3 sentences)",
+      "milestoneTitle": "Short milestone name specific to {target_role} (3-5 words)",
+      "milestoneDescription": "Description of this career phase toward {target_role} (2-3 sentences)",
       "actionItems": [
         {{
           "category": "Skills",
-          "title": "Learn Product Analytics",
-          "description": "Master tools like Amplitude, Mixpanel for data-driven decisions"
+          "title": "Skill specific to {target_role}",
+          "description": "How to develop this skill for {target_role}"
         }},
         {{
           "category": "Networking",
-          "title": "Join PM Communities",
-          "description": "Engage with Mind the Product, ProductTank local chapters"
+          "title": "Network in {target_role} field",
+          "description": "Communities and connections relevant to {target_role}"
         }}
       ],
-      "learningTopics": ["Product Strategy", "User Research", "Agile Methodologies"],
+      "learningTopics": ["Topic 1 for {target_role}", "Topic 2 for {target_role}", "Topic 3 for {target_role}"],
       "recommendedVideos": [
         {{
-          "title": "Video title that matches the milestone topic",
-          "channel": "Channel name (real YouTube channels)",
-          "description": "Brief description of what makes this video helpful",
-          "videoId": "REAL_YOUTUBE_VIDEO_ID"
+          "title": "Video title relevant to {target_role}",
+          "channel": "Real YouTube channel name",
+          "description": "Why this helps someone becoming a {target_role}",
+          "videoId": "REAL_11_CHAR_VIDEO_ID"
         }}
       ]
     }}
   ]
 }}
 
-IMPORTANT:
-- Create 3-5 milestones representing the journey
+IMPORTANT REQUIREMENTS:
+- Create 3-5 milestones representing the journey to become a {target_role}
+- ALL content must be specific to {target_role} - not generic career advice
 - Each milestone must have 3-5 actionItems with category, title, and description
 - Valid categories: "Academics", "Internships", "Projects", "Skills", "Networking", "Career", "Certifications"
-- learningTopics should be 3-5 relevant topics for self-study
-- milestoneTitle should be concise (3-6 words)
-- actionItems.title should be specific and actionable (2-5 words)
-- actionItems.description should explain the action in detail (1-2 sentences)
-- recommendedVideos should include 2-4 REAL YouTube videos with ACTUAL video IDs
-- Use well-known educational YouTube channels like: Y Combinator, TED, Google Career Certificates, LinkedIn Learning, freeCodeCamp, The Futur, GaryVee, Harvard Business Review, etc.
-- Video IDs must be real 11-character YouTube video IDs (like "dQw4w9WgXcQ")
+- learningTopics: 3-5 topics specifically needed for {target_role}
+- milestoneTitle: concise (3-6 words), specific to {target_role} journey
+- actionItems: specific skills, projects, and steps needed for {target_role}
+- recommendedVideos: 2-4 REAL YouTube videos with ACTUAL 11-character video IDs
+- Use educational YouTube channels appropriate for the {target_role} field
+- Video IDs must be real (like "dQw4w9WgXcQ") - do not make up fake IDs
 """
         raw = await self._run_llm(
             prompt,
