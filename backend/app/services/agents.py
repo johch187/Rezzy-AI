@@ -71,15 +71,15 @@ class AgentService:
             self.api_key = None
             self.project_id = None
             self.location = "us-central1"
-            self.model_name = "gemini-3-pro"  # Default to Gemini 3 Pro
+            self.model_name = "gemini-3-pro-preview"  # Default to Gemini 3 Pro Preview
             self.vertex_model = None
             return
         
         self.api_key = settings.gemini_api_key
         self.project_id = settings.gcp_project_id
         requested_region = settings.gcp_region or "us-central1"
-        # Use configured model name (defaults to gemini-3-pro)
-        self.model_name = getattr(settings, 'gemini_model_name', 'gemini-3-pro') or 'gemini-3-pro'
+        # Use configured model name (defaults to gemini-3-pro-preview)
+        self.model_name = getattr(settings, 'gemini_model_name', 'gemini-3-pro-preview') or 'gemini-3-pro-preview'
         self.vertex_model: Optional[GenerativeModel] = None
         self.vertex_ai_initialized = False
 
@@ -132,16 +132,34 @@ class AgentService:
         if vertexai is not None and self.project_id:
             try:
                 vertexai.init(project=self.project_id, location=self.location)
-                # Initialize model without system_instruction (will be passed per-request)
-                self.vertex_model = GenerativeModel(self.model_name)
-                self.vertex_ai_initialized = True
-                if requested_region != self.location:
-                    logger.info(
-                        "Vertex AI initialized: project=%s, Cloud Run region=%s mapped to Vertex AI region=%s",
-                        self.project_id, requested_region, self.location
-                    )
-                else:
-                    logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
+                # Try to initialize model to verify it exists (but don't store it yet)
+                # We'll create model instances per-request with system_instruction
+                try:
+                    test_model = GenerativeModel(self.model_name)
+                    # If successful, model exists in this region
+                    self.vertex_ai_initialized = True
+                    if requested_region != self.location:
+                        logger.info(
+                            "Vertex AI initialized: project=%s, Cloud Run region=%s mapped to Vertex AI region=%s",
+                            self.project_id, requested_region, self.location
+                        )
+                    else:
+                        logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
+                except Exception as model_check_error:
+                    # Model might not be available in this region, try 'global' location
+                    if "not found" in str(model_check_error).lower() or "404" in str(model_check_error):
+                        logger.warning("Model '%s' not found in region %s, trying 'global' location", self.model_name, self.location)
+                        try:
+                            vertexai.init(project=self.project_id, location="global")
+                            test_model = GenerativeModel(self.model_name)
+                            self.location = "global"  # Update location to global
+                            self.vertex_ai_initialized = True
+                            logger.info("Vertex AI initialized with 'global' location for model '%s'", self.model_name)
+                        except Exception as global_error:
+                            logger.error("Model '%s' also not found in 'global' location: %s", self.model_name, global_error)
+                            self.vertex_ai_initialized = False
+                    else:
+                        raise
             except Exception as exc:  # pragma: no cover - initialization happens at runtime
                 error_msg = str(exc)
                 # Check if it's a region-related error
@@ -174,7 +192,7 @@ class AgentService:
         response_mime: Optional[str] = None,
     ) -> str:
         # Preferred path: Vertex AI with service account / ADC (no API key).
-        if self.vertex_model is not None and GenerationConfig is not None:
+        if self.vertex_ai_initialized and GenerationConfig is not None:
             try:
                 # Create generation config
                 generation_config = GenerationConfig(
@@ -186,47 +204,99 @@ class AgentService:
                 # In Vertex AI SDK, system_instruction should be passed when creating the model instance
                 # Create a model instance with system_instruction for this request
                 # This is the correct pattern for the latest SDK
+                # Ensure Vertex AI is initialized with correct location
+                if not self.vertex_ai_initialized:
+                    # Re-initialize if needed
+                    vertexai.init(project=self.project_id, location=self.location)
+                    self.vertex_ai_initialized = True
+                
+                model_with_system = None
+                model_error = None
+                
+                # Try to create model instance - handle region/model availability issues
                 try:
                     model_with_system = GenerativeModel(
                         self.model_name,
                         system_instruction=system_instruction
                     )
-                except Exception as model_error:
-                    # If the configured model is not available, try fallback models
-                    error_str = str(model_error).lower()
-                    if "not found" in error_str or "404" in error_str or "does not have access" in error_str:
-                        logger.warning("Model '%s' not available in region %s. Error: %s", self.model_name, self.location, model_error)
-                        # Try fallback models in order of preference
-                        # Note: Gemini 3 Flash does not exist. Only Gemini 3 Pro is available.
-                        # Fallback to Gemini 2.5 Flash if Gemini 3 Pro is not available
-                        fallback_models = ["gemini-2.5-flash"]  # Gemini 2.5 Flash is still available
-                        model_found = False
-                        for fallback_model in fallback_models:
-                            if fallback_model == self.model_name:
-                                continue  # Skip if already tried
-                            try:
-                                logger.warning("Gemini 3 Pro not available, trying fallback model: %s", fallback_model)
-                                model_with_system = GenerativeModel(
-                                    fallback_model,
-                                    system_instruction=system_instruction
-                                )
-                                logger.info("Successfully using fallback model: %s", fallback_model)
-                                model_found = True
-                                break
-                            except Exception as fallback_error:
-                                logger.warning("Fallback model %s also failed: %s", fallback_model, fallback_error)
-                                continue
-                        
-                        if not model_found:
-                            raise RuntimeError(
-                                f"Model '{self.model_name}' not available and no fallback models worked. "
-                                f"Please check: 1) Model is available in region {self.location}, "
-                                f"2) Vertex AI API is enabled, 3) Service account has permissions. "
-                                f"Note: Only Gemini 3 Pro is available (Gemini 3 Flash does not exist). "
-                                f"Original error: {model_error}"
-                            ) from model_error
-                    else:
-                        raise
+                except Exception as initial_error:
+                    model_error = initial_error
+                    error_str = str(initial_error).lower()
+                    
+                    # If model not found, try 'global' location (required for some preview models)
+                    if ("not found" in error_str or "404" in error_str) and self.location != "global":
+                        logger.warning("Model '%s' not found in region %s, trying 'global' location", self.model_name, self.location)
+                        try:
+                            vertexai.init(project=self.project_id, location="global")
+                            model_with_system = GenerativeModel(
+                                self.model_name,
+                                system_instruction=system_instruction
+                            )
+                            self.location = "global"  # Update location for future requests
+                            logger.info("Successfully using model '%s' in 'global' location", self.model_name)
+                        except Exception as global_error:
+                            logger.warning("Model '%s' also not found in 'global' location: %s", self.model_name, global_error)
+                            model_error = global_error
+                    
+                    # If still not found, try fallback models
+                    if model_with_system is None:
+                        error_str = str(model_error).lower()
+                        if "not found" in error_str or "404" in error_str or "does not have access" in error_str:
+                            logger.warning("Model '%s' not available. Trying fallback models...", self.model_name)
+                            # Try fallback models in order of preference
+                            # Fallback to Gemini 2.5 Pro if Gemini 3 Pro Preview is not available
+                            fallback_models = ["gemini-2.5-pro"]  # Gemini 2.5 Pro as fallback
+                            model_found = False
+                            
+                            # Reset to original location for fallback attempts
+                            if self.location == "global":
+                                vertexai.init(project=self.project_id, location=requested_region)
+                                self.location = requested_region
+                            
+                            for fallback_model in fallback_models:
+                                if fallback_model == self.model_name:
+                                    continue  # Skip if already tried
+                                try:
+                                    logger.warning("Trying fallback model: %s", fallback_model)
+                                    model_with_system = GenerativeModel(
+                                        fallback_model,
+                                        system_instruction=system_instruction
+                                    )
+                                    logger.info("Successfully using fallback model: %s", fallback_model)
+                                    model_found = True
+                                    break
+                                except Exception as fallback_error:
+                                    logger.warning("Fallback model %s also failed: %s", fallback_model, fallback_error)
+                                    # Try global location for fallback too
+                                    if "not found" in str(fallback_error).lower():
+                                        try:
+                                            vertexai.init(project=self.project_id, location="global")
+                                            model_with_system = GenerativeModel(
+                                                fallback_model,
+                                                system_instruction=system_instruction
+                                            )
+                                            self.location = "global"
+                                            logger.info("Successfully using fallback model %s in 'global' location", fallback_model)
+                                            model_found = True
+                                            break
+                                        except Exception:
+                                            continue
+                            
+                            if not model_found:
+                                raise RuntimeError(
+                                    f"Model '{self.model_name}' not available in region {self.location} or 'global', "
+                                    f"and fallback models also failed. "
+                                    f"Please check: 1) Model is available in your region, "
+                                    f"2) Vertex AI API is enabled, 3) Service account has permissions. "
+                                    f"Note: Gemini 3 Pro may not be available in all regions yet. "
+                                    f"Original error: {model_error}"
+                                ) from model_error
+                        else:
+                            raise
+                
+                # Use the successfully created model
+                if model_with_system is None:
+                    raise RuntimeError("Failed to create model instance") from model_error
                 
                 # Use Part objects for proper prompt formatting (latest SDK pattern)
                 # String prompts are automatically converted, but explicit Part is more robust

@@ -9,7 +9,7 @@ Located in `services/agentKit.ts`, the `Agent` class is the core of the applicat
 ```typescript
 // Simplified Agent Usage
 const agent = new Agent({
-  model: 'gemini-3-pro',
+  model: 'gemini-3-pro-preview',
   systemInstruction: "You are a career coach...",
   tools: [navTool, updateProfileTool],
   thinkingBudget: 32768
@@ -25,16 +25,18 @@ const response = await agent.chat("Help me fix my resume");
 
 ## 2. Model Selection Strategy
 
-The application uses Gemini 3 Pro as the primary model (Gemini 1.5 is sunsetted):
+The application uses Gemini 3 Pro Preview as the primary model (Gemini 1.5 is sunsetted):
 
--   **`gemini-3-pro`**: The primary model for all tasks. Used for:
+-   **`gemini-3-pro-preview`**: The primary model for all tasks. Used for:
     -   Resume Parsing (requires deep inference).
     -   Career Path Planning (requires strategic thinking).
     -   Application Analysis (requires critical evaluation).
     -   The AI Career Coach (requires tool use and nuanced conversation).
     -   Simple text generation and quick interactions.
 
-**Note**: Only Gemini 3 Pro is available. Gemini 3 Flash does not exist. If Gemini 3 Pro is unavailable in your region, the system will fallback to Gemini 2.5 Flash.
+-   **`gemini-2.5-pro`**: Fallback model if Gemini 3 Pro Preview is unavailable in your region.
+
+**Note**: If Gemini 3 Pro Preview is unavailable in your region, the system will automatically fallback to Gemini 2.5 Pro.
 
 ## 3. Thinking Budget
 
