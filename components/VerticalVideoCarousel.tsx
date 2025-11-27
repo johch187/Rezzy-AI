@@ -7,7 +7,7 @@ const VideoCarousel: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
 
     if (!videos || videos.length === 0) {
         return (
-            <div className="text-center py-8 text-sm text-slate-500 bg-slate-50 rounded-lg">
+            <div className="text-center py-8 text-sm text-gray-500 bg-gray-50 rounded-lg">
                 No relevant learning videos found for this milestone.
             </div>
         );
@@ -32,7 +32,7 @@ const VideoCarousel: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
             >
                 {videos.map((video, index) => (
                     <div key={index} className="snap-start flex-shrink-0 w-64">
-                        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden h-full flex flex-col transition-transform duration-300 hover:-translate-y-1">
+                        <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden h-full flex flex-col transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
                             <a href={`https://www.youtube.com/watch?v=${video.videoId}`} target="_blank" rel="noopener noreferrer" className="block relative">
                                 <img
                                     src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
@@ -44,9 +44,9 @@ const VideoCarousel: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
                                 </div>
                             </a>
                             <div className="p-3 flex flex-col flex-grow">
-                                <h4 className="font-bold text-sm text-neutral h-10" title={video.title}>{video.title}</h4>
-                                <p className="text-xs text-slate-500 mt-1">{video.channel}</p>
-                                <p className="text-xs text-slate-600 mt-2 flex-grow">{video.description}</p>
+                                <h4 className="font-semibold text-sm text-gray-900 line-clamp-2" title={video.title}>{video.title}</h4>
+                                <p className="text-xs text-gray-500 mt-1">{video.channel}</p>
+                                <p className="text-xs text-gray-600 mt-2 flex-grow line-clamp-2">{video.description}</p>
                             </div>
                         </div>
                     </div>
@@ -57,14 +57,14 @@ const VideoCarousel: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
                 <>
                     <button
                         onClick={() => scroll('left')}
-                        className="absolute top-1/2 -left-3 -translate-y-1/2 bg-white rounded-full p-1.5 shadow-md border border-slate-200 text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-opacity z-10"
+                        className="absolute top-1/2 -left-3 -translate-y-1/2 bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-primary opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-all z-10"
                         aria-label="Scroll left"
                     >
                         <ChevronLeftIcon className="h-5 w-5"/>
                     </button>
                     <button
                         onClick={() => scroll('right')}
-                        className="absolute top-1/2 -right-3 -translate-y-1/2 bg-white rounded-full p-1.5 shadow-md border border-slate-200 text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-opacity z-10"
+                        className="absolute top-1/2 -right-3 -translate-y-1/2 bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-primary opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-all z-10"
                         aria-label="Scroll right"
                     >
                         <ChevronRightIcon className="h-5 w-5"/>

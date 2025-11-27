@@ -54,6 +54,7 @@ export const ProfileContext = createContext<{
   setIsFetchingUrl: React.Dispatch<React.SetStateAction<boolean>>;
   documentHistory: DocumentGeneration[];
   addDocumentToHistory: (generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => void;
+  removeDocument: (documentId: string) => void;
   careerChatHistory: CareerChatSummary[];
   addCareerChatSummary: (summary: CareerChatSummary) => void;
   updateCareerChat: (chatId: string, messages: CareerChatSummary['messages']) => void;
@@ -243,6 +244,33 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
             generatedAt: new Date().toISOString(),
         };
         const updatedHistory = [newGeneration, ...prevHistory].slice(0, 20);
+        try {
+            localStorage.setItem('documentHistory', JSON.stringify(updatedHistory));
+            void (async () => {
+              try {
+                const session = await supabase?.auth.getSession();
+                if (session?.data.session) {
+                  await persistWorkspace({
+                    profile: profile ?? null,
+                    documentHistory: updatedHistory,
+                    careerChatHistory,
+                    tokens,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to sync document history", e);
+              }
+            })();
+        } catch (error) {
+            console.error("Failed to save document history to localStorage", error);
+        }
+        return updatedHistory;
+    });
+  }, [profile, careerChatHistory, tokens]);
+
+  const removeDocument = useCallback((documentId: string) => {
+    setDocumentHistory(prevHistory => {
+        const updatedHistory = prevHistory.filter(doc => doc.id !== documentId);
         try {
             localStorage.setItem('documentHistory', JSON.stringify(updatedHistory));
             void (async () => {
@@ -470,7 +498,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       tokens, setTokens: setTokensWithSync, 
       subscription,
       isFetchingUrl, setIsFetchingUrl,
-      documentHistory, addDocumentToHistory,
+      documentHistory, addDocumentToHistory, removeDocument,
       careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById, removeCareerChat,
       isParsing,
       parsingError,
@@ -485,7 +513,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       profile, setProfile, saveProfile, lastSavedProfile,
       tokens, setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl,
-      documentHistory, addDocumentToHistory,
+      documentHistory, addDocumentToHistory, removeDocument,
       careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById, removeCareerChat,
       isParsing, parsingError, parseResumeInBackground,
       backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications

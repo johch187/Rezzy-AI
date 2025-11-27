@@ -26,6 +26,35 @@ const TrashIcon = () => (
   </svg>
 );
 
+// Mini Confirmation Popover for sidebar
+const DeleteConfirmPopover: React.FC<{
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-48">
+      <p className="text-xs text-gray-600 mb-2">Delete this chat?</p>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const Logo = () => {
   const { open } = useSidebar();
   return (
@@ -66,6 +95,7 @@ export const LogoIcon = () => (
 const Sidebar: React.FC = () => {
   const { careerChatHistory, removeCareerChat, backgroundTasks, markTaskAsViewed } = useContext(ProfileContext)!;
   const [open, setOpen] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,14 +111,23 @@ const Sidebar: React.FC = () => {
     });
   };
 
-  const handleDeleteChat = (e: React.MouseEvent, chatId: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, chatId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    setDeleteConfirm(chatId);
+  };
+
+  const handleConfirmDelete = (chatId: string) => {
     removeCareerChat(chatId);
+    setDeleteConfirm(null);
     // If we're currently viewing this chat, navigate to a fresh chat
     if (location.search.includes(chatId)) {
       navigate('/career-coach');
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   const links = [
@@ -148,6 +187,7 @@ const Sidebar: React.FC = () => {
                 {careerChatHistory.slice(0, 5).map(chatSummary => {
                   const date = new Date(chatSummary.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                   const hasMessages = chatSummary.messages && chatSummary.messages.length > 0;
+                  const isConfirming = deleteConfirm === chatSummary.id;
                   return (
                     <li key={chatSummary.id} className="group relative">
                       <Link 
@@ -158,12 +198,17 @@ const Sidebar: React.FC = () => {
                         <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{date}</span>
                       </Link>
                       <button
-                        onClick={(e) => handleDeleteChat(e, chatSummary.id)}
+                        onClick={(e) => handleDeleteClick(e, chatSummary.id)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                         title="Delete chat"
                       >
                         <TrashIcon />
                       </button>
+                      <DeleteConfirmPopover
+                        isOpen={isConfirming}
+                        onConfirm={() => handleConfirmDelete(chatSummary.id)}
+                        onCancel={handleCancelDelete}
+                      />
                     </li>
                   );
                 })}

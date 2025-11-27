@@ -370,7 +370,7 @@ education (array: institution, degree, fieldOfStudy, startDate, endDate), techni
         current_role: str,
         target_role: str,
     ) -> Dict[str, Any]:
-        """Build career path from current to target role."""
+        """Build career path from current to target role with video recommendations."""
         prompt = f"""
 Create a detailed career development path from '{current_role}' to '{target_role}'.
 
@@ -398,7 +398,15 @@ Return a JSON object with this EXACT structure:
           "description": "Engage with Mind the Product, ProductTank local chapters"
         }}
       ],
-      "learningTopics": ["Product Strategy", "User Research", "Agile Methodologies"]
+      "learningTopics": ["Product Strategy", "User Research", "Agile Methodologies"],
+      "recommendedVideos": [
+        {{
+          "title": "Video title that matches the milestone topic",
+          "channel": "Channel name (real YouTube channels)",
+          "description": "Brief description of what makes this video helpful",
+          "videoId": "REAL_YOUTUBE_VIDEO_ID"
+        }}
+      ]
     }}
   ]
 }}
@@ -411,10 +419,13 @@ IMPORTANT:
 - milestoneTitle should be concise (3-6 words)
 - actionItems.title should be specific and actionable (2-5 words)
 - actionItems.description should explain the action in detail (1-2 sentences)
+- recommendedVideos should include 2-4 REAL YouTube videos with ACTUAL video IDs
+- Use well-known educational YouTube channels like: Y Combinator, TED, Google Career Certificates, LinkedIn Learning, freeCodeCamp, The Futur, GaryVee, Harvard Business Review, etc.
+- Video IDs must be real 11-character YouTube video IDs (like "dQw4w9WgXcQ")
 """
         raw = await self._run_llm(
             prompt,
-            "Strategic career coach. Create comprehensive, actionable career development plans with specific milestones and detailed action items.",
+            "Strategic career coach. Create comprehensive, actionable career development plans with specific milestones, detailed action items, and real educational YouTube video recommendations.",
             response_mime="application/json",
         )
         return _safe_parse_json(raw) or {

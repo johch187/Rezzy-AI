@@ -14,7 +14,7 @@ const SubscriptionPage: React.FC = () => {
   const plans = {
     pro: {
       monthly: 19,
-      annually: 19 * 12 * (1 - 0.17), // ~17% discount = 2 months free
+      annually: 19 * 12 * (1 - 0.10), // 10% discount
     },
   };
 
@@ -68,7 +68,7 @@ const SubscriptionPage: React.FC = () => {
             <span className={`text-sm font-medium transition-colors ${billingCycle === 'annually' ? 'text-gray-900' : 'text-gray-500'}`}>
               Annually
               <span className="ml-1.5 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                2 months free
+                Save 10%
               </span>
             </span>
           </div>
@@ -81,9 +81,7 @@ const SubscriptionPage: React.FC = () => {
               price="€0"
               description="Try Keju with essential features to get started."
               features={[
-                { text: "50 tokens (one-time)", included: true },
-                { text: "No monthly replenishment", included: false },
-                { text: "No rollover", included: false },
+                { text: "50 tokens", included: true },
                 { text: "Basic document templates", included: true },
                 { text: "Career Coach AI", included: true },
                 { text: "7-day history", included: true },
