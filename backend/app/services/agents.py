@@ -71,14 +71,15 @@ class AgentService:
             self.api_key = None
             self.project_id = None
             self.location = "us-central1"
-            self.model_name = "gemini-1.5-pro"
+            self.model_name = "gemini-3-pro"  # Default to Gemini 3 Pro
             self.vertex_model = None
             return
         
         self.api_key = settings.gemini_api_key
         self.project_id = settings.gcp_project_id
         requested_region = settings.gcp_region or "us-central1"
-        self.model_name = "gemini-1.5-pro"
+        # Use configured model name (defaults to gemini-3-pro)
+        self.model_name = getattr(settings, 'gemini_model_name', 'gemini-3-pro') or 'gemini-3-pro'
         self.vertex_model: Optional[GenerativeModel] = None
         self.vertex_ai_initialized = False
 
@@ -185,10 +186,47 @@ class AgentService:
                 # In Vertex AI SDK, system_instruction should be passed when creating the model instance
                 # Create a model instance with system_instruction for this request
                 # This is the correct pattern for the latest SDK
-                model_with_system = GenerativeModel(
-                    self.model_name,
-                    system_instruction=system_instruction
-                )
+                try:
+                    model_with_system = GenerativeModel(
+                        self.model_name,
+                        system_instruction=system_instruction
+                    )
+                except Exception as model_error:
+                    # If the configured model is not available, try fallback models
+                    error_str = str(model_error).lower()
+                    if "not found" in error_str or "404" in error_str or "does not have access" in error_str:
+                        logger.warning("Model '%s' not available in region %s. Error: %s", self.model_name, self.location, model_error)
+                        # Try fallback models in order of preference
+                        # Note: Gemini 3 Flash does not exist. Only Gemini 3 Pro is available.
+                        # Fallback to Gemini 2.5 Flash if Gemini 3 Pro is not available
+                        fallback_models = ["gemini-2.5-flash"]  # Gemini 2.5 Flash is still available
+                        model_found = False
+                        for fallback_model in fallback_models:
+                            if fallback_model == self.model_name:
+                                continue  # Skip if already tried
+                            try:
+                                logger.warning("Gemini 3 Pro not available, trying fallback model: %s", fallback_model)
+                                model_with_system = GenerativeModel(
+                                    fallback_model,
+                                    system_instruction=system_instruction
+                                )
+                                logger.info("Successfully using fallback model: %s", fallback_model)
+                                model_found = True
+                                break
+                            except Exception as fallback_error:
+                                logger.warning("Fallback model %s also failed: %s", fallback_model, fallback_error)
+                                continue
+                        
+                        if not model_found:
+                            raise RuntimeError(
+                                f"Model '{self.model_name}' not available and no fallback models worked. "
+                                f"Please check: 1) Model is available in region {self.location}, "
+                                f"2) Vertex AI API is enabled, 3) Service account has permissions. "
+                                f"Note: Only Gemini 3 Pro is available (Gemini 3 Flash does not exist). "
+                                f"Original error: {model_error}"
+                            ) from model_error
+                    else:
+                        raise
                 
                 # Use Part objects for proper prompt formatting (latest SDK pattern)
                 # String prompts are automatically converted, but explicit Part is more robust

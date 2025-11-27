@@ -38,7 +38,7 @@ Instead of a traditional backend, Keju uses a "Thick Client" approach where the 
 
 ### The `Agent` Class
 Located in `services/agentKit.ts`, this class abstracts the complexity of the Gemini API:
-1.  **Initialization:** Accepts a model config (e.g., `gemini-3-pro-preview`), system instructions, and a `thinkingBudget`.
+1.  **Initialization:** Accepts a model config (e.g., `gemini-3-pro`), system instructions, and a `thinkingBudget`.
 2.  **Tool Registry:** Maps function declarations (sent to the model) to executable JavaScript functions (running in the browser).
 3.  **Autonomous Loop:** When `agent.chat(message)` is called:
     -   It sends the message to Gemini.

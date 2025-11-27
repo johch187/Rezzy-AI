@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Google / LLM
     gemini_api_key: Optional[str] = Field(None, description="Server-side Gemini/ADK API key.")
     gcp_region: Optional[str] = Field(None, description="GCP region for Vertex AI (e.g., us-central1).")
+    gemini_model_name: Optional[str] = Field(
+        "gemini-3-pro", 
+        description="Gemini model name for Vertex AI. Default: gemini-3-pro. Note: Only Gemini 3 Pro is available (Gemini 3 Flash does not exist). Gemini 1.5 models are sunsetted."
+    )
 
     # CORS
     allowed_origins: List[str] = Field(default_factory=list, description="Allowed origins for CORS.")

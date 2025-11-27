@@ -7,7 +7,7 @@ This document provides a detailed look at the major features of Keju and their t
 -   **Location:** `HomePage.tsx`, `components/ProfileForm.tsx`
 -   **Purpose:** A comprehensive source of truth for the user's professional identity.
 -   **AI Feature:** **Resume Parsing**
-    -   **Implementation:** The `parserService.ts` reads uploaded files (PDF/TXT). It sends the raw text to a specific `gemini-3-pro-preview` model with a strict JSON schema (`PARSING_SCHEMA`).
+    -   **Implementation:** The `parserService.ts` reads uploaded files (PDF/TXT). It sends the raw text to a specific `gemini-3-pro` model with a strict JSON schema (`PARSING_SCHEMA`).
     -   **Reasoning:** A high `thinkingBudget` is enabled to allow the model to perform a multi-pass analysis (Extraction -> Gap Analysis -> Final Verification) before returning the JSON.
 
 ## 2. Application Tailoring & Analysis
