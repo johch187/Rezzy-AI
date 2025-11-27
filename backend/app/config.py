@@ -2,10 +2,30 @@
 
 import json
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from pydantic import Field, HttpUrl, field_validator
+from pydantic import Field, HttpUrl, field_validator, computed_field
 from pydantic_settings import BaseSettings
+
+
+def parse_origins(value: Optional[str]) -> List[str]:
+    """Parse origins from JSON array, comma-separated, or single value."""
+    if not value:
+        return []
+    value = value.strip()
+    if not value:
+        return []
+    # Try JSON first
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if item]
+        elif isinstance(parsed, str):
+            return [parsed.strip()] if parsed.strip() else []
+        return []
+    except (json.JSONDecodeError, TypeError):
+        # Comma-separated fallback
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
 
 
 class Settings(BaseSettings):
@@ -26,8 +46,14 @@ class Settings(BaseSettings):
     bigquery_dataset: Optional[str] = Field(None, description="BigQuery dataset")
     bigquery_table: Optional[str] = Field(None, description="BigQuery table")
 
-    # CORS
-    allowed_origins: List[str] = Field(default_factory=list, description="CORS allowed origins")
+    # CORS - stored as string, parsed via property
+    allowed_origins_raw: Optional[str] = Field(None, alias="allowed_origins", description="CORS allowed origins")
+    
+    @computed_field
+    @property
+    def allowed_origins(self) -> List[str]:
+        """Parse allowed origins from raw string."""
+        return parse_origins(self.allowed_origins_raw)
 
     # Frontend serving
     frontend_dist_dir: Optional[str] = Field(None, description="Path to built frontend assets")
@@ -73,28 +99,6 @@ class Settings(BaseSettings):
             raise ValueError("Supabase publishable key must start with 'sb_publishable_'")
         return key
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def _parse_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        """Parse allowed_origins from JSON, comma-separated, or single value."""
-        if isinstance(v, list):
-            return v
-        if not v or not isinstance(v, str):
-            return []
-        v = v.strip()
-        if not v:
-            return []
-        # Try JSON first
-        try:
-            parsed = json.loads(v)
-            if isinstance(parsed, list):
-                return [str(item).strip() for item in parsed if item]
-            elif isinstance(parsed, str):
-                return [parsed.strip()] if parsed.strip() else []
-            return []
-        except (json.JSONDecodeError, TypeError):
-            # Comma-separated fallback
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
 
 
 @lru_cache
