@@ -37,7 +37,7 @@ echo "  - SUPABASE_URL: ${SUPABASE_URL:0:30}..." >&2
 echo "  - GCP_PROJECT_ID: ${GCP_PROJECT_ID:-not set}" >&2
 echo "  - GCP_REGION: ${GCP_REGION:-not set}" >&2
 echo "  - GEMINI_API_KEY: ${GEMINI_API_KEY:+set (hidden)}${GEMINI_API_KEY:-not set}" >&2
-echo "  - FRONTEND_DIST: ${FRONTEND_DIST:-not set}" >&2
+echo "  - FRONTEND_DIST_DIR: ${FRONTEND_DIST_DIR:-not set}" >&2
 echo "" >&2
 echo "Checking Python imports..." >&2
 python -c "import fastapi; import uvicorn; print('✓ Core dependencies OK')" 2>&1 || echo "✗ Core dependencies missing!" >&2

@@ -72,14 +72,31 @@ def create_app() -> FastAPI:
     frontend_dir = Path(settings.frontend_dist_dir) if settings.frontend_dist_dir else None
     index_file = None
 
-    if frontend_dir and frontend_dir.exists():
-        assets_dir = frontend_dir / "assets"
-        if assets_dir.exists():
-            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    print(f"Frontend config: frontend_dist_dir={settings.frontend_dist_dir}", file=sys.stderr)
+    
+    if frontend_dir:
+        print(f"Frontend directory: {frontend_dir}, exists={frontend_dir.exists()}", file=sys.stderr)
+        if frontend_dir.exists():
+            # List contents for debugging
+            try:
+                contents = list(frontend_dir.iterdir())
+                print(f"Frontend contents: {[c.name for c in contents]}", file=sys.stderr)
+            except Exception as e:
+                print(f"Error listing frontend dir: {e}", file=sys.stderr)
+            
+            assets_dir = frontend_dir / "assets"
+            if assets_dir.exists():
+                app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+                print("✓ Mounted /assets", file=sys.stderr)
 
-        candidate = frontend_dir / "index.html"
-        if candidate.exists():
-            index_file = candidate
+            candidate = frontend_dir / "index.html"
+            if candidate.exists():
+                index_file = candidate
+                print(f"✓ Found index.html at {candidate}", file=sys.stderr)
+            else:
+                print(f"✗ index.html not found at {candidate}", file=sys.stderr)
+    else:
+        print("Frontend directory not configured", file=sys.stderr)
 
     if index_file:
         @app.get("/")
@@ -88,9 +105,24 @@ def create_app() -> FastAPI:
 
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
+            # Skip API routes
             if full_path.startswith(("api/", "healthz", "readyz", "assets/")):
                 raise HTTPException(status_code=404, detail="Not found")
             return FileResponse(index_file)
+        
+        print("✓ Frontend routes registered", file=sys.stderr)
+    else:
+        print("✗ Frontend serving disabled (no index.html found)", file=sys.stderr)
+        
+        # Add a helpful root route when frontend is not available
+        @app.get("/")
+        async def root_no_frontend():
+            return {
+                "status": "ok",
+                "message": "Keju API is running. Frontend not configured.",
+                "docs": "/docs",
+                "health": "/healthz"
+            }
 
     return app
 
