@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, FormEvent, useMemo, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { createCareerAgent, AgentUICallbacks } from '../services/careerAgent';
 import { generateCareerPath, getVideosForMilestone } from '../services/actions/careerActions';
@@ -33,9 +33,19 @@ const ModelIcon: React.FC = () => (
     </div>
 );
 
+// Keywords that indicate user wants a career path
+const CAREER_PATH_KEYWORDS = [
+    'career path', 'career plan', 'roadmap', 'how to become', 'steps to become',
+    'transition to', 'switch to', 'move into', 'get into', 'break into',
+    'path to', 'journey to', 'route to', 'way to become', 'plan to become',
+    'create a path', 'create a plan', 'generate a path', 'make a plan',
+    'career roadmap', 'career journey', 'career transition'
+];
+
 const CareerCoachPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const chatId = searchParams.get('chat');
     
@@ -45,7 +55,8 @@ const CareerCoachPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [agentStatus, setAgentStatus] = useState<string>('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const hasInitialized = useRef(false);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const prevChatIdRef = useRef<string | null>(null);
     
     const [careerPathPrompt, setCareerPathPrompt] = useState<{
         show: boolean;
@@ -55,7 +66,7 @@ const CareerCoachPage: React.FC = () => {
     } | null>(null);
 
     if (!profileContext) return <div>Loading...</div>
-    const { profile, setProfile, documentHistory, addCareerChatSummary, updateCareerChat, getChatById, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
+    const { profile, setProfile, documentHistory, addCareerChatSummary, getChatById, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
 
     // Initialize the Agent with UI callbacks
     const agent = useMemo(() => {
@@ -81,7 +92,7 @@ const CareerCoachPage: React.FC = () => {
     // Convert messages to ChatMessage format for saving
     const messagesToChatMessages = useCallback((msgs: Message[]): ChatMessage[] => {
         return msgs
-            .filter(m => m.role !== 'system' || !m.action) // Don't save action buttons
+            .filter(m => m.role !== 'system' || !m.action)
             .map(m => ({
                 id: m.id,
                 role: m.role,
@@ -96,7 +107,7 @@ const CareerCoachPage: React.FC = () => {
             id: m.id,
             role: m.role,
             content: m.content,
-            disableAnimation: true, // Don't animate loaded messages
+            disableAnimation: true,
         }));
     }, []);
 
@@ -113,19 +124,25 @@ const CareerCoachPage: React.FC = () => {
         });
     }, [addCareerChatSummary, messagesToChatMessages]);
 
-    // Load existing chat or initialize new one
-    useEffect(() => {
-        if (hasInitialized.current) return;
+    // Scroll to bottom helper
+    const scrollToBottom = useCallback(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, []);
+
+    // Initialize chat - handles both new chats and loading existing ones
+    const initializeChat = useCallback((loadChatId: string | null) => {
         if (!profile) return;
         
-        hasInitialized.current = true;
-        
         // If chat ID provided, load that conversation
-        if (chatId) {
-            const existingChat = getChatById(chatId);
+        if (loadChatId) {
+            const existingChat = getChatById(loadChatId);
             if (existingChat && existingChat.messages && existingChat.messages.length > 0) {
                 setMessages(chatMessagesToMessages(existingChat.messages));
-                setCurrentChatId(chatId);
+                setCurrentChatId(loadChatId);
+                setTimeout(scrollToBottom, 100);
                 return;
             }
         }
@@ -159,7 +176,7 @@ const CareerCoachPage: React.FC = () => {
                 disableAnimation: true
             }]);
         } else {
-            const initialMessage = `Hi! I'm your Keju Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an investment banker?"\n\nWhat's on your mind today?`;
+            const initialMessage = `Hi! I'm your Keju Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "Create a career path to become a Senior Product Manager"\n\nWhat's on your mind today?`;
             setMessages([{
                 role: 'model',
                 content: initialMessage,
@@ -167,34 +184,88 @@ const CareerCoachPage: React.FC = () => {
                 disableAnimation: true
             }]);
         }
-    }, [profile, chatId, getChatById, chatMessagesToMessages, navigate]);
+    }, [profile, getChatById, chatMessagesToMessages, navigate, scrollToBottom]);
 
-    // Auto-scroll
+    // Watch for chatId changes in URL and reload chat
     useEffect(() => {
-        const scrollToBottom = () => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        };
+        if (chatId !== prevChatIdRef.current) {
+            prevChatIdRef.current = chatId;
+            initializeChat(chatId);
+        }
+    }, [chatId, initializeChat]);
+
+    // Initial load
+    useEffect(() => {
+        if (profile && prevChatIdRef.current === undefined) {
+            prevChatIdRef.current = chatId;
+            initializeChat(chatId);
+        }
+    }, [profile, chatId, initializeChat]);
+
+    // Auto-scroll when messages change
+    useEffect(() => {
         scrollToBottom();
-        const timer = setTimeout(scrollToBottom, 100);
-        return () => clearTimeout(timer);
-    }, [messages, careerPathPrompt, isLoading, agentStatus]);
+    }, [messages, careerPathPrompt, scrollToBottom]);
     
+    // Continuous scroll during loading (for streaming effect)
     useEffect(() => {
+        if (!isLoading) return;
+        
         const interval = setInterval(() => {
-            if (isLoading) {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-        }, 500);
+            scrollToBottom();
+        }, 200);
+        
         return () => clearInterval(interval);
-    }, [isLoading]);
+    }, [isLoading, scrollToBottom]);
 
     // Start new chat
     const handleNewChat = useCallback(() => {
-        hasInitialized.current = false;
         setMessages([]);
         setCurrentChatId(null);
+        setCareerPathPrompt(null);
+        prevChatIdRef.current = null;
         setSearchParams({});
-    }, [setSearchParams]);
+        // Small delay to ensure state is cleared before reinitializing
+        setTimeout(() => initializeChat(null), 50);
+    }, [setSearchParams, initializeChat]);
+
+    // Detect if user is asking about career path
+    const detectCareerPathIntent = useCallback((message: string): { detected: boolean; targetRole: string } => {
+        const lowerMessage = message.toLowerCase();
+        
+        // Check if message contains career path keywords
+        const hasKeyword = CAREER_PATH_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
+        if (!hasKeyword) return { detected: false, targetRole: '' };
+        
+        // Try to extract target role from message
+        let targetRole = '';
+        
+        // Common patterns: "become a X", "transition to X", "path to X", etc.
+        const patterns = [
+            /(?:become|be)\s+(?:a|an)\s+(.+?)(?:\?|$|\.|\!)/i,
+            /(?:transition|switch|move|get|break)\s+(?:to|into)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
+            /(?:path|roadmap|plan|journey|route)\s+to\s+(?:become\s+)?(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
+            /(?:career\s+path)\s+(?:to|for)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
+            /(?:how\s+to\s+become)\s+(?:a|an)?\s*(.+?)(?:\?|$|\.|\!)/i,
+        ];
+        
+        for (const pattern of patterns) {
+            const match = message.match(pattern);
+            if (match && match[1]) {
+                targetRole = match[1].trim();
+                // Clean up common words at the end
+                targetRole = targetRole.replace(/\s+(role|position|job)$/i, '').trim();
+                break;
+            }
+        }
+        
+        // If no target found but has keyword, use profile target or default
+        if (!targetRole && profile?.targetJobTitle) {
+            targetRole = profile.targetJobTitle;
+        }
+        
+        return { detected: hasKeyword && targetRole.length > 0, targetRole };
+    }, [profile?.targetJobTitle]);
 
     const submitMessage = async (message: string) => {
         const currentInput = message.trim();
@@ -207,6 +278,33 @@ const CareerCoachPage: React.FC = () => {
         setIsLoading(true);
         setAgentStatus('');
         setCareerPathPrompt(null);
+
+        // Check if user wants to create a career path
+        const { detected, targetRole } = detectCareerPathIntent(currentInput);
+        
+        if (detected && targetRole) {
+            // Show career path prompt instead of sending to AI
+            setIsLoading(false);
+            const currentRole = profile.jobTitle || 'your current role';
+            const isReplacing = !!profile.careerPath;
+            
+            setCareerPathPrompt({
+                show: true,
+                currentRole,
+                targetRole,
+                isReplacing,
+            });
+            
+            // Add a response acknowledging the request
+            const ackMessage: Message = {
+                role: 'model',
+                content: `I can help you create a detailed career path to become a **${targetRole}**! This will include specific milestones, skills to develop, and actionable steps.`,
+                id: crypto.randomUUID(),
+                disableAnimation: true,
+            };
+            setMessages(prev => [...prev, ackMessage]);
+            return;
+        }
 
         // Get the title from first user message
         const firstUserMessage = updatedMessages.find(m => m.role === 'user');
@@ -228,7 +326,6 @@ const CareerCoachPage: React.FC = () => {
             // Save the conversation
             if (currentChatId) {
                 saveConversation(finalMessages, currentChatId, chatTitle);
-                // Update URL to include chat ID if not already there
                 if (!chatId) {
                     setSearchParams({ chat: currentChatId });
                 }
@@ -261,7 +358,7 @@ const CareerCoachPage: React.FC = () => {
 
         setMessages(prev => [...prev, {
             role: 'system',
-            content: `Great! I've started creating your personalized career path to become a ${targetRole}. This will run in the background and I'll notify you when it's ready. Feel free to ask other questions while you wait!`,
+            content: `Creating your personalized career path to become a ${targetRole}...`,
             id: crypto.randomUUID(),
         }]);
 
@@ -283,13 +380,21 @@ const CareerCoachPage: React.FC = () => {
                         console.error(`Failed to fetch videos for milestone: ${milestone.milestoneTitle}`, videoError);
                         pathWithVideos.push({ ...milestone, recommendedVideos: [] });
                     }
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
                 const finalPathWithVideos = { ...newPath, path: pathWithVideos };
 
                 setProfile(prev => prev ? ({...prev, careerPath: finalPathWithVideos}) : null);
                 updateBackgroundTask(taskId, { status: 'completed', result: { success: true } });
+                
+                // Add success message
+                setMessages(prev => [...prev, {
+                    role: 'model',
+                    content: `✨ Your career path to **${targetRole}** is ready! I've created a detailed roadmap with milestones and resources. [View your Career Path](/career-path)`,
+                    id: crypto.randomUUID(),
+                    disableAnimation: true,
+                }]);
 
             } catch (err: any) {
                 console.error("Failed to generate career path:", err);
@@ -303,21 +408,27 @@ const CareerCoachPage: React.FC = () => {
     const handleDeclinePath = async () => {
         if (!profile) return;
         setCareerPathPrompt(null);
-        submitMessage("I'd rather not create a career path right now. Thanks though!");
+        setMessages(prev => [...prev, {
+            role: 'model',
+            content: "No problem! Let me know if you'd like help with anything else - resume tips, interview prep, or general career advice.",
+            id: crypto.randomUUID(),
+            disableAnimation: true,
+        }]);
     };
     
     const renderCareerPathPrompt = () => {
         if (!careerPathPrompt?.show) return null;
 
         const promptText = careerPathPrompt.isReplacing
-            ? `I see you have an existing career plan. I can generate a new one to help you become a ${careerPathPrompt.targetRole}. This will replace your current path.`
-            : `I can generate a step-by-step career path to help you become a ${careerPathPrompt.targetRole}. Would you like me to create one for you?`;
+            ? `This will replace your existing career path. Ready to create a new path to **${careerPathPrompt.targetRole}**?`
+            : `Ready to generate your personalized career path to **${careerPathPrompt.targetRole}**?`;
 
         return (
              <div className="flex items-start gap-4">
                 <ModelIcon />
                 <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-primary/5 text-slate-800 border border-primary/20">
                     <p className="font-medium">{promptText}</p>
+                    <p className="text-sm text-slate-600 mt-2">This will include milestones, skills, timeline, and learning resources.</p>
                     <div className="mt-4 flex items-center gap-3">
                         <button
                             onClick={handleCreatePath}
@@ -330,7 +441,7 @@ const CareerCoachPage: React.FC = () => {
                                  Creating...
                                 </>
                             ) : (
-                                "Create Career Path"
+                                "🚀 Create Career Path"
                             )}
                         </button>
                         <button
@@ -338,7 +449,7 @@ const CareerCoachPage: React.FC = () => {
                             disabled={isGeneratingPath}
                             className="px-4 py-2 bg-transparent text-slate-600 font-medium rounded-lg hover:bg-gray-100 disabled:opacity-50 transition-colors"
                         >
-                            No, thank you
+                            Not now
                         </button>
                     </div>
                 </div>
@@ -358,17 +469,17 @@ const CareerCoachPage: React.FC = () => {
     const shouldShowSuggestions = !isLoading && !careerPathPrompt;
 
     const suggestionsForEmptyProfile = [
-        "Help me build my professional profile.",
+        "Help me build my professional profile",
         "Where should I start?",
         "What can you do for me?",
     ];
 
     const suggestionsForFilledProfile = [
-        `Help me create a career path to become a ${profile?.targetJobTitle || "Product Manager"}`,
-        `Show me the steps to transition from ${profile?.jobTitle || "my current role"} to ${profile?.targetJobTitle || "a Senior Role"}`,
-        "What are the key skills for this role?",
-        "What is the typical salary range?",
-        "Tell me about current market trends.",
+        `Create a career path to become a ${profile?.targetJobTitle || "Senior Product Manager"}`,
+        `How do I transition from ${profile?.jobTitle || "my role"} to ${profile?.targetJobTitle || "a leadership role"}?`,
+        "What skills should I develop next?",
+        "Help me prepare for interviews",
+        "Review my career progress",
     ];
 
     const suggestions = isProfileEffectivelyEmpty ? suggestionsForEmptyProfile : suggestionsForFilledProfile;
@@ -378,7 +489,7 @@ const CareerCoachPage: React.FC = () => {
             <div className="px-4 sm:px-6 lg:px-8 pt-8">
                 <PageHeader 
                     title="Career Coach"
-                    subtitle="Your personal guide for career development."
+                    description="Your personal guide for career development."
                     actions={
                         <button
                             onClick={handleNewChat}
@@ -389,7 +500,7 @@ const CareerCoachPage: React.FC = () => {
                     }
                 />
             </div>
-            <div className="flex-grow overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-grow overflow-y-auto">
                 <div className="pb-4">
                     <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                         {messages.map((msg, index) => (
@@ -419,11 +530,13 @@ const CareerCoachPage: React.FC = () => {
                             <div className="flex items-start gap-4">
                                 <ModelIcon />
                                 <div className="max-w-xl p-4 rounded-xl bg-white text-slate-800 border border-slate-100">
-                                    <TextShimmer className='text-sm font-medium [--base-color:theme(colors.slate.500)] [--base-gradient-color:theme(colors.slate.900)]' duration={1.5} children={agentStatus || "Keju is thinking..."} />
+                                    <TextShimmer className='text-sm font-medium [--base-color:theme(colors.slate.500)] [--base-gradient-color:theme(colors.slate.900)]' duration={1.5}>
+                                        {agentStatus || "Keju is thinking..."}
+                                    </TextShimmer>
                                 </div>
                             </div>
                         )}
-                        <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} style={{ height: 1 }} />
                     </div>
                 </div>
             </div>
@@ -440,7 +553,7 @@ const CareerCoachPage: React.FC = () => {
                         <div className="mb-3 animate-fade-in">
                             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
                                 <span className="text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap flex-shrink-0">
-                                    Suggestions
+                                    Try
                                 </span>
                                 <div className="flex gap-2">
                                     {suggestions.map((suggestion, i) => (

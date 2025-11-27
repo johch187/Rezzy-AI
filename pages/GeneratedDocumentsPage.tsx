@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { ProfileContext } from '../App';
-import { CreateDocIcon, DownloadIcon } from '../components/Icons';
+import { CreateDocIcon } from '../components/Icons';
 import { DocumentGeneration } from '../types';
 import Container from '../components/Container';
 import PageHeader from '../components/PageHeader';
@@ -24,48 +24,12 @@ const GeneratedDocumentsPage: React.FC = () => {
         return doc.jobTitle || doc.companyName || 'Untitled Application';
     };
 
-    const handleExportCSV = () => {
-        if (!documentHistory.length) return;
-
-        const headers = ['Date', 'Company', 'Job Title', 'Fit Score', 'Resume Generated', 'Cover Letter Generated'];
-        const rows = documentHistory.map(doc => [
-            new Date(doc.generatedAt).toLocaleDateString(),
-            doc.companyName || 'N/A',
-            doc.jobTitle || 'N/A',
-            doc.analysisResult?.fitScore ? `${doc.analysisResult.fitScore}%` : '',
-            doc.resumeContent ? 'Yes' : 'No',
-            doc.coverLetterContent ? 'Yes' : 'No'
-        ]);
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `keju_history_${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
     return (
         <div className="flex-grow bg-gray-50">
             <Container>
                 <PageHeader
                     title="Generated Documents"
-                    subtitle="Your resumes and cover letters in one place."
-                    actions={documentHistory.length > 0 ? (
-                        <Button onClick={handleExportCSV} variant="outline" size="sm" leftIcon={<DownloadIcon />}>
-                            Export CSV
-                        </Button>
-                    ) : undefined}
+                    description="Your resumes and cover letters in one place."
                 />
 
                 {documentHistory.length > 0 ? (

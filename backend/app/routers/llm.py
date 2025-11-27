@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from app.deps.agent import get_agent_service
 from app.deps.auth import CurrentUser
 from app.schemas.generation import GenerateDocumentsRequest
-from app.services.supabase import ensure_active_subscription
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 
@@ -72,12 +71,10 @@ class VideoRequest(BaseModel):
 
 @router.post("/generate-documents")
 async def generate_documents(req: GenerateDocumentsRequest, user: CurrentUser):
-    """Generate tailored resume and cover letter."""
-    try:
-        await ensure_active_subscription(user["id"])
-    except PermissionError:
-        raise HTTPException(status_code=402, detail="Subscription required.")
+    """Generate tailored resume and cover letter.
     
+    Token validation is handled client-side. This endpoint only requires authentication.
+    """
     try:
         return await get_agent_service().generate_documents(
             profile=req.profile.model_dump(),

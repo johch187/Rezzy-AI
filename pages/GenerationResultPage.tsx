@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import type { ProfileData, GeneratedContent, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import EditableDocument from '../components/EditableDocument';
-import { XCircleIcon } from '../components/Icons';
 import ApplicationAnalysisWidget from '../components/ApplicationAnalysisWidget';
 import { isParsedCoverLetter, isParsedResume } from '../utils';
 import Container from '../components/Container';
@@ -52,7 +51,6 @@ const GenerationResultPage: React.FC = () => {
     const [editableDocs, setEditableDocs] = useState<GeneratedContent>(generatedContent);
     const [parsedResume, setParsedResume] = useState<Partial<ProfileData> | null>(initialParsedResume);
     const [parsedCoverLetter, setParsedCoverLetter] = useState<ParsedCoverLetter | null>(initialParsedCoverLetter);
-    const [parsingError, setParsingError] = useState<string | null>(null);
     const [activeView, setActiveView] = useState<'resume' | 'coverLetter' | null>(null);
 
     useEffect(() => {
@@ -62,19 +60,6 @@ const GenerationResultPage: React.FC = () => {
             setActiveView('coverLetter');
         }
     }, [generatedContent]);
-    
-    useEffect(() => {
-        const errorMessages: string[] = [];
-        if (generatedContent.resume && !initialParsedResume) {
-            errorMessages.push("We couldn't structure the generated resume for rich editing, but you can still edit the raw text and download it.");
-        }
-        if (generatedContent.coverLetter && !initialParsedCoverLetter) {
-            errorMessages.push("We couldn't structure the generated cover letter for rich editing, but you can still edit the raw text and download it.");
-        }
-        if (errorMessages.length > 0) {
-            setParsingError(errorMessages.join(' '));
-        }
-    }, [generatedContent, initialParsedResume, initialParsedCoverLetter]);
 
     const handleSaveResume = useCallback((newContent: string, newStructuredData: Partial<ProfileData> | ParsedCoverLetter | null) => {
         setEditableDocs(prev => ({ ...prev, resume: newContent }));
@@ -100,23 +85,10 @@ const GenerationResultPage: React.FC = () => {
 
     return (
         <Container>
-            {parsingError && (
-                <div className="mb-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
-                    <div>
-                        <p className="font-bold">Display Note</p>
-                        <p>{parsingError}</p>
-                    </div>
-                    <button onClick={() => setParsingError(null)} className="p-1 rounded-full hover:bg-yellow-200 transition-colors" aria-label="Close error">
-                        <XCircleIcon className="h-6 w-6" />
-                    </button>
-                </div>
-            )}
-
             <div>
                 <PageHeader
                     title="Your Generation Results"
-                    subtitle="Review your application's fit, then edit and download your tailored documents."
-                    className="animate-slide-in-up"
+                    description="Review your application's fit, then edit and download your tailored documents."
                 />
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

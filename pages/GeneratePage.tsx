@@ -2,7 +2,6 @@ import React, { useState, useContext, useCallback, useRef, useEffect } from 'rea
 import { Link, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { generateTailoredDocuments } from '../services/actions/documentActions';
-import { fetchJobDescriptionFromUrl } from '../services/scrapingService';
 import { parseGeneratedCoverLetter, parseGeneratedResume } from '../services/parserService';
 import type { GenerationOptions, ProfileData, IncludedProfileSelections, ParsedCoverLetter, ApplicationAnalysisResult } from '../types';
 import { templates } from '../components/TemplateSelector';
@@ -14,21 +13,11 @@ import ProfileContentSelector from '../components/ProfileContentSelector';
 import Tooltip from '../components/Tooltip';
 import Card from '../components/Card';
 
-const TextAreaSkeleton: React.FC = () => (
-  <div className="mt-1 block w-full rounded-md border border-gray-200 bg-white p-3 space-y-3 animate-pulse" style={{ minHeight: '340px' }}>
-    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-    <div className="h-4 bg-gray-200 rounded w-full"></div>
-    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-    <div className="h-4 bg-gray-200 rounded w-full"></div>
-    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-  </div>
-);
-
 const GeneratePage: React.FC = () => {
   const profileContext = useContext(ProfileContext);
   const location = useLocation();
 
-  const { profile, tokens, setTokens, isFetchingUrl, setIsFetchingUrl, addDocumentToHistory, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext!;
+  const { profile, tokens, setTokens, addDocumentToHistory, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext!;
   
   const { jobDescription: initialJobDescription } = (location.state as { jobDescription?: string }) || {};
 
@@ -48,7 +37,6 @@ const GeneratePage: React.FC = () => {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
 
-  const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState(initialJobDescription || '');
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -112,20 +100,6 @@ const GeneratePage: React.FC = () => {
     }
   }, [fileError]);
   
-  const handleFetchUrl = useCallback(async () => {
-    if (!jobUrl) return;
-    setIsFetchingUrl(true);
-    setError(null);
-    try {
-      const description = await fetchJobDescriptionFromUrl(jobUrl);
-      setJobDescription(description);
-    } catch (e: any) {
-      setError(e.message || "An unknown error occurred while fetching the URL. Please paste the description manually.");
-    } finally {
-      setIsFetchingUrl(false);
-    }
-  }, [jobUrl, setIsFetchingUrl]);
-
   const handleGenerate = useCallback(() => {
     if (!profileContext?.profile || !jobDescription) {
       setError('Please provide a job description.');
@@ -277,15 +251,6 @@ const GeneratePage: React.FC = () => {
   
   const selectedResumeTpl = templates.resume.find(t => t.id === profile.selectedResumeTemplate);
   const selectedCoverLetterTpl = templates.coverLetter.find(t => t.id === profile.selectedCoverLetterTemplate);
-
-  const fetchButtonContent = isFetchingUrl ? (
-    <>
-      <LoadingSpinnerIcon className="-ml-1 mr-3 h-5 w-5" />
-      <span>Fetching...</span>
-    </>
-  ) : (
-    <span>Fetch</span>
-  );
   
   const baseDocsCost = (options.generateResume ? 1 : 0) + (options.generateCoverLetter ? 1 : 0);
   const thinkingModeCost = options.thinkingMode && baseDocsCost > 0 ? 10 : 0;
@@ -360,28 +325,24 @@ const GeneratePage: React.FC = () => {
                 <Card>
                     <div>
                         <h1 className="text-3xl font-bold text-neutral">Tailor Your Application</h1>
-                        <p className="text-gray-500 mt-2">Start by providing the job details. The AI will use this information to customize your documents.</p>
+                        <p className="text-gray-500 mt-2">Paste the job description below. The AI will use this to customize your documents.</p>
                     </div>
 
                     <div className="mt-6">
-                        <label htmlFor="job-url" className="block text-sm font-medium text-gray-700">
-                            Job Posting URL (Optional)
-                        </label>
-                        <div className="mt-1 flex rounded-md shadow-sm">
-                            <input type="url" id="job-url" className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm disabled:bg-gray-100" placeholder="https://..." value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} disabled={isFetchingUrl} />
-                            <button type="button" onClick={handleFetchUrl} disabled={isFetchingUrl || !jobUrl} className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                            {fetchButtonContent}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="mt-4">
                         <label htmlFor="job-description" className="block text-sm font-medium text-gray-700">
                             Job Description
                         </label>
-                        {isFetchingUrl ? <TextAreaSkeleton /> : (
-                            <textarea id="job-description" rows={15} className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm" placeholder="Paste the full job description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
-                        )}
+                        <textarea 
+                            id="job-description" 
+                            rows={15} 
+                            className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm" 
+                            placeholder="Paste the full job description here..." 
+                            value={jobDescription} 
+                            onChange={(e) => setJobDescription(e.target.value)} 
+                        />
+                        <p className="mt-2 text-xs text-gray-500">
+                            Tip: Include the job title, responsibilities, requirements, and any preferred qualifications for best results.
+                        </p>
                     </div>
                 </Card>
 
