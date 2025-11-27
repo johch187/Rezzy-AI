@@ -80,6 +80,7 @@ class AgentService:
         requested_region = settings.gcp_region or "us-central1"
         self.model_name = "gemini-1.5-pro"
         self.vertex_model: Optional[GenerativeModel] = None
+        self.vertex_ai_initialized = False
 
         # Prefer Vertex AI with application default credentials (e.g., Cloud Run service account).
         self.is_production = _is_production()
@@ -130,7 +131,9 @@ class AgentService:
         if vertexai is not None and self.project_id:
             try:
                 vertexai.init(project=self.project_id, location=self.location)
+                # Initialize model without system_instruction (will be passed per-request)
                 self.vertex_model = GenerativeModel(self.model_name)
+                self.vertex_ai_initialized = True
                 if requested_region != self.location:
                     logger.info(
                         "Vertex AI initialized: project=%s, Cloud Run region=%s mapped to Vertex AI region=%s",
@@ -172,18 +175,29 @@ class AgentService:
         # Preferred path: Vertex AI with service account / ADC (no API key).
         if self.vertex_model is not None and GenerationConfig is not None:
             try:
+                # Create generation config
+                generation_config = GenerationConfig(
+                    response_mime_type=response_mime or "text/plain",
+                    temperature=0.4,
+                    top_p=0.95,
+                )
+                
+                # In Vertex AI SDK, system_instruction should be passed when creating the model instance
+                # Create a model instance with system_instruction for this request
+                # This is the correct pattern for the latest SDK
+                model_with_system = GenerativeModel(
+                    self.model_name,
+                    system_instruction=system_instruction
+                )
+                
                 # Use Part objects for proper prompt formatting (latest SDK pattern)
                 # String prompts are automatically converted, but explicit Part is more robust
                 prompt_parts = [prompt] if Part is None else [Part.from_text(prompt)]
                 
-                response = self.vertex_model.generate_content(
+                # Generate content with the model instance that has system_instruction
+                response = model_with_system.generate_content(
                     prompt_parts,
-                    system_instruction=system_instruction,
-                    generation_config=GenerationConfig(
-                        response_mime_type=response_mime or "text/plain",
-                        temperature=0.4,
-                        top_p=0.95,
-                    ),
+                    generation_config=generation_config,
                 )
                 
                 # Handle response according to latest SDK structure
