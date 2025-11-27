@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from typing import Any, Dict, Optional
 
@@ -7,19 +8,33 @@ from app.config import get_settings
 
 try:
     import vertexai
-    from vertexai.preview.generative_models import GenerationConfig, GenerativeModel
+    # Use stable API instead of preview
+    from vertexai.generative_models import GenerationConfig, GenerativeModel, Part
 except ImportError:
     vertexai = None  # type: ignore
     GenerationConfig = None  # type: ignore
     GenerativeModel = None  # type: ignore
+    Part = None  # type: ignore
 
 try:
     import google.genai as genai
 except ImportError:
     genai = None  # type: ignore
 
+# Import GCP exceptions for better error handling
+try:
+    from google.api_core import exceptions as gcp_exceptions
+except ImportError:
+    gcp_exceptions = None  # type: ignore
+
 
 logger = logging.getLogger(__name__)
+
+# Detect if we're running in production (Cloud Run)
+def _is_production() -> bool:
+    """Detect if running in Cloud Run production environment."""
+    # Cloud Run sets K_SERVICE environment variable
+    return bool(os.getenv("K_SERVICE")) or bool(os.getenv("GAE_ENV"))
 
 
 def _fallback_mock(message: str) -> Dict[str, Any]:
@@ -67,14 +82,29 @@ class AgentService:
         self.vertex_model: Optional[GenerativeModel] = None
 
         # Prefer Vertex AI with application default credentials (e.g., Cloud Run service account).
+        self.is_production = _is_production()
+        
         if vertexai is not None and self.project_id:
             try:
                 vertexai.init(project=self.project_id, location=self.location)
                 self.vertex_model = GenerativeModel(self.model_name)
                 logger.info("Vertex AI initialized successfully for project %s in region %s", self.project_id, self.location)
             except Exception as exc:  # pragma: no cover - initialization happens at runtime
-                logger.warning("Vertex AI init failed; falling back to API key client: %s", exc)
+                if self.is_production:
+                    logger.error("CRITICAL: Vertex AI init failed in production. This should not happen. Error: %s", exc)
+                    raise RuntimeError(
+                        f"Vertex AI initialization failed in production. "
+                        f"Check service account permissions and project configuration. Error: {exc}"
+                    ) from exc
+                else:
+                    logger.warning("Vertex AI init failed; falling back to API key client: %s", exc)
         elif not self.api_key:
+            if self.is_production:
+                raise RuntimeError(
+                    "CRITICAL: No Vertex AI project_id configured in production. "
+                    "Set GCP_PROJECT_ID and GCP_REGION environment variables. "
+                    "API key fallback is not allowed in production."
+                )
             logger.warning("AgentService: No Vertex AI project_id and no GEMINI_API_KEY fallback configured. LLM features will be unavailable.")
 
     async def _run_llm(
@@ -87,8 +117,12 @@ class AgentService:
         # Preferred path: Vertex AI with service account / ADC (no API key).
         if self.vertex_model is not None and GenerationConfig is not None:
             try:
+                # Use Part objects for proper prompt formatting (latest SDK pattern)
+                # String prompts are automatically converted, but explicit Part is more robust
+                prompt_parts = [prompt] if Part is None else [Part.from_text(prompt)]
+                
                 response = self.vertex_model.generate_content(
-                    [prompt],
+                    prompt_parts,
                     system_instruction=system_instruction,
                     generation_config=GenerationConfig(
                         response_mime_type=response_mime or "text/plain",
@@ -96,13 +130,52 @@ class AgentService:
                         top_p=0.95,
                     ),
                 )
-                if hasattr(response, "text"):
-                    return response.text or ""
+                
+                # Handle response according to latest SDK structure
+                # Try direct .text attribute first (convenience method)
+                if hasattr(response, "text") and response.text:
+                    return response.text
+                
+                # Fallback to explicit structure (latest SDK pattern)
+                if hasattr(response, "candidates") and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, "content") and candidate.content:
+                        if hasattr(candidate.content, "parts") and candidate.content.parts:
+                            part = candidate.content.parts[0]
+                            if hasattr(part, "text"):
+                                return part.text or ""
+                
+                # Last resort: serialize response
                 return json.dumps(response, default=str)
             except Exception as exc:  # pragma: no cover - runtime path
-                logger.error("Vertex AI request failed; falling back to API key client: %s", exc)
+                # Provide more specific error messages based on exception type
+                error_type = type(exc).__name__
+                error_msg = str(exc)
+                
+                if gcp_exceptions:
+                    if isinstance(exc, gcp_exceptions.PermissionDenied):
+                        logger.error("CRITICAL: Vertex AI permission denied. Check service account has 'roles/aiplatform.user' role.")
+                    elif isinstance(exc, gcp_exceptions.ResourceExhausted):
+                        logger.error("CRITICAL: Vertex AI quota exceeded. Check your project quotas.")
+                    elif isinstance(exc, gcp_exceptions.InvalidArgument):
+                        logger.error("CRITICAL: Vertex AI invalid argument. Check prompt format and model configuration.")
+                
+                if self.is_production:
+                    logger.error("CRITICAL: Vertex AI request failed in production. Error type: %s, Message: %s", error_type, error_msg)
+                    raise RuntimeError(
+                        f"Vertex AI request failed in production ({error_type}). "
+                        f"Check service account permissions and project configuration. Error: {error_msg}"
+                    ) from exc
+                else:
+                    logger.error("Vertex AI request failed; falling back to API key client. Error: %s", exc)
 
-        # Fallback: google-genai API key path (useful for local dev without Vertex permissions).
+        # Fallback: google-genai API key path (ONLY for local dev, NOT allowed in production).
+        if self.is_production:
+            raise RuntimeError(
+                "CRITICAL: Vertex AI is not available and API key fallback is not allowed in production. "
+                "Ensure Vertex AI is properly configured with service account permissions."
+            )
+        
         if genai is not None and self.api_key:
             client = genai.Client(api_key=self.api_key)
             resp = client.models.generate_content(
