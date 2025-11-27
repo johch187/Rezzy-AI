@@ -84,52 +84,52 @@ export const PersonalInfoSection = React.memo(() => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input name="firstName" value={firstName} onChange={(e) => handleFirstNameChange(e.target.value)} className={`${baseInputStyles} ${errors.firstName ? errorInputStyles : validInputStyles}`} placeholder="Jordan" />
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input id="firstName" name="firstName" value={firstName} onChange={(e) => handleFirstNameChange(e.target.value)} className={`${baseInputStyles} ${errors.firstName ? errorInputStyles : validInputStyles}`} placeholder="Jordan" aria-describedby={errors.firstName ? "firstName-error" : undefined} />
                 <ErrorMessage message={errors.firstName} id="firstName-error" />
             </div>
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input name="lastName" value={lastName} onChange={(e) => handleLastNameChange(e.target.value)} className={`${baseInputStyles} ${errors.lastName ? errorInputStyles : validInputStyles}`} placeholder="Lee" />
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input id="lastName" name="lastName" value={lastName} onChange={(e) => handleLastNameChange(e.target.value)} className={`${baseInputStyles} ${errors.lastName ? errorInputStyles : validInputStyles}`} placeholder="Lee" aria-describedby={errors.lastName ? "lastName-error" : undefined} />
                 <ErrorMessage message={errors.lastName} id="lastName-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input name="email" value={profile.email} onChange={handleChange} className={`${baseInputStyles} ${errors.email ? errorInputStyles : validInputStyles}`} placeholder="jordan.lee@example.com" />
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input id="email" name="email" value={profile.email} onChange={handleChange} className={`${baseInputStyles} ${errors.email ? errorInputStyles : validInputStyles}`} placeholder="jordan.lee@example.com" aria-describedby={errors.email ? "email-error" : undefined} />
                 <ErrorMessage message={errors.email} id="email-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
                     <Tooltip text="Link to your personal website or online portfolio. e.g., 'yourname.dev'">Website/Portfolio</Tooltip>
                 </label>
-                <input name="website" value={profile.website} onChange={handleChange} className={`${baseInputStyles} ${errors.website ? errorInputStyles : validInputStyles}`} placeholder="yourportfolio.com" />
+                <input id="website" name="website" value={profile.website} onChange={handleChange} className={`${baseInputStyles} ${errors.website ? errorInputStyles : validInputStyles}`} placeholder="yourportfolio.com" aria-describedby={errors.website ? "website-error" : undefined} />
                 <ErrorMessage message={errors.website} id="website-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                     <Tooltip text="Your professional contact number. e.g., (555) 123-4567">Phone</Tooltip>
                 </label>
-                <input name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${errors.phone ? errorInputStyles : validInputStyles}`} placeholder="(555) 123-4567" />
+                <input id="phone" name="phone" value={profile.phone} onChange={handleChange} className={`${baseInputStyles} ${errors.phone ? errorInputStyles : validInputStyles}`} placeholder="(555) 123-4567" aria-describedby={errors.phone ? "phone-error" : undefined} />
                 <ErrorMessage message={errors.phone} id="phone-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700 mb-1">
                     <Tooltip text="Full URL to your LinkedIn profile. e.g., 'linkedin.com/in/yourname'">LinkedIn</Tooltip>
                 </label>
-                <input name="linkedin" value={profile.linkedin} onChange={handleChange} className={`${baseInputStyles} ${errors.linkedin ? errorInputStyles : validInputStyles}`} placeholder="linkedin.com/in/yourprofile" />
+                <input id="linkedin" name="linkedin" value={profile.linkedin} onChange={handleChange} className={`${baseInputStyles} ${errors.linkedin ? errorInputStyles : validInputStyles}`} placeholder="linkedin.com/in/yourprofile" aria-describedby={errors.linkedin ? "linkedin-error" : undefined} />
                 <ErrorMessage message={errors.linkedin} id="linkedin-error" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
                     <Tooltip text="Your city and state. e.g., 'San Francisco, CA'">Location</Tooltip>
                 </label>
-                <input name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="New York, NY" />
+                <input id="location" name="location" value={profile.location} onChange={handleChange} className={`${baseInputStyles} ${validInputStyles}`} placeholder="New York, NY" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="github" className="block text-sm font-medium text-gray-700 mb-1">
                     <Tooltip text="Full URL to your GitHub profile. e.g., 'github.com/yourusername'">GitHub</Tooltip>
                 </label>
-                <input name="github" value={profile.github} onChange={handleChange} className={`${baseInputStyles} ${errors.github ? errorInputStyles : validInputStyles}`} placeholder="github.com/yourusername" />
+                <input id="github" name="github" value={profile.github} onChange={handleChange} className={`${baseInputStyles} ${errors.github ? errorInputStyles : validInputStyles}`} placeholder="github.com/yourusername" aria-describedby={errors.github ? "github-error" : undefined} />
                 <ErrorMessage message={errors.github} id="github-error" />
             </div>
         </div>
