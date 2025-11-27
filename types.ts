@@ -216,8 +216,16 @@ export interface BackgroundTask {
   createdAt: string; // ISO string
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model' | 'system';
+  content: string;
+  timestamp: string;
+}
+
 export interface CareerChatSummary {
   id: string;
   title: string;
   timestamp: string; // ISO date string
+  messages: ChatMessage[];
 }

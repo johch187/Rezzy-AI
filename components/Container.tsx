@@ -13,12 +13,12 @@ const Container: React.FC<ContainerProps> = ({
 }) => {
   const sizeClasses = {
     narrow: 'max-w-3xl',
-    default: 'max-w-7xl',
-    wide: 'max-w-screen-2xl',
+    default: 'max-w-5xl',
+    wide: 'max-w-7xl',
   };
 
   return (
-    <div className={`${sizeClasses[size]} mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 ${className}`}>
+    <div className={`${sizeClasses[size]} mx-auto px-4 sm:px-6 lg:px-8 py-8 ${className}`}>
       {children}
     </div>
   );

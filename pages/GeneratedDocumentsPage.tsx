@@ -19,9 +19,9 @@ const GeneratedDocumentsPage: React.FC = () => {
 
     const getDocumentTitle = (doc: DocumentGeneration) => {
         if (doc.companyName && doc.jobTitle) {
-            return `Application for ${doc.companyName}, ${doc.jobTitle}`;
+            return `${doc.jobTitle} at ${doc.companyName}`;
         }
-        return `Application for ${doc.jobTitle || doc.companyName || 'Untitled Role'}`;
+        return doc.jobTitle || doc.companyName || 'Untitled Application';
     };
 
     const handleExportCSV = () => {
@@ -56,87 +56,81 @@ const GeneratedDocumentsPage: React.FC = () => {
     };
 
     return (
-        <Container>
-            <PageHeader
-                title="Generated Documents"
-                subtitle="Here you can find all the resumes and cover letters you've generated."
-            />
-
-            {documentHistory.length > 0 ? (
-                <>
-                    <div className="flex justify-end mb-4 animate-fade-in">
+        <div className="flex-grow bg-gray-50">
+            <Container>
+                <PageHeader
+                    title="Generated Documents"
+                    subtitle="Your resumes and cover letters in one place."
+                    actions={documentHistory.length > 0 ? (
                         <Button onClick={handleExportCSV} variant="outline" size="sm" leftIcon={<DownloadIcon />}>
-                            Export History to CSV
+                            Export CSV
                         </Button>
-                    </div>
+                    ) : undefined}
+                />
+
+                {documentHistory.length > 0 ? (
                     <Card>
-                        <ul role="list" className="divide-y divide-gray-200">
+                        <ul role="list" className="divide-y divide-gray-100">
                             {documentHistory.map((doc) => (
-                                <li key={doc.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 py-5 sm:flex-nowrap">
-                                    <div>
-                                        <p className="text-sm font-semibold leading-6 text-gray-900">
-                                            <Link
-                                                to="/generate/results"
-                                                state={{
-                                                    generatedContent: {
-                                                        resume: doc.resumeContent,
-                                                        coverLetter: doc.coverLetterContent,
-                                                    },
-                                                    analysisResult: doc.analysisResult,
-                                                    parsedResume: doc.parsedResume,
-                                                    parsedCoverLetter: doc.parsedCoverLetter,
-                                                }}
-                                                className="hover:underline"
-                                            >
-                                                {getDocumentTitle(doc)}
-                                            </Link>
+                                <li key={doc.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4 sm:flex-nowrap">
+                                    <div className="min-w-0">
+                                        <Link
+                                            to="/generate/results"
+                                            state={{
+                                                generatedContent: {
+                                                    resume: doc.resumeContent,
+                                                    coverLetter: doc.coverLetterContent,
+                                                },
+                                                analysisResult: doc.analysisResult,
+                                                parsedResume: doc.parsedResume,
+                                                parsedCoverLetter: doc.parsedCoverLetter,
+                                            }}
+                                            className="text-sm font-medium text-gray-900 hover:text-primary transition-colors"
+                                        >
+                                            {getDocumentTitle(doc)}
+                                        </Link>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            {new Date(doc.generatedAt).toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
                                         </p>
-                                        <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500">
-                                            <p>
-                                                <time dateTime={doc.generatedAt}>
-                                                    Generated on {new Date(doc.generatedAt).toLocaleString()}
-                                                </time>
-                                            </p>
-                                        </div>
                                     </div>
-                                    <dl className="flex w-full flex-none justify-between gap-x-8 sm:w-auto">
-                                        <div className="flex space-x-2">
-                                            {doc.resumeContent && (
-                                                <dd>
-                                                    <span className="capitalize inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-blue-50 text-blue-700 ring-blue-600/20">
-                                                        Resume
-                                                    </span>
-                                                </dd>
-                                            )}
-                                            {doc.coverLetterContent && (
-                                                <dd>
-                                                    <span className="capitalize inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-green-50 text-green-700 ring-green-600/20">
-                                                        Cover Letter
-                                                    </span>
-                                                </dd>
-                                            )}
-                                        </div>
-                                    </dl>
+                                    <div className="flex gap-2">
+                                        {doc.resumeContent && (
+                                            <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                                                Resume
+                                            </span>
+                                        )}
+                                        {doc.coverLetterContent && (
+                                            <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                                                Cover Letter
+                                            </span>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>
                     </Card>
-                </>
-            ) : (
-                <Card className="text-center py-16">
-                    <div className="flex items-center justify-center h-16 w-16 rounded-full bg-slate-100 mx-auto">
-                        <CreateDocIcon />
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold text-gray-900">No Documents Yet</h3>
-                    <p className="mt-2 text-sm text-gray-500">Your generated resumes and cover letters will appear here.</p>
-                    <div className="mt-6">
-                        <Button as="link" to="/generate" variant="primary">
-                            Tailor Your First Application
-                        </Button>
-                    </div>
-                </Card>
-            )}
-        </Container>
+                ) : (
+                    <Card className="text-center py-12">
+                        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto text-gray-400">
+                            <CreateDocIcon />
+                        </div>
+                        <h3 className="mt-4 text-base font-medium text-gray-900">No Documents Yet</h3>
+                        <p className="mt-1 text-sm text-gray-500">Your generated resumes and cover letters will appear here.</p>
+                        <div className="mt-5">
+                            <Button as="link" to="/generate" variant="primary">
+                                Tailor Your First Application
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+            </Container>
+        </div>
     );
 };
 

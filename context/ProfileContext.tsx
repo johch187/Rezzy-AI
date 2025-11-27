@@ -56,6 +56,8 @@ export const ProfileContext = createContext<{
   addDocumentToHistory: (generation: { jobTitle: string; companyName: string; resumeContent: string | null; coverLetterContent: string | null; analysisResult: ApplicationAnalysisResult | null; parsedResume: Partial<ProfileData> | null; parsedCoverLetter: ParsedCoverLetter | null; }) => void;
   careerChatHistory: CareerChatSummary[];
   addCareerChatSummary: (summary: CareerChatSummary) => void;
+  updateCareerChat: (chatId: string, messages: CareerChatSummary['messages']) => void;
+  getChatById: (chatId: string) => CareerChatSummary | undefined;
   isParsing: boolean;
   parsingError: string | null;
   parseResumeInBackground: (file: File) => void;
@@ -266,7 +268,17 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
   
   const addCareerChatSummary = useCallback((summary: CareerChatSummary) => {
     setCareerChatHistory(prevHistory => {
-        const updatedHistory = [summary, ...prevHistory].slice(0, 20);
+        // Check if chat with same ID exists - update it instead of adding new
+        const existingIndex = prevHistory.findIndex(c => c.id === summary.id);
+        let updatedHistory: CareerChatSummary[];
+        
+        if (existingIndex >= 0) {
+            updatedHistory = [...prevHistory];
+            updatedHistory[existingIndex] = summary;
+        } else {
+            updatedHistory = [summary, ...prevHistory].slice(0, 20);
+        }
+        
         try {
             localStorage.setItem('careerChatHistory', JSON.stringify(updatedHistory));
             void (async () => {
@@ -290,6 +302,46 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
         return updatedHistory;
     });
   }, [profile, documentHistory, tokens]);
+
+  const updateCareerChat = useCallback((chatId: string, messages: CareerChatSummary['messages']) => {
+    setCareerChatHistory(prevHistory => {
+        const chatIndex = prevHistory.findIndex(c => c.id === chatId);
+        if (chatIndex < 0) return prevHistory;
+        
+        const updatedHistory = [...prevHistory];
+        updatedHistory[chatIndex] = {
+            ...updatedHistory[chatIndex],
+            messages,
+            timestamp: new Date().toISOString(),
+        };
+        
+        try {
+            localStorage.setItem('careerChatHistory', JSON.stringify(updatedHistory));
+            void (async () => {
+              try {
+                const session = await supabase?.auth.getSession();
+                if (session?.data.session) {
+                  await persistWorkspace({
+                    profile: profile ?? null,
+                    documentHistory,
+                    careerChatHistory: updatedHistory,
+                    tokens,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to sync chat history", e);
+              }
+            })();
+        } catch (error) {
+            console.error("Failed to save career chat history to localStorage", error);
+        }
+        return updatedHistory;
+    });
+  }, [profile, documentHistory, tokens]);
+
+  const getChatById = useCallback((chatId: string): CareerChatSummary | undefined => {
+    return careerChatHistory.find(c => c.id === chatId);
+  }, [careerChatHistory]);
 
   const parseResumeInBackground = useCallback((file: File) => {
     if (!file || !profile) return;
@@ -391,7 +443,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       subscription,
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
-      careerChatHistory, addCareerChatSummary,
+      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById,
       isParsing,
       parsingError,
       parseResumeInBackground,
@@ -406,7 +458,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       tokens, setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
-      careerChatHistory, addCareerChatSummary,
+      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById,
       isParsing, parsingError, parseResumeInBackground,
       backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications
     ]);

@@ -1,8 +1,8 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { generateCoffeeChatBrief, generateReachOutMessage } from '../services/actions/networkingActions';
-import { LoadingSpinnerIcon, XCircleIcon } from '../components/Icons';
+import { XCircleIcon } from '../components/Icons';
 import Container from '../components/Container';
 import PageHeader from '../components/PageHeader';
 import Card from '../components/Card';
@@ -59,7 +59,7 @@ const CoffeeChatPrepperPage: React.FC = () => {
                 };
                 updateBackgroundTask(taskId, { status: 'completed', result: finalResultPayload });
             } catch (e: any) {
-                setTokens(prev => prev + 1); // Refund token
+                setTokens(prev => prev + 1);
                 updateBackgroundTask(taskId, { status: 'error', result: { message: e.message || "An unexpected error occurred." } });
             }
         })();
@@ -77,21 +77,13 @@ const CoffeeChatPrepperPage: React.FC = () => {
     ];
 
     return (
-        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
-            <Container className="max-w-4xl py-0">
-                <div className="text-center mb-0">
-                    <div className="flex justify-center mb-6">
-                        <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mx-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h4M5 8h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H21" />
-                            </svg>
-                        </div>
-                    </div>
-                    <PageHeader 
-                        title="Coffee Chats"
-                        subtitle="Ace your professional networking. Provide details about a person you want to connect with—like their bio, notes, or a LinkedIn profile—and our AI coach will generate a tailored outreach message or a personalized brief to ensure you make a great impression."
-                    />
-                </div>
+        <div className="flex-grow bg-gray-50">
+            <Container size="narrow">
+                <PageHeader 
+                    title="Coffee Chats"
+                    subtitle="Prepare for networking conversations or craft personalized outreach messages."
+                    centered
+                />
                 
                 <TubelightNavbar
                     items={navItems}
@@ -100,30 +92,29 @@ const CoffeeChatPrepperPage: React.FC = () => {
                     layoutId="coffee-chat-nav"
                 />
 
-                <Card>
-                    <label htmlFor="counterpart-info" className="block text-lg font-semibold text-gray-800">
+                <Card className="mt-6">
+                    <label htmlFor="counterpart-info" className="block text-base font-medium text-gray-900">
                         Who are you connecting with?
                     </label>
-                    <p className="text-gray-500 mt-1 mb-4 text-sm">
-                        Paste any information you have: their bio, LinkedIn profile text, your notes, etc. The more detail, the better!
+                    <p className="text-sm text-gray-500 mt-1 mb-4">
+                        Paste their bio, LinkedIn profile, or your notes. The more detail, the better!
                     </p>
                     <textarea
                         id="counterpart-info"
-                        rows={12}
-                        className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-1 focus:ring-primary focus:border-primary transition bg-gray-50"
+                        rows={8}
+                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition bg-white text-sm"
                         placeholder={placeholderText}
                         value={counterpartInfo}
                         onChange={(e) => setCounterpartInfo(e.target.value)}
                         disabled={isGenerating}
                     />
-                    <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4">
-                        <p className="text-sm text-gray-600">This will cost <span className="font-bold">1 Token</span>.</p>
+                    <div className="mt-4 flex flex-col sm:flex-row justify-end items-center gap-4">
+                        <p className="text-sm text-gray-500">Cost: <span className="font-medium text-gray-700">1 Token</span></p>
                         <Button
                             onClick={handleGenerate}
                             disabled={!counterpartInfo.trim()}
                             isLoading={isGenerating}
                             variant="primary"
-                            size="lg"
                         >
                             {isGenerating ? 'Generating...' : buttonText}
                         </Button>
@@ -131,14 +122,18 @@ const CoffeeChatPrepperPage: React.FC = () => {
                 </Card>
 
                 {error && (
-                    <div className="mt-8 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-md" role="alert">
+                    <div className="mt-4 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm flex justify-between items-start">
                         <div>
-                            <p className="font-bold">An error occurred</p>
-                            <p>{error}</p>
-                            {error.includes("tokens") && <Link to="/subscription" className="underline font-semibold">Purchase More Tokens</Link>}
+                            <p className="font-medium">Error</p>
+                            <p className="mt-1">{error}</p>
+                            {error.includes("tokens") && (
+                                <Link to="/subscription" className="underline font-medium mt-2 inline-block">
+                                    Purchase More Tokens
+                                </Link>
+                            )}
                         </div>
-                        <button onClick={() => setError(null)} className="p-1 rounded-full hover:bg-red-200 transition-colors" aria-label="Close">
-                            <XCircleIcon className="h-6 w-6" />
+                        <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded" aria-label="Close">
+                            <XCircleIcon className="w-5 h-5" />
                         </button>
                     </div>
                 )}

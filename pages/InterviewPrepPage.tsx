@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { shapeInterviewStory, generateInterviewQuestions } from '../services/actions/interviewActions';
@@ -72,7 +72,7 @@ const InterviewPrepPage: React.FC = () => {
                 setResults(prev => ({ ...prev, [activeTool]: result }));
                 updateBackgroundTask(taskId, { status: 'completed', result: { content: result, tool: activeTool } });
             } catch (e: any) {
-                setTokens(prev => prev + 1); // Refund token
+                setTokens(prev => prev + 1);
                 const errorMessage = e.message || "An unexpected error occurred.";
                 setError(errorMessage);
                 updateBackgroundTask(taskId, { status: 'error', result: { message: errorMessage } });
@@ -97,21 +97,20 @@ const InterviewPrepPage: React.FC = () => {
         return (
             <div className="space-y-4">
                 <textarea
-                    rows={12}
-                    className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-1 focus:ring-primary focus:border-primary transition bg-gray-50"
+                    rows={10}
+                    className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition bg-white text-sm"
                     placeholder={config.placeholder}
                     value={inputs[activeTool]}
                     onChange={(e) => setInputs(prev => ({...prev, [activeTool]: e.target.value}))}
                     disabled={isGenerating}
                 />
-                <div className="pt-2 flex flex-col sm:flex-row justify-end items-center gap-4">
-                    <p className="text-sm text-gray-600">This will cost <span className="font-bold">{config.cost} Token</span>.</p>
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-4">
+                    <p className="text-sm text-gray-500">Cost: <span className="font-medium text-gray-700">{config.cost} Token</span></p>
                     <Button
                         onClick={handleGenerate}
                         disabled={!inputs[activeTool].trim()}
                         isLoading={isGenerating}
                         variant="primary"
-                        size="lg"
                     >
                         {isGenerating ? 'Generating...' : config.button}
                     </Button>
@@ -123,9 +122,9 @@ const InterviewPrepPage: React.FC = () => {
     const renderResult = () => {
         if (isGenerating) {
             return (
-                <div className="text-center p-8">
-                    <LoadingSpinnerIcon className="h-12 w-12 text-primary mx-auto" />
-                    <h3 className="text-xl font-bold text-slate-800 mt-4">Generating...</h3>
+                <div className="flex flex-col items-center justify-center py-12">
+                    <LoadingSpinnerIcon className="h-8 w-8 text-primary" />
+                    <p className="mt-3 text-sm text-gray-500">Generating...</p>
                 </div>
             );
         }
@@ -134,21 +133,33 @@ const InterviewPrepPage: React.FC = () => {
         if (activeTool === 'rapport' && results.rapport) return <SimpleMarkdown text={results.rapport} />;
         if (activeTool === 'questions' && results.questions.length > 0) {
             return (
-                <ul className="space-y-3 list-decimal list-inside">
-                    {results.questions.map((q, i) => <li key={i}>{q}</li>)}
+                <ul className="space-y-3">
+                    {results.questions.map((q, i) => (
+                        <li key={i} className="flex gap-3">
+                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">{i + 1}</span>
+                            <span className="text-gray-700">{q}</span>
+                        </li>
+                    ))}
                 </ul>
             );
         }
         
-        return <p className="text-slate-500 text-center py-8">Your results will appear here.</p>;
+        return (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <MessageSquareText className="w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">Your results will appear here</p>
+            </div>
+        );
     }
 
     return (
-        <div className="bg-base-200 py-16 sm:py-24 animate-fade-in flex-grow">
-            <Container className="py-0">
+        <div className="flex-grow bg-gray-50">
+            <Container size="wide">
                 <PageHeader 
                     title="Interview Prep Center"
-                    subtitle="Walk into any interview with confidence. Use our AI tools to structure your stories, prepare questions, and build rapport."
+                    subtitle="Structure your stories, prepare questions, and build rapport with confidence."
                 />
                 
                 <TubelightNavbar
@@ -158,22 +169,23 @@ const InterviewPrepPage: React.FC = () => {
                     layoutId="interview-prep-nav"
                 />
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                     <Card>
                         {renderTool()}
                     </Card>
                     
-                    <Card className="min-h-[30rem]">
+                    <Card className="min-h-[400px]">
                         {error && !isGenerating && (
-                            <div className="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md relative flex justify-between items-center shadow-sm" role="alert">
+                            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm flex justify-between items-start">
                                 <p>{error}</p>
-                                <button onClick={() => setError(null)} className="p-1" aria-label="Close"><XCircleIcon /></button>
+                                <button onClick={() => setError(null)} className="p-0.5 hover:bg-red-100 rounded" aria-label="Close">
+                                    <XCircleIcon className="w-4 h-4" />
+                                </button>
                             </div>
                         )}
                         {renderResult()}
                     </Card>
                 </div>
-
             </Container>
         </div>
     );

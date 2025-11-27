@@ -3,9 +3,10 @@ import React from 'react';
 export interface PageHeaderProps {
   title: string;
   description?: string;
-  subtitle?: string | React.ReactNode; // Alias for description
+  subtitle?: string | React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
+  centered?: boolean;
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({ 
@@ -13,18 +14,18 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   description, 
   subtitle,
   actions,
-  className = ''
+  className = '',
+  centered = false,
 }) => {
-  // Use subtitle as fallback for description
   const displayDescription = description || subtitle;
   
   return (
-    <div className={`mb-6 sm:mb-8 ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{title}</h1>
+    <div className={`mb-8 ${className}`}>
+      <div className={`flex flex-col ${centered ? 'items-center text-center' : 'sm:flex-row sm:items-center sm:justify-between'} gap-4`}>
+        <div className={centered ? 'max-w-2xl' : ''}>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{title}</h1>
           {displayDescription && (
-            <p className="mt-1 text-sm text-gray-500">{displayDescription}</p>
+            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{displayDescription}</p>
           )}
         </div>
         {actions && <div className="flex-shrink-0">{actions}</div>}

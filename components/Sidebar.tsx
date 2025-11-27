@@ -114,20 +114,29 @@ const Sidebar: React.FC = () => {
 
           {/* Chat History */}
           <div className={`mt-8 pt-6 border-t border-gray-100 transition-all duration-200 ${!open ? 'opacity-0 h-0 invisible' : 'opacity-100 visible'}`}>
-            <h3 className="px-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Recent Chats
-            </h3>
+            <div className="flex items-center justify-between px-2 mb-3">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Recent Chats
+              </h3>
+              <Link 
+                to="/career-coach" 
+                className="text-xs text-primary hover:text-primary-600 transition-colors"
+              >
+                + New
+              </Link>
+            </div>
             {careerChatHistory.length > 0 ? (
-              <ul className="mt-3 space-y-0.5">
+              <ul className="space-y-0.5">
                 {careerChatHistory.slice(0, 5).map(chatSummary => {
                   const date = new Date(chatSummary.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  const hasMessages = chatSummary.messages && chatSummary.messages.length > 0;
                   return (
                     <li key={chatSummary.id}>
                       <Link 
-                        to="/career-coach" 
-                        className="flex items-center justify-between px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                        to={hasMessages ? `/career-coach?chat=${chatSummary.id}` : '/career-coach'}
+                        className="flex items-center justify-between px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors group"
                       >
-                        <span className="truncate">{chatSummary.title}</span>
+                        <span className="truncate group-hover:text-gray-900">{chatSummary.title}</span>
                         <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{date}</span>
                       </Link>
                     </li>
@@ -135,7 +144,7 @@ const Sidebar: React.FC = () => {
                 })}
               </ul>
             ) : (
-              <p className="mt-3 px-2 text-sm text-gray-400">No chats yet</p>
+              <p className="px-2 text-sm text-gray-400">No chats yet</p>
             )}
           </div>
         </div>

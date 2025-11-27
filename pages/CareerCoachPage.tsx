@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext, useRef, FormEvent, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext, useRef, FormEvent, useMemo, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { createCareerAgent, AgentUICallbacks } from '../services/careerAgent';
 import { generateCareerPath, getVideosForMilestone } from '../services/actions/careerActions';
@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import { useAnimatedText } from '../components/ui/animated-text';
 import { PromptSuggestion } from '../components/ui/prompt-suggestion';
 import { TextShimmer } from '../components/ui/text-shimmer';
+import type { ChatMessage } from '../types';
 
 type Message = { 
     role: 'user' | 'model' | 'system'; 
@@ -35,11 +36,16 @@ const ModelIcon: React.FC = () => (
 const CareerCoachPage: React.FC = () => {
     const profileContext = useContext(ProfileContext);
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const chatId = searchParams.get('chat');
+    
     const [messages, setMessages] = useState<Message[]>([]);
+    const [currentChatId, setCurrentChatId] = useState<string | null>(null);
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [agentStatus, setAgentStatus] = useState<string>('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const hasInitialized = useRef(false);
     
     const [careerPathPrompt, setCareerPathPrompt] = useState<{
         show: boolean;
@@ -49,13 +55,12 @@ const CareerCoachPage: React.FC = () => {
     } | null>(null);
 
     if (!profileContext) return <div>Loading...</div>
-    const { profile, setProfile, documentHistory, addCareerChatSummary, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
+    const { profile, setProfile, documentHistory, addCareerChatSummary, updateCareerChat, getChatById, backgroundTasks, startBackgroundTask, updateBackgroundTask } = profileContext;
 
     // Initialize the Agent with UI callbacks
     const agent = useMemo(() => {
         const callbacks: AgentUICallbacks = {
             navigate: (path, state) => {
-                // We delay navigation slightly to allow the agent to finish its thought process visually
                 setTimeout(() => navigate(path, { state }), 1000);
             },
             updateProfile: (updates) => {
@@ -73,74 +78,161 @@ const CareerCoachPage: React.FC = () => {
 
     const isGeneratingPath = backgroundTasks.some(t => t.type === 'career-path' && t.status === 'running');
 
-    useEffect(() => {
-        if (profile && messages.length === 0) {
-            const isProfileEffectivelyEmpty = (
-                !profile.summary.trim() &&
-                profile.experience.length === 0 &&
-                profile.education.length === 0 &&
-                !profile.jobTitle.trim()
-            );
+    // Convert messages to ChatMessage format for saving
+    const messagesToChatMessages = useCallback((msgs: Message[]): ChatMessage[] => {
+        return msgs
+            .filter(m => m.role !== 'system' || !m.action) // Don't save action buttons
+            .map(m => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                timestamp: new Date().toISOString(),
+            }));
+    }, []);
 
-            if (isProfileEffectivelyEmpty) {
-                const initialMessage = `Hi! I'm your Keju Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
-                const actionButton = (
-                    <button
-                        onClick={() => navigate('/builder')}
-                        className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-white text-brand-blue font-semibold rounded-lg shadow-sm border border-brand-blue/30 hover:bg-brand-blue/10 transition-colors"
-                    >
-                        Go to My Profile
-                    </button>
-                );
-                setMessages([{
-                    role: 'model',
-                    content: initialMessage,
-                    id: crypto.randomUUID(),
-                    action: actionButton,
-                    disableAnimation: true
-                }]);
-            } else {
-                const initialMessage = `Hi! I'm your Keju Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an an investment banker?"\n\nWhat's on your mind today?`;
-                 setMessages([{
-                    role: 'model',
-                    content: initialMessage,
-                    id: crypto.randomUUID(),
-                    disableAnimation: true
-                }]);
+    // Convert ChatMessage to Message format for display
+    const chatMessagesToMessages = useCallback((chatMsgs: ChatMessage[]): Message[] => {
+        return chatMsgs.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            disableAnimation: true, // Don't animate loaded messages
+        }));
+    }, []);
+
+    // Save current conversation
+    const saveConversation = useCallback((msgs: Message[], chatIdToSave: string, title: string) => {
+        const chatMessages = messagesToChatMessages(msgs);
+        if (chatMessages.length === 0) return;
+        
+        addCareerChatSummary({
+            id: chatIdToSave,
+            title,
+            timestamp: new Date().toISOString(),
+            messages: chatMessages,
+        });
+    }, [addCareerChatSummary, messagesToChatMessages]);
+
+    // Load existing chat or initialize new one
+    useEffect(() => {
+        if (hasInitialized.current) return;
+        if (!profile) return;
+        
+        hasInitialized.current = true;
+        
+        // If chat ID provided, load that conversation
+        if (chatId) {
+            const existingChat = getChatById(chatId);
+            if (existingChat && existingChat.messages && existingChat.messages.length > 0) {
+                setMessages(chatMessagesToMessages(existingChat.messages));
+                setCurrentChatId(chatId);
+                return;
             }
         }
-    }, [profile, navigate, messages.length]);
+        
+        // Otherwise start a new conversation
+        const newChatId = crypto.randomUUID();
+        setCurrentChatId(newChatId);
+        
+        const isProfileEffectivelyEmpty = (
+            !profile.summary.trim() &&
+            profile.experience.length === 0 &&
+            profile.education.length === 0 &&
+            !profile.jobTitle.trim()
+        );
 
+        if (isProfileEffectivelyEmpty) {
+            const initialMessage = `Hi! I'm your Keju Career Coach. To give you the best, most personalized advice, I need to know a bit about you.\n\nPlease start by filling out your professional profile. Once that's done, I can help you with anything from crafting the perfect resume to planning your long-term career goals.`;
+            const actionButton = (
+                <button
+                    onClick={() => navigate('/builder')}
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-white text-primary font-semibold rounded-lg shadow-sm border border-primary/30 hover:bg-primary/10 transition-colors"
+                >
+                    Go to My Profile
+                </button>
+            );
+            setMessages([{
+                role: 'model',
+                content: initialMessage,
+                id: crypto.randomUUID(),
+                action: actionButton,
+                disableAnimation: true
+            }]);
+        } else {
+            const initialMessage = `Hi! I'm your Keju Career Coach. I've reviewed your profile and I'm ready to help you navigate your career.\n\nYou can ask me anything, such as:\n* "How can I improve my resume for a Project Manager role?"\n* "Help me prepare for a coffee chat with a senior engineer at Google."\n* "What are the steps I should take to become an investment banker?"\n\nWhat's on your mind today?`;
+            setMessages([{
+                role: 'model',
+                content: initialMessage,
+                id: crypto.randomUUID(),
+                disableAnimation: true
+            }]);
+        }
+    }, [profile, chatId, getChatById, chatMessagesToMessages, navigate]);
+
+    // Auto-scroll
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const scrollToBottom = () => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        };
+        scrollToBottom();
+        const timer = setTimeout(scrollToBottom, 100);
+        return () => clearTimeout(timer);
     }, [messages, careerPathPrompt, isLoading, agentStatus]);
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (isLoading) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [isLoading]);
+
+    // Start new chat
+    const handleNewChat = useCallback(() => {
+        hasInitialized.current = false;
+        setMessages([]);
+        setCurrentChatId(null);
+        setSearchParams({});
+    }, [setSearchParams]);
 
     const submitMessage = async (message: string) => {
         const currentInput = message.trim();
         if (!currentInput || isLoading || !profile) return;
 
         const newUserMessage: Message = { role: 'user', content: currentInput, id: crypto.randomUUID() };
-        setMessages(prev => [...prev, newUserMessage]);
+        const updatedMessages = [...messages, newUserMessage];
+        setMessages(updatedMessages);
         setUserInput('');
         setIsLoading(true);
         setAgentStatus('');
         setCareerPathPrompt(null);
 
+        // Get the title from first user message
+        const firstUserMessage = updatedMessages.find(m => m.role === 'user');
+        const chatTitle = firstUserMessage 
+            ? firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '')
+            : 'New Chat';
+
         try {
-            // The Agent handles the full loop: Thinking -> Tools -> Response
             const responseText = await agent.chat(
                 currentInput, 
-                { profile }, // Pass current profile as context
-                (status) => setAgentStatus(status) // Update UI with agent status (e.g. "Executing action...")
+                { profile },
+                (status) => setAgentStatus(status)
             );
             
-            setMessages(prev => [...prev, { role: 'model', content: responseText, id: crypto.randomUUID() }]);
+            const newModelMessage: Message = { role: 'model', content: responseText, id: crypto.randomUUID() };
+            const finalMessages = [...updatedMessages, newModelMessage];
+            setMessages(finalMessages);
 
-            addCareerChatSummary({
-                id: crypto.randomUUID(),
-                title: currentInput.substring(0, 50) + (currentInput.length > 50 ? '...' : ''),
-                timestamp: new Date().toISOString(),
-            });
+            // Save the conversation
+            if (currentChatId) {
+                saveConversation(finalMessages, currentChatId, chatTitle);
+                // Update URL to include chat ID if not already there
+                if (!chatId) {
+                    setSearchParams({ chat: currentChatId });
+                }
+            }
 
         } catch (error: any) {
             console.error("Error chatting with agent:", error);
@@ -191,7 +283,6 @@ const CareerCoachPage: React.FC = () => {
                         console.error(`Failed to fetch videos for milestone: ${milestone.milestoneTitle}`, videoError);
                         pathWithVideos.push({ ...milestone, recommendedVideos: [] });
                     }
-                    // Add a small delay to avoid hitting API rate limits with concurrent complex requests
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
@@ -212,7 +303,6 @@ const CareerCoachPage: React.FC = () => {
     const handleDeclinePath = async () => {
         if (!profile) return;
         setCareerPathPrompt(null);
-        // We just send a message as if the user typed it, the agent will handle the polite response.
         submitMessage("I'd rather not create a career path right now. Thanks though!");
     };
     
@@ -226,13 +316,13 @@ const CareerCoachPage: React.FC = () => {
         return (
              <div className="flex items-start gap-4">
                 <ModelIcon />
-                <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-indigo-50 text-slate-800 border border-indigo-200">
+                <div className="max-w-xl w-full p-4 rounded-xl shadow-sm bg-primary/5 text-slate-800 border border-primary/20">
                     <p className="font-medium">{promptText}</p>
                     <div className="mt-4 flex items-center gap-3">
                         <button
                             onClick={handleCreatePath}
                             disabled={isGeneratingPath}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors"
+                            className="inline-flex items-center justify-center px-4 py-2 bg-primary text-white font-semibold rounded-lg shadow-sm hover:bg-primary-600 disabled:bg-primary/50 disabled:cursor-not-allowed transition-colors"
                         >
                             {isGeneratingPath ? (
                                 <>
@@ -246,7 +336,7 @@ const CareerCoachPage: React.FC = () => {
                         <button
                             onClick={handleDeclinePath}
                             disabled={isGeneratingPath}
-                            className="px-4 py-2 bg-transparent text-slate-600 font-medium rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                            className="px-4 py-2 bg-transparent text-slate-600 font-medium rounded-lg hover:bg-gray-100 disabled:opacity-50 transition-colors"
                         >
                             No, thank you
                         </button>
@@ -265,7 +355,6 @@ const CareerCoachPage: React.FC = () => {
         !profile?.jobTitle.trim()
     );
 
-    // Show suggestions more freely now (removed the messages.length restriction)
     const shouldShowSuggestions = !isLoading && !careerPathPrompt;
 
     const suggestionsForEmptyProfile = [
@@ -285,12 +374,21 @@ const CareerCoachPage: React.FC = () => {
     const suggestions = isProfileEffectivelyEmpty ? suggestionsForEmptyProfile : suggestionsForFilledProfile;
 
     return (
-        <div className="flex flex-col h-full bg-base-200">
-            <PageHeader 
-                title="Career Coach"
-                subtitle="Your personal guide for career development."
-                className="pt-8 !mb-8"
-            />
+        <div className="flex flex-col h-full bg-gray-50">
+            <div className="px-4 sm:px-6 lg:px-8 pt-8">
+                <PageHeader 
+                    title="Career Coach"
+                    subtitle="Your personal guide for career development."
+                    actions={
+                        <button
+                            onClick={handleNewChat}
+                            className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            + New Chat
+                        </button>
+                    }
+                />
+            </div>
             <div className="flex-grow overflow-y-auto">
                 <div className="pb-4">
                     <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -330,26 +428,37 @@ const CareerCoachPage: React.FC = () => {
                 </div>
             </div>
             <div className="bg-white/80 backdrop-blur-md border-t border-slate-200 mt-auto sticky bottom-0">
-                <div className="max-w-4xl mx-auto p-4">
-                     {shouldShowSuggestions && (
-                        <div className="w-full mb-4 animate-fade-in">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center mb-3">Suggested Actions</p>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {suggestions.map((suggestion, i) => (
-                                    <PromptSuggestion key={i} size="sm" onClick={() => handleSuggestionClick(suggestion)}>
-                                        {suggestion}
-                                    </PromptSuggestion>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                <div className="max-w-4xl mx-auto px-4 pt-3 pb-4">
                     {isGeneratingPath && (
                         <div className="text-sm text-slate-600 flex items-center justify-center mb-2 animate-fade-in">
                             <LoadingSpinnerIcon className="h-4 w-4 mr-2" />
                             <span>Generating your career path in the background...</span>
                         </div>
                     )}
-                    <form onSubmit={handleSubmit} className="flex items-start gap-4">
+                    
+                    {shouldShowSuggestions && (
+                        <div className="mb-3 animate-fade-in">
+                            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap flex-shrink-0">
+                                    Suggestions
+                                </span>
+                                <div className="flex gap-2">
+                                    {suggestions.map((suggestion, i) => (
+                                        <PromptSuggestion 
+                                            key={i} 
+                                            size="sm" 
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                            className="whitespace-nowrap flex-shrink-0"
+                                        >
+                                            {suggestion}
+                                        </PromptSuggestion>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <form onSubmit={handleSubmit} className="flex items-end gap-3">
                         <textarea
                             value={userInput}
                             onChange={(e) => setUserInput(e.target.value)}
@@ -360,11 +469,15 @@ const CareerCoachPage: React.FC = () => {
                                 }
                             }}
                             placeholder="Ask me anything about your career..."
-                            className="flex-grow p-3 border border-slate-300 rounded-lg resize-y max-h-40 focus:ring-2 focus:ring-primary focus:outline-none transition"
+                            className="flex-grow p-3 border border-slate-300 rounded-xl resize-none focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition bg-white"
                             rows={1}
                             disabled={isLoading}
                         />
-                        <button type="submit" disabled={isLoading || !userInput.trim()} className="px-6 py-3 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors self-end">
+                        <button 
+                            type="submit" 
+                            disabled={isLoading || !userInput.trim()} 
+                            className="px-5 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+                        >
                             Send
                         </button>
                     </form>
