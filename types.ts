@@ -174,7 +174,8 @@ export interface CareerMilestone {
   milestoneTitle: string;
   milestoneDescription: string;
   actionItems: ActionItem[];
-  recommendedVideos?: YouTubeVideo[];
+  learningTopics?: string[];
+  recommendedVideos?: YouTubeVideo[]; // Legacy support
 }
 
 export interface YouTubeVideo {

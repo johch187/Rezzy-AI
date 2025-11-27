@@ -8,6 +8,7 @@ interface Links {
   label: string;
   to: string;
   icon: React.JSX.Element | React.ReactNode;
+  onClick?: () => void;
 }
 
 interface SidebarContextProps {
@@ -164,7 +165,8 @@ export const SidebarLink = ({
       to={link.to}
       onClick={(e) => {
         if (window.innerWidth < 768) setOpen(false);
-        e.stopPropagation();
+        // Call the link's onClick handler if provided (for clearing notifications)
+        link.onClick?.();
       }}
       className={({ isActive }) =>
         cn(

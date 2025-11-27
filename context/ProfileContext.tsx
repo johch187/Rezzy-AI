@@ -58,6 +58,7 @@ export const ProfileContext = createContext<{
   addCareerChatSummary: (summary: CareerChatSummary) => void;
   updateCareerChat: (chatId: string, messages: CareerChatSummary['messages']) => void;
   getChatById: (chatId: string) => CareerChatSummary | undefined;
+  removeCareerChat: (chatId: string) => void;
   isParsing: boolean;
   parsingError: string | null;
   parseResumeInBackground: (file: File) => void;
@@ -343,6 +344,33 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
     return careerChatHistory.find(c => c.id === chatId);
   }, [careerChatHistory]);
 
+  const removeCareerChat = useCallback((chatId: string) => {
+    setCareerChatHistory(prevHistory => {
+        const updatedHistory = prevHistory.filter(c => c.id !== chatId);
+        try {
+            localStorage.setItem('careerChatHistory', JSON.stringify(updatedHistory));
+            void (async () => {
+              try {
+                const session = await supabase?.auth.getSession();
+                if (session?.data.session) {
+                  await persistWorkspace({
+                    profile: profile ?? null,
+                    documentHistory,
+                    careerChatHistory: updatedHistory,
+                    tokens,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to sync chat history", e);
+              }
+            })();
+        } catch (error) {
+            console.error("Failed to save career chat history to localStorage", error);
+        }
+        return updatedHistory;
+    });
+  }, [profile, documentHistory, tokens]);
+
   const parseResumeInBackground = useCallback((file: File) => {
     if (!file || !profile) return;
 
@@ -443,7 +471,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       subscription,
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
-      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById,
+      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById, removeCareerChat,
       isParsing,
       parsingError,
       parseResumeInBackground,
@@ -458,7 +486,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode; onToast: (ms
       tokens, setTokensWithSync, 
       isFetchingUrl, setIsFetchingUrl,
       documentHistory, addDocumentToHistory,
-      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById,
+      careerChatHistory, addCareerChatSummary, updateCareerChat, getChatById, removeCareerChat,
       isParsing, parsingError, parseResumeInBackground,
       backgroundTasks, startBackgroundTask, updateBackgroundTask, markTaskAsViewed, clearAllNotifications
     ]);

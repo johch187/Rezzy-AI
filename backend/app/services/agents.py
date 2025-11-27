@@ -372,15 +372,49 @@ education (array: institution, degree, fieldOfStudy, startDate, endDate), techni
     ) -> Dict[str, Any]:
         """Build career path from current to target role."""
         prompt = f"""
-Build career path from '{current_role}' to '{target_role}':
+Create a detailed career development path from '{current_role}' to '{target_role}'.
 
+User Profile:
 {json.dumps(profile, indent=2)}
 
-Return JSON: currentRole, targetRole, path (array of milestones with timeframe, milestoneTitle, milestoneDescription, actionItems).
+Return a JSON object with this EXACT structure:
+{{
+  "currentRole": "{current_role}",
+  "targetRole": "{target_role}",
+  "path": [
+    {{
+      "timeframe": "Year 0-1",
+      "milestoneTitle": "Short milestone name (3-5 words)",
+      "milestoneDescription": "Detailed description of this career phase and goals (2-3 sentences)",
+      "actionItems": [
+        {{
+          "category": "Skills",
+          "title": "Learn Product Analytics",
+          "description": "Master tools like Amplitude, Mixpanel for data-driven decisions"
+        }},
+        {{
+          "category": "Networking",
+          "title": "Join PM Communities",
+          "description": "Engage with Mind the Product, ProductTank local chapters"
+        }}
+      ],
+      "learningTopics": ["Product Strategy", "User Research", "Agile Methodologies"]
+    }}
+  ]
+}}
+
+IMPORTANT:
+- Create 3-5 milestones representing the journey
+- Each milestone must have 3-5 actionItems with category, title, and description
+- Valid categories: "Academics", "Internships", "Projects", "Skills", "Networking", "Career", "Certifications"
+- learningTopics should be 3-5 relevant topics for self-study
+- milestoneTitle should be concise (3-6 words)
+- actionItems.title should be specific and actionable (2-5 words)
+- actionItems.description should explain the action in detail (1-2 sentences)
 """
         raw = await self._run_llm(
             prompt,
-            "Strategic career coach producing actionable milestones.",
+            "Strategic career coach. Create comprehensive, actionable career development plans with specific milestones and detailed action items.",
             response_mime="application/json",
         )
         return _safe_parse_json(raw) or {
