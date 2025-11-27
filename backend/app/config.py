@@ -65,7 +65,11 @@ class Settings(BaseSettings):
     polar_api_key: Optional[str] = Field(None, description="Polar API key")
     polar_webhook_secret: Optional[str] = Field(None, description="Polar webhook secret")
     polar_organization_id: Optional[str] = Field(None, description="Polar organization ID")
-    polar_product_price_id: Optional[str] = Field(None, description="Polar product price ID")
+    # Product IDs
+    polar_product_price_id: Optional[str] = Field(None, description="Polar Pro subscription product ID (legacy name)")
+    polar_product_subscription: Optional[str] = Field(None, description="Polar Pro subscription product ID")
+    polar_product_topup_small: Optional[str] = Field(None, description="Polar small token top-up product ID")
+    polar_product_topup_large: Optional[str] = Field(None, description="Polar large token top-up product ID")
 
     model_config = {
         "env_file": ".env",

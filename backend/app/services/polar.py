@@ -24,25 +24,40 @@ class PolarClient:
             "Content-Type": "application/json",
         }
 
+    def _get_product_id(self, product_type: str) -> str:
+        """Get product ID for the given product type."""
+        product_map = {
+            "subscription": (
+                self.settings.polar_product_subscription
+                or self.settings.polar_product_price_id  # Fallback to legacy
+            ),
+            "topup_small": self.settings.polar_product_topup_small,
+            "topup_large": self.settings.polar_product_topup_large,
+        }
+        product_id = product_map.get(product_type)
+        if not product_id:
+            raise RuntimeError(f"Polar product ID not configured for: {product_type}")
+        return product_id
+
     async def create_checkout_session(
         self,
         user_id: str,
         email: str,
         success_url: str,
-        cancel_url: str,
-        price_id: Optional[str] = None,
+        product_type: str = "subscription",
+        product_id_override: Optional[str] = None,
     ) -> str:
         """Create a Polar checkout session."""
-        pid = price_id or self.settings.polar_product_price_id
-        if not pid:
-            raise RuntimeError("Polar price ID not configured.")
+        product_id = product_id_override or self._get_product_id(product_type)
 
         payload = {
+            "products": [product_id],
             "customer_email": email,
-            "product_price_id": pid,
             "success_url": success_url,
-            "cancel_url": cancel_url,
-            "metadata": {"user_id": user_id},
+            "metadata": {
+                "user_id": user_id,
+                "product_type": product_type,
+            },
         }
 
         async with httpx.AsyncClient(
@@ -56,7 +71,7 @@ class PolarClient:
             raise RuntimeError(f"Polar checkout failed: {resp.text}")
 
         data = resp.json()
-        return data.get("checkout_url") or data.get("url") or ""
+        return data.get("url") or ""
 
 
 def verify_webhook_signature(

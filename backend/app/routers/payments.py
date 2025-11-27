@@ -1,6 +1,6 @@
 """Payment and subscription endpoints using Polar."""
 
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
@@ -11,11 +11,14 @@ from app.services.supabase import fetch_subscription_status, get_token_status, d
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
+ProductType = Literal["subscription", "topup_small", "topup_large"]
+
 
 class CheckoutRequest(BaseModel):
     successUrl: str
     cancelUrl: str
-    priceId: Optional[str] = None
+    productType: Optional[ProductType] = "subscription"
+    priceId: Optional[str] = None  # Deprecated: use productType instead
 
 
 @router.post("/checkout")
@@ -26,8 +29,8 @@ async def create_checkout(req: CheckoutRequest, user: CurrentUser):
         user_id=user["id"],
         email=user.get("email") or "",
         success_url=req.successUrl,
-        cancel_url=req.cancelUrl,
-        price_id=req.priceId,
+        product_type=req.productType or "subscription",
+        product_id_override=req.priceId,  # Allow explicit override
     )
     if not url:
         raise HTTPException(status_code=500, detail="Failed to create checkout.")
