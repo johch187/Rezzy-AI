@@ -41,11 +41,12 @@ class Settings(BaseSettings):
     polar_organization_id: Optional[str] = Field(None, description="Polar organization ID")
     polar_product_price_id: Optional[str] = Field(None, description="Polar product price ID")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+        "extra": "ignore",
+    }
 
     @field_validator("supabase_secret_key")
     @classmethod

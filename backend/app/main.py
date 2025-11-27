@@ -1,11 +1,13 @@
 """FastAPI application entry point."""
 
+import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -22,6 +24,36 @@ except Exception as e:
         health = None
     analytics = latex = llm = parse = payments = workspace = None
     ROUTERS_LOADED = False
+
+
+def find_frontend_dir() -> Optional[Path]:
+    """Find the frontend directory, trying multiple locations."""
+    # Check environment variable first (both names for compatibility)
+    env_path = os.environ.get("FRONTEND_DIST_DIR") or os.environ.get("FRONTEND_DIST")
+    
+    # Try paths in order of preference
+    candidates = []
+    
+    if env_path:
+        candidates.append(Path(env_path))
+    
+    # Common locations
+    candidates.extend([
+        Path("/app/frontend"),
+        Path("/app/dist"),
+        Path("../dist"),
+        Path("../../dist"),
+        Path("../frontend"),
+    ])
+    
+    for candidate in candidates:
+        if candidate.exists() and (candidate / "index.html").exists():
+            print(f"✓ Found frontend at: {candidate}", file=sys.stderr)
+            return candidate
+        else:
+            print(f"  Checked {candidate}: exists={candidate.exists()}", file=sys.stderr)
+    
+    return None
 
 
 def create_app() -> FastAPI:
@@ -52,7 +84,7 @@ def create_app() -> FastAPI:
             response.headers["Content-Security-Policy"] = settings.csp_policy
             return response
 
-    # Register routers
+    # Register API routers FIRST (before catch-all)
     if health:
         app.include_router(health.router)
     if workspace:
@@ -68,61 +100,59 @@ def create_app() -> FastAPI:
     if payments:
         app.include_router(payments.router)
 
-    # Frontend serving (optional)
-    frontend_dir = Path(settings.frontend_dist_dir) if settings.frontend_dist_dir else None
-    index_file = None
-
-    print(f"Frontend config: frontend_dist_dir={settings.frontend_dist_dir}", file=sys.stderr)
+    # Frontend serving
+    print(f"Environment FRONTEND_DIST_DIR: {os.environ.get('FRONTEND_DIST_DIR', 'not set')}", file=sys.stderr)
+    print(f"Settings frontend_dist_dir: {settings.frontend_dist_dir}", file=sys.stderr)
+    
+    frontend_dir = find_frontend_dir()
     
     if frontend_dir:
-        print(f"Frontend directory: {frontend_dir}, exists={frontend_dir.exists()}", file=sys.stderr)
-        if frontend_dir.exists():
-            # List contents for debugging
-            try:
-                contents = list(frontend_dir.iterdir())
-                print(f"Frontend contents: {[c.name for c in contents]}", file=sys.stderr)
-            except Exception as e:
-                print(f"Error listing frontend dir: {e}", file=sys.stderr)
-            
-            assets_dir = frontend_dir / "assets"
-            if assets_dir.exists():
-                app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-                print("✓ Mounted /assets", file=sys.stderr)
-
-            candidate = frontend_dir / "index.html"
-            if candidate.exists():
-                index_file = candidate
-                print(f"✓ Found index.html at {candidate}", file=sys.stderr)
-            else:
-                print(f"✗ index.html not found at {candidate}", file=sys.stderr)
-    else:
-        print("Frontend directory not configured", file=sys.stderr)
-
-    if index_file:
+        index_file = frontend_dir / "index.html"
+        
+        # Mount static assets
+        assets_dir = frontend_dir / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+            print(f"✓ Mounted /assets from {assets_dir}", file=sys.stderr)
+        
+        # Serve index.html for root
         @app.get("/")
         async def serve_root():
-            return FileResponse(index_file)
-
+            return FileResponse(str(index_file))
+        
+        # SPA catch-all - serve index.html for any non-API route
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
-            # Skip API routes
+            # Don't catch API routes
             if full_path.startswith(("api/", "healthz", "readyz", "assets/")):
                 raise HTTPException(status_code=404, detail="Not found")
-            return FileResponse(index_file)
+            
+            # Check if it's a static file request
+            static_file = frontend_dir / full_path
+            if static_file.exists() and static_file.is_file():
+                return FileResponse(str(static_file))
+            
+            # Otherwise serve index.html for SPA routing
+            return FileResponse(str(index_file))
         
-        print("✓ Frontend routes registered", file=sys.stderr)
+        print(f"✓ Frontend serving enabled from {frontend_dir}", file=sys.stderr)
     else:
-        print("✗ Frontend serving disabled (no index.html found)", file=sys.stderr)
+        print("✗ No frontend directory found - API-only mode", file=sys.stderr)
         
-        # Add a helpful root route when frontend is not available
+        # Root endpoint for API-only mode
         @app.get("/")
-        async def root_no_frontend():
-            return {
-                "status": "ok",
-                "message": "Keju API is running. Frontend not configured.",
-                "docs": "/docs",
-                "health": "/healthz"
-            }
+        async def api_root():
+            return JSONResponse({
+                "name": "Keju API",
+                "version": "1.0.0",
+                "status": "running",
+                "frontend": "not configured",
+                "endpoints": {
+                    "docs": "/docs",
+                    "health": "/healthz",
+                    "ready": "/readyz"
+                }
+            })
 
     return app
 
@@ -130,6 +160,7 @@ def create_app() -> FastAPI:
 # Create application instance
 try:
     app = create_app()
+    print("✓ Application created successfully", file=sys.stderr)
 except Exception as e:
     print(f"CRITICAL: App creation failed: {e}", file=sys.stderr)
     # Minimal fallback for health checks
@@ -142,3 +173,11 @@ except Exception as e:
     @app.get("/readyz")
     async def readiness_error():
         return {"status": "not_ready"}
+    
+    @app.get("/")
+    async def root_error():
+        return JSONResponse({
+            "status": "error",
+            "message": "Application failed to initialize",
+            "error": str(e)
+        }, status_code=500)
