@@ -1,9 +1,10 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ProfileContext } from '../App';
 import { UserIcon } from './Icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from './ui/sidebar';
+import { supabase } from '../services/supabaseClient';
 
 interface ProfileMenuProps {
   isCollapsed?: boolean;
@@ -12,8 +13,10 @@ interface ProfileMenuProps {
 const ProfileMenu: React.FC<ProfileMenuProps> = ({ isCollapsed = false }) => {
   const profileContext = useContext(ProfileContext);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { open: sidebarOpen } = useSidebar();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -24,6 +27,20 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({ isCollapsed = false }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleLogout = async () => {
+    if (!supabase) return;
+    setIsLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      setIsOpen(false);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   if (!profileContext) return null;
   const { profile, tokens } = profileContext;
@@ -84,6 +101,14 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({ isCollapsed = false }) => {
               >
                 Settings
               </Link>
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                {isLoggingOut ? 'Logging out...' : 'Log out'}
+              </button>
             </div>
           </motion.div>
         )}

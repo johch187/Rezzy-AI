@@ -7,16 +7,8 @@ import Button from '../components/Button';
 import { createCheckout } from '../services/paymentsService';
 
 const SubscriptionPage: React.FC = () => {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const plans = {
-    pro: {
-      monthly: 19,
-      annually: 19 * 12 * (1 - 0.10), // 10% discount
-    },
-  };
 
   const startCheckout = async () => {
     setError(null);
@@ -48,37 +40,12 @@ const SubscriptionPage: React.FC = () => {
             centered
           />
 
-          {/* Billing Cycle Toggle */}
-          <div className="flex justify-center items-center gap-4 mb-10">
-            <span className={`text-sm font-medium transition-colors ${billingCycle === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
-              Monthly
-            </span>
-            <button
-              onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'annually' : 'monthly')}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                billingCycle === 'annually' ? 'bg-primary' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  billingCycle === 'annually' ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className={`text-sm font-medium transition-colors ${billingCycle === 'annually' ? 'text-gray-900' : 'text-gray-500'}`}>
-              Annually
-              <span className="ml-1.5 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                Save 10%
-              </span>
-            </span>
-          </div>
-
           {/* Plans Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mt-10">
             {/* Free Plan */}
             <PlanCard
               name="Free"
-              price="€0"
+              price="$0"
               description="Try Keju with essential features to get started."
               features={[
                 { text: "50 tokens", included: true },
@@ -92,8 +59,8 @@ const SubscriptionPage: React.FC = () => {
             {/* Pro Plan */}
             <PlanCard
               name="Pro"
-              price={`€${billingCycle === 'monthly' ? plans.pro.monthly : Math.round(plans.pro.annually / 12)}`}
-              billingInfo={billingCycle === 'annually' ? `€${Math.round(plans.pro.annually)} billed annually` : 'per month'}
+              price="$20"
+              billingInfo="per month"
               description="Full access for serious job seekers and professionals."
               features={[
                 { text: "200 tokens per month", included: true },

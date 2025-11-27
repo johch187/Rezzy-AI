@@ -44,7 +44,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ name, price, billingInfo, descripti
         
         <div className="mt-3 flex items-baseline gap-1">
           <span className="text-4xl font-bold tracking-tight text-gray-900">{price}</span>
-          {price !== '€0' && <span className="text-sm text-gray-500">{billingInfo || '/month'}</span>}
+          {price !== '$0' && <span className="text-sm text-gray-500">{billingInfo || '/month'}</span>}
         </div>
 
         <p className="mt-4 text-sm text-gray-600">{description}</p>
